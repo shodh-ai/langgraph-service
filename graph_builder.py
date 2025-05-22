@@ -4,6 +4,7 @@ from state import AgentGraphState
 
 # Import the new async agent node functions
 from agents import (
+    generate_test_button_feedback_stub_node, # New import
     load_student_context_node,
     save_interaction_summary_node,
     diagnose_speaking_stub_node,
@@ -17,6 +18,7 @@ NODE_LOAD_STUDENT_CONTEXT = "load_student_context"
 NODE_DIAGNOSE_SPEAKING = "diagnose_speaking"
 NODE_GENERATE_FEEDBACK = "generate_feedback"
 NODE_SAVE_INTERACTION = "save_interaction"
+NODE_FEEDBACK_FOR_TEST_BUTTON = "feedback_for_test_button_node" # New node constant
 
 def build_graph():
     """Builds and compiles the LangGraph application with the new structure."""
@@ -29,33 +31,48 @@ def build_graph():
     workflow.add_node(NODE_DIAGNOSE_SPEAKING, diagnose_speaking_stub_node)
     workflow.add_node(NODE_GENERATE_FEEDBACK, generate_feedback_stub_node)
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_summary_node)
+    workflow.add_node(NODE_FEEDBACK_FOR_TEST_BUTTON, generate_test_button_feedback_stub_node) # Add new node
 
     # Set the entry point for the graph
     workflow.set_entry_point(NODE_LOAD_STUDENT_CONTEXT)
 
     # Define edges
+    # workflow.add_edge(NODE_LOAD_STUDENT_CONTEXT, NODE_DIAGNOSE_SPEAKING) # Original edge
+    # Instead of direct edge, let's route after loading context, or after diagnosis if preferred.
+    # For this test, routing after NODE_DIAGNOSE_SPEAKING as per user plan.
     workflow.add_edge(NODE_LOAD_STUDENT_CONTEXT, NODE_DIAGNOSE_SPEAKING)
-    
-    # Conditional edge after diagnosis
-    async def after_diagnosis_router(state: AgentGraphState) -> str:
-        """Router function to decide path after diagnosis."""
-        logger.info(f"Router: Checking diagnosis result: {state.get('diagnosis_result')}")
-        if state.get("diagnosis_result", {}).get("errors") or state.get("diagnosis_result", {}).get("needs_assistance"):
-            logger.info("Router: Errors or assistance needed, routing to generate_feedback.")
-            return "generate_feedback"
-        logger.info("Router: No errors/assistance needed, routing to save_interaction (skipping feedback).")
-        return "save_interaction" # Skip feedback if no errors (for this simple flow)
 
+    # Define the router function based on task_stage
+    async def route_based_on_task_stage(state: AgentGraphState) -> str:
+        context = state.get("current_context")
+        if not context:
+            logger.warning("LangGraph Router: current_context is missing in state. Routing to default feedback.")
+            return NODE_GENERATE_FEEDBACK
+
+        task_stage = getattr(context, 'task_stage', None)
+        user_id = state.get('user_id', 'unknown_user')
+
+        logger.info(f"LangGraph Router: User '{user_id}', Current task_stage is '{task_stage}'")
+        if task_stage == "testing_specific_context_from_button":
+            logger.info(f"LangGraph Router: User '{user_id}', Routing to feedback_for_test_button_node.")
+            return NODE_FEEDBACK_FOR_TEST_BUTTON
+        else:
+            logger.info(f"LangGraph Router: User '{user_id}', Routing to default_feedback_node ({NODE_GENERATE_FEEDBACK}).")
+            return NODE_GENERATE_FEEDBACK
+
+    # Add conditional edge from NODE_DIAGNOSE_SPEAKING (or NODE_LOAD_STUDENT_CONTEXT)
     workflow.add_conditional_edges(
-        NODE_DIAGNOSE_SPEAKING, # Source node
-        after_diagnosis_router,    # Async conditional function
+        NODE_DIAGNOSE_SPEAKING, 
+        route_based_on_task_stage,
         {
-            "generate_feedback": NODE_GENERATE_FEEDBACK,
-            "save_interaction": NODE_SAVE_INTERACTION 
+            NODE_FEEDBACK_FOR_TEST_BUTTON: NODE_FEEDBACK_FOR_TEST_BUTTON,
+            NODE_GENERATE_FEEDBACK: NODE_GENERATE_FEEDBACK
         }
     )
-    
+
+    # Edges from feedback nodes to save_interaction
     workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_SAVE_INTERACTION)
+    workflow.add_edge(NODE_FEEDBACK_FOR_TEST_BUTTON, NODE_SAVE_INTERACTION) # Ensure this path also leads to save
     workflow.add_edge(NODE_SAVE_INTERACTION, END) # End of the graph after saving
 
     # Compile the graph

@@ -33,6 +33,7 @@ logger.info("TOEFL Tutor LangGraph compiled and ready.")
 
 @app.post("/process_interaction", response_model=InteractionResponse)
 async def process_interaction_route(request_data: InteractionRequest):
+    logger.info(f"FastAPI backend: Full InteractionRequest received: {request_data.model_dump(exclude_none=True)}")
     # Define default values
     default_user_id = "default_user_for_testing"
     default_session_id = str(uuid.uuid4()) # Generate a new session ID if none provided
