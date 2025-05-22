@@ -74,9 +74,18 @@ async def process_interaction_route(request_data: InteractionRequest):
         
         logger.debug(f"LangGraph final state: {final_state}")
 
-        feedback_content = final_state.get("feedback_content", {})
-        response_text = feedback_content.get("text", "FastAPI/LangGraph: No final text response.")
-        dom_actions_data = feedback_content.get("dom_actions")
+        # final_state is the AgentGraphState (TypedDict)
+        # feedback_content_from_state can be Dict[str, Any] or None
+        feedback_content_from_state = final_state.get("feedback_content")
+
+        # Ensure effective_feedback_content is a dictionary for safe access.
+        # If feedback_content_from_state is None (e.g., feedback step was skipped),
+        # default to an empty dictionary.
+        effective_feedback_content = feedback_content_from_state if feedback_content_from_state is not None else {}
+        
+        response_text = effective_feedback_content.get("text", "FastAPI/LangGraph: No final text response.")
+        # .get() on a dict will return None if 'dom_actions' key is not found, which is acceptable.
+        dom_actions_data = effective_feedback_content.get("dom_actions")
 
         return InteractionResponse(response=response_text, dom_actions=dom_actions_data)
 

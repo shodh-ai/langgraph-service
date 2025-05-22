@@ -14,10 +14,11 @@ async def load_student_context_node(state: AgentGraphState) -> dict:
 
 async def save_interaction_summary_node(state: AgentGraphState) -> dict:
     user_id = state["user_id"]
+    feedback_content_value = state.get("feedback_content")
     summary_data = {
         "transcript": state.get("transcript"),
         "diagnosis": state.get("diagnosis_result"),
-        "feedback": state.get("feedback_content", {}).get("text") 
+        "feedback": feedback_content_value.get("text") if isinstance(feedback_content_value, dict) else None
     }
     logger.info(f"StudentModelNode: Saving interaction for user_id: '{user_id}', Data: {summary_data}")
     # In a real async setup, memory_stub.add_interaction_to_history would be async
