@@ -1,0 +1,12 @@
+fastapi
+pydantic
+uvicorn[standard]
+gunicorn
+langchain
+langgraph
+langsmith
+langchain-openai
+python-dotenv
+google-cloud-aiplatform
+# mem0 # Add when ready
+# PyYAML for configs if needed
