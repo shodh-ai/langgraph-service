@@ -86,9 +86,9 @@ async def process_interaction_route(request_data: InteractionRequest):
         
         response_text = effective_feedback_content.get("text", "FastAPI/LangGraph: No final text response.")
         # .get() on a dict will return None if 'dom_actions' key is not found, which is acceptable.
-        dom_actions_data = effective_feedback_content.get("dom_actions")
+        frontend_rpc_calls_data = effective_feedback_content.get("frontend_rpc_calls")
 
-        return InteractionResponse(response=response_text, dom_actions=dom_actions_data)
+        return InteractionResponse(response_for_tts=response_text, frontend_rpc_calls=frontend_rpc_calls_data)
 
     except Exception as e:
         logger.error(f"Error processing LangGraph interaction: {e}", exc_info=True)

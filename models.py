@@ -27,5 +27,5 @@ class DomAction(BaseModel):
 
 
 class InteractionResponse(BaseModel):
-    response: str  # Text content intended for Text-to-Speech (TTS)
-    dom_actions: Optional[List[DomAction]] = None # Optional list of actions for the UI to perform
+    response_for_tts: str
+    frontend_rpc_calls: Optional[List[Dict[str, Any]]] = None # Optional list of RPC calls for the UI to perform

@@ -13,7 +13,7 @@ async def generate_test_button_feedback_stub_node(state: AgentGraphState) -> dic
     user_id = state.get("user_id", "unknown_user_in_test_button_node")
     logger.info(f"FeedbackNodeStub (TestButton): Generating specific feedback for TEST BUTTON context for user '{user_id}'.")
     text_response = "LangGraph: Feedback for TEST BUTTON interaction!"
-    dom_actions = [{"action": "show_alert", "payload": {"message": "Test button context successfully processed by LangGraph!"}}]
+    frontend_rpc_calls = [{"function_name": "showAlert", "args": ["Test button context successfully processed by LangGraph!"]}]
     
     # This node is responsible for setting the content that will be used for the final user response
-    return {"feedback_content": {"text": text_response, "dom_actions": dom_actions}}
+    return {"feedback_content": {"text": text_response, "frontend_rpc_calls": frontend_rpc_calls}}
