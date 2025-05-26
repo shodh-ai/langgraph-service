@@ -8,5 +8,5 @@ langsmith
 langchain-openai
 python-dotenv
 google-cloud-aiplatform
-# mem0 # Add when ready
+mem0ai
 # PyYAML for configs if needed
