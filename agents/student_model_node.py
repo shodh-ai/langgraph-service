@@ -1,26 +1,40 @@
 import logging
 from state import AgentGraphState
-from memory import memory_stub # Imports the instance from memory/__init__.py
+from memory import mem0_memory # Imports the instance from memory/__init__.py
 
 logger = logging.getLogger(__name__)
 
-async def load_student_context_node(state: AgentGraphState) -> dict:
+async def load_student_data_node(state: AgentGraphState) -> dict:
+    """Loads student data from Mem0 and updates the state."""
     user_id = state["user_id"]
-    logger.info(f"StudentModelNode: Loading context for user_id: '{user_id}'")
-    # In a real async setup, memory_stub.get_student_data would be async
-    # For the stub, we call its synchronous method.
-    student_data = memory_stub.get_student_data(user_id) 
+    logger.info(f"StudentModelNode: Loading student data for user_id: '{user_id}' from Mem0")
+    
+    # Get student data from Mem0
+    student_data = mem0_memory.get_student_data(user_id)
+    logger.info(f"StudentModelNode: Retrieved student data from Mem0: {student_data}")
+    
     return {"student_memory_context": student_data}
 
-async def save_interaction_summary_node(state: AgentGraphState) -> dict:
+async def save_interaction_node(state: AgentGraphState) -> dict:
+    """Saves the current interaction to Mem0."""
     user_id = state["user_id"]
-    feedback_content_value = state.get("feedback_content")
-    summary_data = {
+    
+    # Get output content (in Phase 1, this might be using feedback_content for backward compatibility)
+    output_content = state.get("output_content") or state.get("feedback_content", {})
+    
+    # Prepare interaction summary
+    interaction_data = {
         "transcript": state.get("transcript"),
+        "full_submitted_transcript": state.get("full_submitted_transcript"),
         "diagnosis": state.get("diagnosis_result"),
-        "feedback": feedback_content_value.get("text") if isinstance(feedback_content_value, dict) else None
+        "feedback": output_content.get("text_for_tts") if isinstance(output_content, dict) else None,
+        "task_details": state.get("next_task_details")
     }
-    logger.info(f"StudentModelNode: Saving interaction for user_id: '{user_id}', Data: {summary_data}")
-    # In a real async setup, memory_stub.add_interaction_to_history would be async
-    memory_stub.add_interaction_to_history(user_id, summary_data)
-    return {} # No direct state update needed from this, or could return a success flag
+    
+    logger.info(f"StudentModelNode: Saving interaction for user_id: '{user_id}' to Mem0")
+    logger.debug(f"StudentModelNode: Interaction data: {interaction_data}")
+    
+    # Save to Mem0
+    mem0_memory.add_interaction_to_history(user_id, interaction_data)
+    
+    return {} # No direct state update needed
