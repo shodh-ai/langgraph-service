@@ -1,0 +1,226 @@
+prompts:
+  speaking_independent_1:
+    id: "speaking_independent_1"
+    title: "Independent Speaking Task 1"
+    text: "What do you think is the most important quality of a good friend? Use specific details and examples in your response."
+    time_limit_seconds: 45
+    prep_time_seconds: 15
+    difficulty: "medium"
+    skills_tested: ["organization", "examples", "fluency"]
+  
+  speaking_integrated_1:
+    id: "speaking_integrated_1"
+    title: "Integrated Speaking Task 3"
+    text: "Read the following announcement from a university president:\n\nThe university has decided to implement a new attendance policy. Starting next semester, attendance will be mandatory for all lectures, and students who miss more than three classes without a valid excuse will have their final grade reduced by one letter grade.\n\nNow listen to two students discussing this announcement."
+    audio_transcript: "Man: Did you hear about the new attendance policy they're implementing next semester?\nWoman: Yeah, I just read the email. I'm not sure how I feel about it.\nMan: I think it's ridiculous. We're adults, and we should be able to decide whether to attend class or not. If we can learn the material and pass the exams without going to every lecture, why should we be penalized?\nWoman: I see your point, but I also understand why they're doing it. A lot of students skip classes and then struggle with the material. Maybe this will help those students stay on track.\nMan: But that should be their choice. Besides, some professors just read off their slides. I learn better by reading the textbook on my own time.\nWoman: True, but there are also classes where discussions are important, and having more students present would make those discussions more valuable for everyone."
+    question: "The man expresses his opinion about the new attendance policy. State his opinion and explain the reasons he gives for holding that opinion."
+    time_limit_seconds: 60
+    prep_time_seconds: 30
+    difficulty: "hard"
+    skills_tested: ["note-taking", "synthesis", "fluency"]
+  
+  writing_independent_1:
+    id: "writing_independent_1"
+    title: "Independent Writing Task"
+    text: "Do you agree or disagree with the following statement? 'Technology has made it easier for people to connect with one another.' Use specific reasons and examples to support your answer."
+    time_limit_minutes: 30
+    difficulty: "medium"
+    skills_tested: ["thesis", "examples", "organization", "grammar"]
+  
+  writing_integrated_1:
+    id: "writing_integrated_1"
+    title: "Integrated Writing Task"
+    reading_passage: "Island Biogeography and Forest Fragments\n\nIsland biogeography theory, developed in the 1960s, explains how species diversity on islands is influenced by island size and distance from the mainland. Larger islands typically support more species than smaller ones, and islands closer to the mainland have greater biodiversity than distant islands.\n\nEcologists have applied this theory to forest fragments created when continuous forests are divided by human development. These fragments function similarly to islands, with species diversity decreasing as fragment size decreases. Research shows that small forest fragments cannot support the same diversity of species as large, continuous forests.\n\nConservation biologists recommend creating corridors between forest fragments to allow species to move between them. These corridors effectively increase the functional size of the fragments and help maintain biodiversity. Computer models suggest that even narrow corridors can significantly improve species persistence in fragmented landscapes."
+    lecture_transcript: "Today I want to discuss some limitations of applying island biogeography theory to forest fragments. While the theory provides a useful starting point, there are several important differences between true islands and forest fragments that limit the comparison.\n\nFirst, unlike true islands surrounded by water, forest fragments are often surrounded by a landscape that many species can traverse. Birds, insects, and even some mammals can move between fragments through agricultural fields or suburban areas. This means forest fragments are less isolated than true islands, making the theory less applicable.\n\nSecond, the effectiveness of corridors has been questioned by recent research. While corridors do allow movement between fragments, studies show that predators often use these corridors more effectively than endangered species do. This can actually increase predation rates and potentially harm the very species we're trying to protect.\n\nFinally, forest fragments experience what ecologists call 'edge effects' that true islands don't face. The edges of fragments have different temperature, light, and wind patterns than the interior. These edge effects can penetrate deep into small fragments, essentially eliminating true 'interior' habitat. This means even a large fragment may not provide suitable habitat for species that require true forest interior conditions."
+    question: "Summarize the points made in the lecture, being sure to explain how they challenge specific points made in the reading passage."
+    time_limit_minutes: 20
+    difficulty: "hard"
+    skills_tested: ["synthesis", "comparison", "paraphrasing", "organization"]
+
+teaching_materials:
+  toefl_speaking_structure:
+    id: "toefl_speaking_structure"
+    title: "TOEFL Speaking Response Structure"
+    content: "A well-structured TOEFL speaking response follows a clear organization that makes it easy for evaluators to follow your ideas. For independent speaking tasks, use this structure:\n\n1. Introduction (5-7 seconds)\n   - Direct answer to the question\n   - Brief mention of your main points\n\n2. First Main Point (15-20 seconds)\n   - Clear statement of your first reason/example\n   - Specific details to support this point\n\n3. Second Main Point (15-20 seconds)\n   - Clear statement of your second reason/example\n   - Specific details to support this point\n\n4. Conclusion (3-5 seconds)\n   - Brief restatement of your position\n\nFor integrated tasks, modify this structure to account for the source materials you need to summarize."
+    sections: ["Introduction", "First Main Point", "Second Main Point", "Conclusion"]
+    difficulty: "beginner"
+    interactive_elements: [
+      {
+        "type": "audio_example",
+        "content": "speaking_structure_example.mp3",
+        "id": "structure_example_1"
+      },
+      {
+        "type": "practice_template",
+        "content": "Introduction: I believe that ___ because ___ and ___.\nFirst point: One reason is ___. For example, ___.\nSecond point: Another reason is ___. For instance, ___.\nConclusion: That's why I think ___.",
+        "id": "structure_template_1"
+      }
+    ]
+  
+  toefl_writing_paragraphs:
+    id: "toefl_writing_paragraphs"
+    title: "Crafting Effective Body Paragraphs"
+    content: "Strong body paragraphs are essential for a high-scoring TOEFL essay. Each paragraph should focus on a single main idea that supports your thesis. Follow this structure for effective body paragraphs:\n\n1. Topic Sentence\n   - Clearly states the main idea of the paragraph\n   - Connects to your thesis statement\n\n2. Explanation\n   - Elaborate on your topic sentence\n   - Explain why this point is important\n\n3. Example\n   - Provide a specific, concrete example\n   - Use details to make your example vivid and convincing\n\n4. Analysis\n   - Explain how your example supports your point\n   - Connect back to the thesis\n\nThis structure is sometimes abbreviated as TEEA (Topic, Explanation, Example, Analysis). Using this structure ensures your paragraphs are well-developed and convincing."
+    sections: ["Topic Sentence", "Explanation", "Example", "Analysis"]
+    difficulty: "intermediate"
+    interactive_elements: [
+      {
+        "type": "text_example",
+        "content": "Topic sentence: Social media has fundamentally changed how people maintain friendships.\nExplanation: Before social media, staying in touch with friends from different parts of your life required significant effort.\nExample: For instance, when I moved to a new city for university, I used Facebook to maintain connections with my high school friends, sharing updates and commenting on their posts despite being hundreds of miles apart.\nAnalysis: This constant, low-effort connection means relationships that might have faded due to distance can now be preserved indefinitely, demonstrating how technology has transformed friendship maintenance.",
+        "id": "paragraph_example_1"
+      },
+      {
+        "type": "interactive_exercise",
+        "content": "paragraph_builder_exercise.json",
+        "id": "paragraph_builder_1"
+      }
+    ]
+
+model_answers:
+  speaking_independent_1:
+    id: "model_speaking_independent_1"
+    prompt_id: "speaking_independent_1"
+    speaking_script: "I believe the most important quality of a good friend is reliability. When someone is reliable, you can count on them in both good times and difficult situations. For example, last year when I was going through a challenging time with my family, my friend Emma consistently checked in on me and offered support without me having to ask. She remembered important details and followed up, showing true reliability. Another reason reliability is crucial is that it builds trust over time. In my experience, knowing that my friend will keep his commitments, whether it's arriving on time for our meetings or keeping sensitive information confidential, creates a foundation of trust that strengthens our friendship. That's why I consider reliability the most essential quality in a good friend."
+    annotations: [
+      {
+        "timestamp": "0:00-0:08",
+        "note": "Clear introduction with direct answer to the question"
+      },
+      {
+        "timestamp": "0:08-0:25",
+        "note": "First main point with specific personal example"
+      },
+      {
+        "timestamp": "0:25-0:42",
+        "note": "Second main point with explanation of why reliability matters"
+      },
+      {
+        "timestamp": "0:42-0:48",
+        "note": "Brief conclusion that restates the main position"
+      }
+    ]
+  
+  writing_integrated_1:
+    id: "model_writing_integrated_1"
+    prompt_id: "writing_integrated_1"
+    essay_text: "The reading passage and the lecture both discuss the theory of island biogeography, but they present contrasting perspectives on its application to forest fragments.\n\nAccording to the reading, island biogeography theory can be effectively applied to forest fragments created by human development. The passage explains that these fragments function similarly to actual islands, with species diversity decreasing as fragment size decreases. The reading further claims that connecting these fragments with corridors can help maintain biodiversity by allowing species to move between fragments.\n\nHowever, the lecturer challenges these assertions. Firstly, she points out that unlike true islands, forest fragments are not surrounded by water but by various landscapes that many species can traverse. She provides the example of birds and insects that can easily fly between fragments, making them less isolated than true islands.\n\nSecondly, the lecturer disputes the effectiveness of corridors. She references recent studies showing that predators often use these corridors more than endangered species do, potentially increasing predation rates rather than helping conservation efforts. This directly contradicts the reading's positive view of corridors.\n\nFinally, the lecturer argues that forest fragments face edge effects that true islands don't experience. These include changes in temperature, light, and wind patterns that can dramatically alter habitat conditions deep into the fragment. She explains that these edge effects can make even large fragments unsuitable for species that require true forest interior conditions.\n\nIn conclusion, while the reading presents island biogeography as a useful model for understanding forest fragmentation, the lecture provides compelling evidence that this application is flawed due to fundamental differences between true islands and forest fragments."
+    annotations: [
+      {
+        "start": 0,
+        "end": 166,
+        "note": "Strong introduction that clearly states the relationship between the reading and lecture"
+      },
+      {
+        "start": 168,
+        "end": 467,
+        "note": "Clear summary of the reading's first point"
+      },
+      {
+        "start": 469,
+        "end": 738,
+        "note": "Effective transition to the lecturer's counterargument with specific example"
+      },
+      {
+        "start": 740,
+        "end": 1022,
+        "note": "Parallel structure maintained throughout - each paragraph addresses one point from the reading and the corresponding counterpoint from the lecture"
+      },
+      {
+        "start": 1024,
+        "end": 1297,
+        "note": "Precise paraphrasing of the lecture's third point without copying language directly"
+      }
+    ]
+
+rubrics:
+  Speaking_Q1_Independent:
+    id: "rubric_speaking_independent"
+    overall_description: "Independent speaking tasks assess your ability to speak clearly and coherently about a familiar topic."
+    score_descriptions: {
+      "5": "The response fulfills all requirements of the task with sustained, coherent discourse and is highly intelligible.",
+      "4": "The response fulfills the requirements of the task with generally coherent discourse and is mostly intelligible.",
+      "3": "The response addresses the task appropriately but may require some listener effort to understand.",
+      "2": "The response addresses the task partially with limited relevant content and requires significant listener effort.",
+      "1": "The response fails to address the task and is largely unintelligible."
+    }
+    criteria: [
+      {
+        "name": "Delivery",
+        "description": "Clarity of speech, fluency, pronunciation, intonation, and pace",
+        "weight": 0.33
+      },
+      {
+        "name": "Language Use",
+        "description": "Range and precision of vocabulary and grammar",
+        "weight": 0.33
+      },
+      {
+        "name": "Topic Development",
+        "description": "Relevance, coherence, and completeness of response",
+        "weight": 0.34
+      }
+    ]
+  
+  Writing_Integrated_Essay:
+    id: "rubric_writing_integrated"
+    overall_description: "Integrated writing tasks assess your ability to synthesize and compare information from reading and listening materials."
+    score_descriptions: {
+      "5": "A response at this level successfully selects the important information from the lecture and coherently and accurately presents this information in relation to the relevant information presented in the reading.",
+      "4": "A response at this level is generally good in selecting the important information from the lecture and in coherently and accurately presenting this information in relation to the relevant information in the reading, but it may have minor omission, inaccuracy, vagueness, or imprecision.",
+      "3": "A response at this level contains some important information from the lecture and conveys some relevant connection to the reading, but it is marked by one or more of the following: significant omission, significant inaccuracy, lack of coherence, or language errors that result in a lack of clarity.",
+      "2": "A response at this level contains some relevant information from the lecture, but is marked by significant language difficulties or by significant omission or inaccuracy of important ideas from the lecture or in the connections between the lecture and the reading.",
+      "1": "A response at this level is marked by one or more of the following: little or no relevant content from the lecture, failure to convey any connection between the lecture and the reading, or language so lacking in clarity that meaning cannot be determined."
+    }
+    criteria: [
+      {
+        "name": "Accuracy",
+        "description": "Correct representation of points from both sources",
+        "weight": 0.4
+      },
+      {
+        "name": "Organization",
+        "description": "Clear structure and logical progression of ideas",
+        "weight": 0.3
+      },
+      {
+        "name": "Language Use",
+        "description": "Grammar, vocabulary, and sentence structure",
+        "weight": 0.3
+      }
+    ]
+
+skill_drills:
+  vocabulary_expansion_drill_1:
+    id: "vocabulary_expansion_drill_1"
+    title: "Academic Vocabulary Expansion"
+    type: "multiple_choice"
+    instructions: "Choose the most appropriate academic word to complete each sentence. These words will help you express your ideas more precisely in TOEFL speaking and writing tasks."
+    difficulty: "medium"
+    focus_area: "academic_vocabulary"
+    question: "The research ___ that students who study in short, focused sessions retain information better than those who cram the night before an exam."
+    options: [
+      "says",
+      "indicates",
+      "tells",
+      "talks"
+    ]
+    correct_answer_index: 1
+    explanation: "'Indicates' is the most academic and precise term in this context. It suggests that the research provides evidence pointing toward a conclusion without stating it as an absolute fact. This is typical of academic language, which often avoids overly strong claims."
+  
+  grammar_correction_drill_1:
+    id: "grammar_correction_drill_1"
+    title: "Verb Tense Consistency"
+    type: "fill_in_blank"
+    instructions: "Fill in the blanks with the appropriate verb tense. Pay attention to maintaining consistent tenses throughout the paragraph unless there's a logical reason to switch tenses."
+    difficulty: "medium"
+    focus_area: "verb_tense_consistency"
+    text_with_blanks: "Last year, researchers at Oxford University [BLANK1] a study on sleep patterns. They [BLANK2] that students who [BLANK3] at least eight hours of sleep [BLANK4] better on exams. Currently, the same research team [BLANK5] a follow-up study that [BLANK6] the effects of meditation on sleep quality."
+    answers: [
+      {"blank": "BLANK1", "correct": "conducted", "options": ["conducted", "conduct", "are conducting", "will conduct"]},
+      {"blank": "BLANK2", "correct": "found", "options": ["find", "found", "are finding", "will find"]},
+      {"blank": "BLANK3", "correct": "got", "options": ["get", "got", "are getting", "will get"]},
+      {"blank": "BLANK4", "correct": "performed", "options": ["perform", "performed", "are performing", "will perform"]},
+      {"blank": "BLANK5", "correct": "is conducting", "options": ["conducts", "conducted", "is conducting", "will conduct"]},
+      {"blank": "BLANK6", "correct": "examines", "options": ["examines", "examined", "is examining", "will examine"]}
+    ]
+    explanation: "This paragraph begins in past tense (conducted, found, got, performed) when discussing the completed study, then switches to present tense (is conducting, examines) when discussing the current follow-up study. This tense shift is logical because it reflects the chronological difference between the two studies."
