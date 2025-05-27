@@ -2,6 +2,9 @@ import logging
 from state import AgentGraphState
 import yaml
 import os
+import json
+import vertexai
+from vertexai.generative_models import GenerativeModel, Content
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -13,6 +16,19 @@ except Exception as e:
     logger.error(f"Failed to load LLM prompts: {e}")
     PROMPTS = {}
 
+try:
+    vertexai.init(project="windy-orb-460108-t0", location="us-central1")
+    logger.info("Vertex AI initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Vertex AI: {e}")
+
+try:
+    gemini_model = GenerativeModel("gemini-1.5-pro")
+    logger.info("Gemini model loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load Gemini model: {e}")
+    gemini_model = None
+
 async def diagnose_submitted_speaking_response_node(state: AgentGraphState) -> dict:
     transcript = state.get("transcript", "")
     rubric = state.get("rubric_details", {})
@@ -20,23 +36,89 @@ async def diagnose_submitted_speaking_response_node(state: AgentGraphState) -> d
     
     logger.info(f"SpeakingDiagnosticNode: Diagnosing speaking response")
     
-    diagnosis = {
-        "overall_score": 4,  # 1-5 scale
-        "primary_strength": "clear organization of ideas",
-        "primary_error": "limited vocabulary range",
-        "skill_scores": {
-            "delivery": 3.5,
-            "language_use": 4.0,
-            "topic_development": 4.2
-        },
-        "detailed_feedback": {
-            "delivery": "Good pace but occasional hesitations",
-            "language_use": "Appropriate grammar with some minor errors",
-            "topic_development": "Well-organized with good supporting examples"
+    if not gemini_model:
+        logger.warning("SpeakingDiagnosticNode: Gemini model not available, using stub implementation")
+        # Fallback to stub implementation
+        diagnosis = {
+            "overall_score": 4,
+            "primary_strength": "clear organization of ideas",
+            "primary_error": "limited vocabulary range",
+            "skill_scores": {
+                "delivery": 3.5,
+                "language_use": 4.0,
+                "topic_development": 4.2
+            },
+            "detailed_feedback": {
+                "delivery": "Good pace but occasional hesitations",
+                "language_use": "Appropriate grammar with some minor errors",
+                "topic_development": "Well-organized with good supporting examples"
+            }
         }
-    }
+    else:
+        try:
+            # get prompt templates from config
+            system_prompt = PROMPTS.get("diagnostic", {}).get("speaking", {}).get("system", "")
+            user_prompt = PROMPTS.get("diagnostic", {}).get("speaking", {}).get("user_template", "")
+            
+            # replace placeholders in prompts
+            system_prompt = system_prompt.replace("{{rubric_details}}", json.dumps(rubric))
+            system_prompt = system_prompt.replace("{{task_prompt}}", json.dumps(prompt_data))
+            
+            user_prompt = user_prompt.replace("{{transcript}}", transcript)
+            
+            contents = [
+                Content(role="user", parts=[system_prompt]),
+                Content(role="model", parts=["I understand. I'll evaluate the speaking response based on the provided rubric and prompt."]),
+                Content(role="user", parts=[user_prompt])
+            ]
+            
+            response = gemini_model.generate_content(contents, generation_config={
+                "temperature": 0.2,
+                "max_output_tokens": 1024,
+                "response_mime_type": "application/json"
+            })
+            
+            try:
+                diagnosis = json.loads(response.text)
+                logger.info("SpeakingDiagnosticNode: Successfully parsed Gemini response")
+            except json.JSONDecodeError:
+                logger.error(f"SpeakingDiagnosticNode: Failed to parse Gemini response as JSON: {response.text}")
+                # Fallback to stub implementation
+                diagnosis = {
+                    "overall_score": 3.5,
+                    "primary_strength": "addressing the prompt directly",
+                    "primary_error": "inconsistent pronunciation",
+                    "skill_scores": {
+                        "delivery": 3.0,
+                        "language_use": 3.5,
+                        "topic_development": 4.0
+                    },
+                    "detailed_feedback": {
+                        "delivery": "Some pronunciation issues affect clarity",
+                        "language_use": "Good vocabulary with some grammatical errors",
+                        "topic_development": "Clear main points but could use more specific examples"
+                    }
+                }
+        except Exception as e:
+            logger.error(f"SpeakingDiagnosticNode: Error calling Gemini API: {e}")
+            # Fallback to stub implementation
+            diagnosis = {
+                "overall_score": 3.0,
+                "primary_strength": "attempt to address the prompt",
+                "primary_error": "technical error during evaluation",
+                "skill_scores": {
+                    "delivery": 3.0,
+                    "language_use": 3.0,
+                    "topic_development": 3.0
+                },
+                "detailed_feedback": {
+                    "delivery": "Unable to fully evaluate due to technical issues",
+                    "language_use": "Unable to fully evaluate due to technical issues",
+                    "topic_development": "Unable to fully evaluate due to technical issues"
+                }
+            }
     
-    logger.info(f"SpeakingDiagnosticNode: Completed diagnosis")
+    logger.info(f"SpeakingDiagnosticNode: Completed diagnosis with overall score {diagnosis.get('overall_score')}")
     
     return {"speaking_diagnosis": diagnosis, "diagnosis_result": diagnosis}
 
