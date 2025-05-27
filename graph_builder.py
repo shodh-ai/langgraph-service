@@ -4,8 +4,6 @@ from state import AgentGraphState
 
 # Import the existing stub node functions
 from agents import (
-    diagnose_speaking_stub_node,
-    generate_feedback_stub_node,
     generate_test_button_feedback_stub_node
 )
 
@@ -25,6 +23,15 @@ from agents.knowledge_node import (
     get_rubric_details_node
 )
 from agents.perspective_shaper_node import apply_teacher_persona_node
+from agents.diagnostic_nodes import (
+    diagnose_submitted_speaking_response_node,
+    diagnose_submitted_writing_response_node,
+    analyze_live_writing_chunk_node
+)
+from agents.feedback_generator_node import generate_feedback_for_task_node
+from agents.socratic_questioning_node import generate_socratic_question_node
+from agents.scaffolding_provider_node import provide_scaffolding_node
+from agents.motivational_speaker_node import generate_motivational_message_node
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +53,18 @@ NODE_GET_RUBRIC = "get_rubric"
 # Perspective Shaper node
 NODE_APPLY_TEACHER_PERSONA = "apply_teacher_persona"
 
-# Existing nodes (for compatibility)
+# Diagnostic nodes
 NODE_DIAGNOSE_SPEAKING = "diagnose_speaking"
+NODE_DIAGNOSE_WRITING = "diagnose_writing"
+NODE_ANALYZE_LIVE_WRITING = "analyze_live_writing"
+
+# Feedback and guidance nodes
 NODE_GENERATE_FEEDBACK = "generate_feedback"
+NODE_GENERATE_SOCRATIC_QUESTIONS = "generate_socratic_questions"
+NODE_PROVIDE_SCAFFOLDING = "provide_scaffolding"
+NODE_GENERATE_MOTIVATION = "generate_motivation"
+
+# Legacy nodes (for compatibility)
 NODE_FEEDBACK_FOR_TEST_BUTTON = "feedback_for_test_button_node"
 
 def build_graph():
@@ -73,9 +89,18 @@ def build_graph():
     # Add Perspective Shaper node
     workflow.add_node(NODE_APPLY_TEACHER_PERSONA, apply_teacher_persona_node)
     
-    # Add existing nodes for compatibility
-    workflow.add_node(NODE_DIAGNOSE_SPEAKING, diagnose_speaking_stub_node)
-    workflow.add_node(NODE_GENERATE_FEEDBACK, generate_feedback_stub_node)
+    # Add Diagnostic nodes
+    workflow.add_node(NODE_DIAGNOSE_SPEAKING, diagnose_submitted_speaking_response_node)
+    workflow.add_node(NODE_DIAGNOSE_WRITING, diagnose_submitted_writing_response_node)
+    workflow.add_node(NODE_ANALYZE_LIVE_WRITING, analyze_live_writing_chunk_node)
+    
+    # Add Feedback and guidance nodes
+    workflow.add_node(NODE_GENERATE_FEEDBACK, generate_feedback_for_task_node)
+    workflow.add_node(NODE_GENERATE_SOCRATIC_QUESTIONS, generate_socratic_question_node)
+    workflow.add_node(NODE_PROVIDE_SCAFFOLDING, provide_scaffolding_node)
+    workflow.add_node(NODE_GENERATE_MOTIVATION, generate_motivational_message_node)
+    
+    # Add legacy nodes for compatibility
     workflow.add_node(NODE_FEEDBACK_FOR_TEST_BUTTON, generate_test_button_feedback_stub_node)
 
     # Set the entry point for the graph
@@ -87,41 +112,66 @@ def build_graph():
     workflow.add_edge(NODE_GET_TASK_PROMPT, NODE_GET_RUBRIC)
     workflow.add_edge(NODE_GET_RUBRIC, NODE_GET_AFFECTIVE_STATE)
     workflow.add_edge(NODE_GET_AFFECTIVE_STATE, NODE_APPLY_TEACHER_PERSONA)
-    workflow.add_edge(NODE_APPLY_TEACHER_PERSONA, NODE_DIAGNOSE_SPEAKING)
 
-    # Define the router function based on task_stage (keeping existing logic)
-    async def route_based_on_task_stage(state: AgentGraphState) -> str:
+    # Define the router function based on task_stage and section
+    async def route_after_persona(state: AgentGraphState) -> str:
         context = state.get("current_context")
         if not context:
             logger.warning("LangGraph Router: current_context is missing in state. Routing to default feedback.")
             return NODE_GENERATE_FEEDBACK
 
         task_stage = getattr(context, 'task_stage', None)
+        toefl_section = getattr(context, 'toefl_section', None)
         user_id = state.get('user_id', 'unknown_user')
 
-        logger.info(f"LangGraph Router: User '{user_id}', Current task_stage is '{task_stage}'")
-        if task_stage == "testing_specific_context_from_button":
-            logger.info(f"LangGraph Router: User '{user_id}', Routing to feedback_for_test_button_node.")
+        logger.info(f"LangGraph Router: User '{user_id}', Current task_stage is '{task_stage}', Section: '{toefl_section}'")
+        
+        # Route based on task stage and section
+        if task_stage == "active_response_speaking":
+            return NODE_DIAGNOSE_SPEAKING
+        elif task_stage == "active_response_writing":
+            return NODE_DIAGNOSE_WRITING
+        elif task_stage == "live_writing_analysis":
+            return NODE_ANALYZE_LIVE_WRITING
+        elif task_stage == "viewing_prompt":
+            return NODE_PROVIDE_SCAFFOLDING
+        elif task_stage == "testing_specific_context_from_button":
             return NODE_FEEDBACK_FOR_TEST_BUTTON
         else:
-            logger.info(f"LangGraph Router: User '{user_id}', Routing to default_feedback_node ({NODE_GENERATE_FEEDBACK}).")
+            # Default to generate feedback
             return NODE_GENERATE_FEEDBACK
 
-    # Add conditional edge from NODE_DIAGNOSE_SPEAKING
+    # Add conditional edges from persona node
     workflow.add_conditional_edges(
-        NODE_DIAGNOSE_SPEAKING, 
-        route_based_on_task_stage,
+        NODE_APPLY_TEACHER_PERSONA, 
+        route_after_persona,
         {
+            NODE_DIAGNOSE_SPEAKING: NODE_DIAGNOSE_SPEAKING,
+            NODE_DIAGNOSE_WRITING: NODE_DIAGNOSE_WRITING,
+            NODE_ANALYZE_LIVE_WRITING: NODE_ANALYZE_LIVE_WRITING,
+            NODE_PROVIDE_SCAFFOLDING: NODE_PROVIDE_SCAFFOLDING,
             NODE_FEEDBACK_FOR_TEST_BUTTON: NODE_FEEDBACK_FOR_TEST_BUTTON,
             NODE_GENERATE_FEEDBACK: NODE_GENERATE_FEEDBACK
         }
     )
 
-    # Connect feedback nodes to update student skills
-    workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_UPDATE_STUDENT_SKILLS)
-    workflow.add_edge(NODE_FEEDBACK_FOR_TEST_BUTTON, NODE_UPDATE_STUDENT_SKILLS)
+    # Connect diagnostic nodes to feedback generation
+    workflow.add_edge(NODE_DIAGNOSE_SPEAKING, NODE_GENERATE_SOCRATIC_QUESTIONS)
+    workflow.add_edge(NODE_DIAGNOSE_WRITING, NODE_GENERATE_SOCRATIC_QUESTIONS)
+    workflow.add_edge(NODE_GENERATE_SOCRATIC_QUESTIONS, NODE_GENERATE_FEEDBACK)
     
-    # Connect to interaction logging and note saving
+    # Live writing analysis goes directly to feedback
+    workflow.add_edge(NODE_ANALYZE_LIVE_WRITING, NODE_GENERATE_FEEDBACK)
+    
+    # Connect scaffolding to feedback
+    workflow.add_edge(NODE_PROVIDE_SCAFFOLDING, NODE_GENERATE_FEEDBACK)
+    
+    # After feedback, generate motivation
+    workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_GENERATE_MOTIVATION)
+    workflow.add_edge(NODE_FEEDBACK_FOR_TEST_BUTTON, NODE_GENERATE_MOTIVATION)
+    
+    # Connect to student model update and logging
+    workflow.add_edge(NODE_GENERATE_MOTIVATION, NODE_UPDATE_STUDENT_SKILLS)
     workflow.add_edge(NODE_UPDATE_STUDENT_SKILLS, NODE_LOG_INTERACTION)
     workflow.add_edge(NODE_LOG_INTERACTION, NODE_SAVE_NOTES)
     workflow.add_edge(NODE_SAVE_NOTES, END)
