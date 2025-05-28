@@ -32,6 +32,8 @@ from agents.feedback_generator_node import generate_feedback_for_task_node
 from agents.socratic_questioning_node import generate_socratic_question_node
 from agents.scaffolding_provider_node import provide_scaffolding_node
 from agents.motivational_speaker_node import generate_motivational_message_node
+from agents.practice_selector_node import select_next_practice_or_drill_node
+from agents.curriculum_navigator_node import determine_next_pedagogical_step_node
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,10 @@ NODE_GENERATE_FEEDBACK = "generate_feedback"
 NODE_GENERATE_SOCRATIC_QUESTIONS = "generate_socratic_questions"
 NODE_PROVIDE_SCAFFOLDING = "provide_scaffolding"
 NODE_GENERATE_MOTIVATION = "generate_motivation"
+
+# New nodes for practice and curriculum navigation
+NODE_SELECT_PRACTICE = "select_practice"
+NODE_DETERMINE_NEXT_STEP = "determine_next_step"
 
 # Legacy nodes (for compatibility)
 NODE_FEEDBACK_FOR_TEST_BUTTON = "feedback_for_test_button_node"
@@ -100,6 +106,10 @@ def build_graph():
     workflow.add_node(NODE_PROVIDE_SCAFFOLDING, provide_scaffolding_node)
     workflow.add_node(NODE_GENERATE_MOTIVATION, generate_motivational_message_node)
     
+    # Add new practice and curriculum navigation nodes
+    workflow.add_node(NODE_SELECT_PRACTICE, select_next_practice_or_drill_node)
+    workflow.add_node(NODE_DETERMINE_NEXT_STEP, determine_next_pedagogical_step_node)
+    
     # Add legacy nodes for compatibility
     workflow.add_node(NODE_FEEDBACK_FOR_TEST_BUTTON, generate_test_button_feedback_stub_node)
 
@@ -135,6 +145,10 @@ def build_graph():
             return NODE_ANALYZE_LIVE_WRITING
         elif task_stage == "viewing_prompt":
             return NODE_PROVIDE_SCAFFOLDING
+        elif task_stage == "practice_selection":
+            return NODE_SELECT_PRACTICE
+        elif task_stage == "curriculum_navigation":
+            return NODE_DETERMINE_NEXT_STEP
         elif task_stage == "testing_specific_context_from_button":
             return NODE_FEEDBACK_FOR_TEST_BUTTON
         else:
@@ -150,6 +164,8 @@ def build_graph():
             NODE_DIAGNOSE_WRITING: NODE_DIAGNOSE_WRITING,
             NODE_ANALYZE_LIVE_WRITING: NODE_ANALYZE_LIVE_WRITING,
             NODE_PROVIDE_SCAFFOLDING: NODE_PROVIDE_SCAFFOLDING,
+            NODE_SELECT_PRACTICE: NODE_SELECT_PRACTICE,
+            NODE_DETERMINE_NEXT_STEP: NODE_DETERMINE_NEXT_STEP,
             NODE_FEEDBACK_FOR_TEST_BUTTON: NODE_FEEDBACK_FOR_TEST_BUTTON,
             NODE_GENERATE_FEEDBACK: NODE_GENERATE_FEEDBACK
         }
@@ -165,6 +181,12 @@ def build_graph():
     
     # Connect scaffolding to feedback
     workflow.add_edge(NODE_PROVIDE_SCAFFOLDING, NODE_GENERATE_FEEDBACK)
+    
+    # Connect practice selector to feedback
+    workflow.add_edge(NODE_SELECT_PRACTICE, NODE_GENERATE_FEEDBACK)
+    
+    # Connect curriculum navigator to feedback
+    workflow.add_edge(NODE_DETERMINE_NEXT_STEP, NODE_GENERATE_FEEDBACK)
     
     # After feedback, generate motivation
     workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_GENERATE_MOTIVATION)
