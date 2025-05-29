@@ -5,8 +5,8 @@ gunicorn
 langchain
 langgraph
 langsmith
-langchain-openai
+google-generativeai>=0.3.0
 python-dotenv
 google-cloud-aiplatform
-# mem0 # Add when ready
+mem0ai
 # PyYAML for configs if needed

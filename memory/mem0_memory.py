@@ -1,41 +1,24 @@
 from typing import Any, Dict, List
 import logging
 from mem0 import Memory
+import os
+import logging
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Configure mem0 client (example with default in-memory vector store)
-# For production, you might configure a persistent vector store and other settings.
-# See mem0 documentation for more advanced configurations: https://docs.mem0.ai/
-config = {
-    "vector_store": {
-        "provider": "qdrant", # or "chroma", "lancedb"
-        "config": {
-            "host": "localhost", # Or your Qdrant instance details
-            "port": 6333
-        }
-    },
-    # "llm": {
-    #     "provider": "openai",
-    #     "config": {
-    #         "model": "gpt-3.5-turbo",
-    #         # "api_key": "YOUR_OPENAI_API_KEY" # Ensure this is handled securely, e.g., via env vars
-    #     }
-    # },
-    # "embedder": {
-    #     "provider": "openai",
-    #     "config": {
-    #         "model": "text-embedding-ada-002",
-    #         # "api_key": "YOUR_OPENAI_API_KEY"
-    #     }
-    # }
-}
+load_dotenv()  # Load environment variables from .env file
+mem0_api_key = os.getenv("MEM0_API_KEY")
+Google_api_key = os.getenv("GOOGLE_API_KEY")
+
+# Note: mem0ai's Memory class has built-in configuration capabilities.
+# For our initial integration, we'll use the default settings.
+# When ready to customize, check the mem0ai documentation for the proper configuration format.
 
 class Mem0Memory:
     """A memory class using mem0ai for storing and retrieving user-centric data."""
     def __init__(self, user_id_field: str = "user_id"):
-        # Initialize mem0. You can pass a config dictionary here.
-        # If no config is passed, mem0 uses default settings (e.g., in-memory Qdrant).
+        # Initialize mem0 with default settings
         # For multiple users, mem0 handles data isolation internally based on the `user_id` 
         # you pass to its methods, or you can create separate Memory instances per user if preferred.
         self.mem0_instance = Memory()

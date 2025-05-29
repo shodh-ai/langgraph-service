@@ -116,6 +116,11 @@ async def process_interaction_route(request_data: InteractionRequest):
         if output_content:
             # Get ui_actions or dom_actions (for backward compatibility)
             ui_actions = output_content.get("ui_actions") or output_content.get("dom_actions")
+            # Convert action_type to action_type_str
+            if ui_actions:
+                for action in ui_actions:
+                    action["action_type_str"] = action.get("action_type")
+                    del action["action_type"]
         
         # Extract next task details if available
         next_task = final_state.get("next_task_details")
@@ -126,12 +131,21 @@ async def process_interaction_route(request_data: InteractionRequest):
                 ui_actions = []
             
             # Check if we already have a task button action
-            has_task_button = any(action.get("action_type") == "DISPLAY_NEXT_TASK_BUTTON" for action in ui_actions)
+            has_task_button = any(action.get("action_type_str") == "DISPLAY_NEXT_TASK_BUTTON" for action in ui_actions)
             
             if not has_task_button and next_task:
+                # Map non-standard action types to standard ones supported by the frontend
+                mapped_action_type_str = "SHOW_ALERT" # Use string representation of enum
+                task_title = next_task.get("title", "Unknown Task")
+                task_desc = next_task.get("description", "")
+                mapped_parameters = {
+                    "message": f"Next Task: {task_title}\n{task_desc}"
+                }
+                logger.info(f"Mapping next_task to UI action: {mapped_action_type_str}")
+                
                 ui_actions.append({
-                    "action_type": "DISPLAY_NEXT_TASK_BUTTON",
-                    "payload": next_task
+                    "action_type_str": mapped_action_type_str, # Use 'action_type_str'
+                    "parameters": mapped_parameters,
                 })
         
         # Create the response

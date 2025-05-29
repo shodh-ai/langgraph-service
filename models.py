@@ -11,6 +11,8 @@ class InteractionRequestContext(BaseModel):
     ui_element_in_focus: Optional[str] = None  # e.g., "writing_paragraph_2", "speaking_point_1_notes"
     timer_value_seconds: Optional[int] = None  # If a timer is active
     selected_tools_or_options: Optional[Dict[str, Any]] = None  # e.g., {"highlighter_color": "yellow"}
+    error: Optional[str] = None  # To capture any error messages, e.g., from custom_data parsing
+    original_custom_data: Optional[Any] = None  # To capture the raw custom_data if parsing failed or for logging
     # ... any other relevant state from your UI ...
 
 

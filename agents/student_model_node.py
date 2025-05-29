@@ -1,6 +1,6 @@
 import logging
 from state import AgentGraphState
-from memory import mem0_memory # Imports the instance from memory/__init__.py
+from memory import memory_stub # Imports the instance from memory/__init__.py
 
 logger = logging.getLogger(__name__)
 
@@ -9,8 +9,8 @@ async def load_student_data_node(state: AgentGraphState) -> dict:
     user_id = state["user_id"]
     logger.info(f"StudentModelNode: Loading student data for user_id: '{user_id}' from Mem0")
     
-    # Get student data from Mem0
-    student_data = mem0_memory.get_student_data(user_id)
+    # Get student data from memory stub
+    student_data = memory_stub.get_student_data(user_id)
     logger.info(f"StudentModelNode: Retrieved student data from Mem0: {student_data}")
     
     return {"student_memory_context": student_data}
@@ -34,7 +34,7 @@ async def save_interaction_node(state: AgentGraphState) -> dict:
     logger.info(f"StudentModelNode: Saving interaction for user_id: '{user_id}' to Mem0")
     logger.debug(f"StudentModelNode: Interaction data: {interaction_data}")
     
-    # Save to Mem0
-    mem0_memory.add_interaction_to_history(user_id, interaction_data)
+    # Save to memory stub
+    memory_stub.add_interaction_to_history(user_id, interaction_data)
     
     return {} # No direct state update needed
