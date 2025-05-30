@@ -34,6 +34,19 @@ from agents.scaffolding_provider_node import provide_scaffolding_node
 from agents.motivational_speaker_node import generate_motivational_message_node
 from agents.practice_selector_node import select_next_practice_or_drill_node
 from agents.curriculum_navigator_node import determine_next_pedagogical_step_node
+from agents.teaching_delivery_node import (
+    deliver_teaching_module_node,
+    manage_skill_drill_node
+)
+from agents.ai_modeling_node import (
+    prepare_speaking_model_response_node,
+    prepare_writing_model_response_node
+)
+from agents.session_notes_node import compile_session_notes_node
+from agents.conversational_turn_manager_node import process_conversational_turn_node
+from agents.output_formatter_node import format_final_output_for_client_node
+from agents.default_fallback_node import handle_unmatched_interaction_node
+from agents.initial_router_node import route_initial_request_node
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +79,32 @@ NODE_GENERATE_SOCRATIC_QUESTIONS = "generate_socratic_questions"
 NODE_PROVIDE_SCAFFOLDING = "provide_scaffolding"
 NODE_GENERATE_MOTIVATION = "generate_motivation"
 
-# New nodes for practice and curriculum navigation
+# Practice and curriculum navigation nodes
 NODE_SELECT_PRACTICE = "select_practice"
 NODE_DETERMINE_NEXT_STEP = "determine_next_step"
+
+# Teaching delivery nodes
+NODE_DELIVER_TEACHING = "deliver_teaching"
+NODE_MANAGE_SKILL_DRILL = "manage_skill_drill"
+
+# AI modeling nodes
+NODE_PREPARE_SPEAKING_MODEL = "prepare_speaking_model"
+NODE_PREPARE_WRITING_MODEL = "prepare_writing_model"
+
+# Session notes node
+NODE_COMPILE_SESSION_NOTES = "compile_session_notes"
+
+# Conversational turn manager node
+NODE_PROCESS_CONVERSATIONAL_TURN = "process_conversational_turn"
+
+# Output formatter node
+NODE_FORMAT_FINAL_OUTPUT = "format_final_output"
+
+# Default fallback node
+NODE_HANDLE_UNMATCHED_INTERACTION = "handle_unmatched_interaction"
+
+# Initial router node
+NODE_ROUTE_INITIAL_REQUEST = "route_initial_request"
 
 # Legacy nodes (for compatibility)
 NODE_FEEDBACK_FOR_TEST_BUTTON = "feedback_for_test_button_node"
@@ -106,9 +142,32 @@ def build_graph():
     workflow.add_node(NODE_PROVIDE_SCAFFOLDING, provide_scaffolding_node)
     workflow.add_node(NODE_GENERATE_MOTIVATION, generate_motivational_message_node)
     
-    # Add new practice and curriculum navigation nodes
+    # Add practice and curriculum navigation nodes
     workflow.add_node(NODE_SELECT_PRACTICE, select_next_practice_or_drill_node)
     workflow.add_node(NODE_DETERMINE_NEXT_STEP, determine_next_pedagogical_step_node)
+    
+    # Add teaching delivery nodes
+    workflow.add_node(NODE_DELIVER_TEACHING, deliver_teaching_module_node)
+    workflow.add_node(NODE_MANAGE_SKILL_DRILL, manage_skill_drill_node)
+    
+    # Add AI modeling nodes
+    workflow.add_node(NODE_PREPARE_SPEAKING_MODEL, prepare_speaking_model_response_node)
+    workflow.add_node(NODE_PREPARE_WRITING_MODEL, prepare_writing_model_response_node)
+    
+    # Add session notes node
+    workflow.add_node(NODE_COMPILE_SESSION_NOTES, compile_session_notes_node)
+    
+    # Add conversational turn manager node
+    workflow.add_node(NODE_PROCESS_CONVERSATIONAL_TURN, process_conversational_turn_node)
+    
+    # Add output formatter node
+    workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_for_client_node)
+    
+    # Add default fallback node
+    workflow.add_node(NODE_HANDLE_UNMATCHED_INTERACTION, handle_unmatched_interaction_node)
+    
+    # Add initial router node
+    workflow.add_node(NODE_ROUTE_INITIAL_REQUEST, route_initial_request_node)
     
     # Add legacy nodes for compatibility
     workflow.add_node(NODE_FEEDBACK_FOR_TEST_BUTTON, generate_test_button_feedback_stub_node)
@@ -149,6 +208,18 @@ def build_graph():
             return NODE_SELECT_PRACTICE
         elif task_stage == "curriculum_navigation":
             return NODE_DETERMINE_NEXT_STEP
+        elif task_stage == "teaching_delivery":
+            return NODE_DELIVER_TEACHING
+        elif task_stage == "skill_drill_management":
+            return NODE_MANAGE_SKILL_DRILL
+        elif task_stage == "model_speaking":
+            return NODE_PREPARE_SPEAKING_MODEL
+        elif task_stage == "model_writing":
+            return NODE_PREPARE_WRITING_MODEL
+        elif task_stage == "conversational_interaction":
+            return NODE_PROCESS_CONVERSATIONAL_TURN
+        elif task_stage == "unmatched_interaction":
+            return NODE_HANDLE_UNMATCHED_INTERACTION
         elif task_stage == "testing_specific_context_from_button":
             return NODE_FEEDBACK_FOR_TEST_BUTTON
         else:
@@ -166,6 +237,12 @@ def build_graph():
             NODE_PROVIDE_SCAFFOLDING: NODE_PROVIDE_SCAFFOLDING,
             NODE_SELECT_PRACTICE: NODE_SELECT_PRACTICE,
             NODE_DETERMINE_NEXT_STEP: NODE_DETERMINE_NEXT_STEP,
+            NODE_DELIVER_TEACHING: NODE_DELIVER_TEACHING,
+            NODE_MANAGE_SKILL_DRILL: NODE_MANAGE_SKILL_DRILL,
+            NODE_PREPARE_SPEAKING_MODEL: NODE_PREPARE_SPEAKING_MODEL,
+            NODE_PREPARE_WRITING_MODEL: NODE_PREPARE_WRITING_MODEL,
+            NODE_PROCESS_CONVERSATIONAL_TURN: NODE_PROCESS_CONVERSATIONAL_TURN,
+            NODE_HANDLE_UNMATCHED_INTERACTION: NODE_HANDLE_UNMATCHED_INTERACTION,
             NODE_FEEDBACK_FOR_TEST_BUTTON: NODE_FEEDBACK_FOR_TEST_BUTTON,
             NODE_GENERATE_FEEDBACK: NODE_GENERATE_FEEDBACK
         }
@@ -188,13 +265,31 @@ def build_graph():
     # Connect curriculum navigator to feedback
     workflow.add_edge(NODE_DETERMINE_NEXT_STEP, NODE_GENERATE_FEEDBACK)
     
+    # Connect teaching delivery nodes to feedback
+    workflow.add_edge(NODE_DELIVER_TEACHING, NODE_GENERATE_FEEDBACK)
+    workflow.add_edge(NODE_MANAGE_SKILL_DRILL, NODE_GENERATE_FEEDBACK)
+    
+    # Connect AI modeling nodes to feedback
+    workflow.add_edge(NODE_PREPARE_SPEAKING_MODEL, NODE_GENERATE_FEEDBACK)
+    workflow.add_edge(NODE_PREPARE_WRITING_MODEL, NODE_GENERATE_FEEDBACK)
+    
+    # Connect conversational turn manager to feedback
+    workflow.add_edge(NODE_PROCESS_CONVERSATIONAL_TURN, NODE_GENERATE_FEEDBACK)
+    
+    # Connect default fallback to feedback
+    workflow.add_edge(NODE_HANDLE_UNMATCHED_INTERACTION, NODE_GENERATE_FEEDBACK)
+    
     # After feedback, generate motivation
     workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_GENERATE_MOTIVATION)
     workflow.add_edge(NODE_FEEDBACK_FOR_TEST_BUTTON, NODE_GENERATE_MOTIVATION)
     
+    # After motivation, format the final output
+    workflow.add_edge(NODE_GENERATE_MOTIVATION, NODE_FORMAT_FINAL_OUTPUT)
+    
     # Connect to student model update and logging
-    workflow.add_edge(NODE_GENERATE_MOTIVATION, NODE_UPDATE_STUDENT_SKILLS)
-    workflow.add_edge(NODE_UPDATE_STUDENT_SKILLS, NODE_LOG_INTERACTION)
+    workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_UPDATE_STUDENT_SKILLS)
+    workflow.add_edge(NODE_UPDATE_STUDENT_SKILLS, NODE_COMPILE_SESSION_NOTES)
+    workflow.add_edge(NODE_COMPILE_SESSION_NOTES, NODE_LOG_INTERACTION)
     workflow.add_edge(NODE_LOG_INTERACTION, NODE_SAVE_NOTES)
     workflow.add_edge(NODE_SAVE_NOTES, END)
 

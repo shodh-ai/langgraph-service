@@ -25,7 +25,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize Vertex AI in socratic_questioning_node: {e}")
 
-# Load Gemini model if not already loaded
 try:
     gemini_model = GenerativeModel("gemini-1.5-pro")
     logger.info("Gemini model loaded in socratic_questioning_node")
@@ -34,7 +33,6 @@ except Exception as e:
     gemini_model = None
 
 async def generate_socratic_question_node(state: AgentGraphState) -> dict:
-    """Generates guiding Socratic questions using Vertex AI Gemini."""
     diagnosis = state.get("diagnosis_result", {})
     transcript = state.get("transcript", "")
     task_prompt = state.get("task_prompt", {})
