@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uuid
 from dotenv import load_dotenv
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from graph_builder import build_graph
 from state import AgentGraphState
-from models import InteractionRequest, InteractionResponse, InteractionRequestContext
+from models import InteractionRequest, InteractionResponse, InteractionRequestContext, DomAction
 
 load_dotenv()
 
@@ -119,8 +119,14 @@ async def process_interaction_route(request_data: InteractionRequest):
             # Convert action_type to action_type_str
             if ui_actions:
                 for action in ui_actions:
-                    action["action_type_str"] = action.get("action_type")
-                    del action["action_type"]
+                    # If 'action_type' exists, use it to set 'action_type_str' and then delete 'action_type'
+                    if "action_type" in action:
+                        action["action_type_str"] = action.get("action_type")
+                        del action["action_type"]
+                    # If 'action_type' does not exist, but 'action_type_str' does, ensure 'action_type_str' is preserved.
+                    # If neither exists, action_type_str will be None or not set, which is handled later.
+                    elif "action_type_str" not in action:
+                        action["action_type_str"] = None # Explicitly set to None if neither was found
         
         # Extract next task details if available
         next_task = final_state.get("next_task_details")
@@ -149,12 +155,36 @@ async def process_interaction_route(request_data: InteractionRequest):
                 })
         
         # Create the response
+        # Convert ui_actions (list of dicts) to List[DomAction]
+        dom_actions_list: Optional[List[DomAction]] = None
+        if ui_actions: # ui_actions is the list of dicts prepared by current app.py logic
+            dom_actions_list = []
+            for action_dict in ui_actions:
+                # Construct the payload for DomAction as expected by main.py's trigger_client_ui_action
+                # It expects: {"targetElementId": "optional_id", "parameters": {...}}
+                current_payload_for_dom_action = {
+                    "parameters": action_dict.get("parameters", {})
+                }
+                # Check if targetElementId is in the action_dict from the graph node
+                # If your graph nodes provide 'target_element_id' or similar, adjust key here.
+                if "targetElementId" in action_dict: 
+                    current_payload_for_dom_action["targetElementId"] = action_dict["targetElementId"]
+                elif "target_element_id" in action_dict: # Common alternative casing
+                    current_payload_for_dom_action["targetElementId"] = action_dict["target_element_id"]
+                
+                dom_actions_list.append(
+                    DomAction(
+                        action=action_dict.get("action_type_str", ""), # action_type_str is already prepared
+                        payload=current_payload_for_dom_action
+                    )
+                )
+
         response = InteractionResponse(
             response_for_tts=text_for_tts,
-            frontend_rpc_calls=ui_actions
+            dom_actions=dom_actions_list # Use the new field with List[DomAction]
         )
         
-        logger.info(f"Response prepared, text length: {len(text_for_tts)}, actions: {len(ui_actions) if ui_actions else 0}")
+        logger.info(f"Response prepared, text length: {len(text_for_tts)}, dom_actions: {len(dom_actions_list) if dom_actions_list else 0}")
         return response
 
     except Exception as e:

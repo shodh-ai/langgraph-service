@@ -24,10 +24,12 @@ class InteractionRequest(BaseModel):
 
 
 class DomAction(BaseModel):
-    action: str  # e.g., "update_text", "highlight_element", "play_audio"
-    payload: Dict[str, Any]  # e.g., {"element_id": "paragraph1", "text": "New content"} or {"element_id": "sentence2", "color": "yellow"}
+    action: str  # e.g., "SHOW_ALERT", "UPDATE_TEXT_CONTENT", "TOGGLE_ELEMENT_VISIBILITY"
+                 # These should match the string representation of ClientUIActionType enum members
+    payload: Dict[str, Any]  # e.g., {"targetElementId": "myElement", "parameters": {"text": "New content"}}
+                             # or {"parameters": {"message": "Alert!"}}
 
 
 class InteractionResponse(BaseModel):
-    response_for_tts: str
-    frontend_rpc_calls: Optional[List[Dict[str, Any]]] = None # Optional list of RPC calls for the UI to perform
+    response_for_tts: str # Main text response for Text-to-Speech
+    dom_actions: Optional[List[DomAction]] = None # List of UI actions for the frontend

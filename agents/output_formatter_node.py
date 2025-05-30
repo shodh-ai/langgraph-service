@@ -32,12 +32,31 @@ async def format_final_output_node(state: AgentGraphState) -> dict:
     ui_actions = output_content.get("ui_actions", [])
     
     logger.info(f"OutputFormatterNode: Final text_for_tts: '{text_for_tts}'")
-    logger.info(f"OutputFormatterNode: Final ui_actions: {ui_actions}")
+    logger.info(f"OutputFormatterNode: Original ui_actions: {ui_actions}")
+
+    # ---- TEST CODE TO INJECT A DOM ACTION ----
+    test_ui_action = {
+        "action_type_str": "SHOW_ALERT",
+        "parameters": {"message": "TEST: DOM Action from Backend (output_formatter_node)!"}
+        # No targetElementId needed for SHOW_ALERT
+    }
+    # Ensure ui_actions is a list and append the test action
+    if not isinstance(ui_actions, list):
+        ui_actions = []
+    ui_actions.append(test_ui_action)
+    output_content["ui_actions"] = ui_actions # Update the ui_actions in the output_content dict
+    logger.info(f"OutputFormatterNode: MODIFIED ui_actions with test action: {ui_actions}")
+    # ---- END OF TEST CODE ----
+
+    # The state's output_content dictionary has been modified in place if it was mutable.
+    # If output_content was copied from state, we need to return it to update the state.
+    # Assuming state['output_content'] is the actual mutable dictionary:
     
     # For backward compatibility, also update feedback_content
     if "feedback_content" not in state:
         logger.info("OutputFormatterNode: Also setting feedback_content for backward compatibility")
-        return {"feedback_content": output_content}
+        # If output_content was modified, ensure feedback_content gets the modified version
+        return {"output_content": output_content, "feedback_content": output_content} 
     
-    # No changes needed if output_content already exists
-    return {}
+    # If output_content was modified, ensure the state is updated.
+    return {"output_content": output_content}
