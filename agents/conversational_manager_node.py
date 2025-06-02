@@ -23,11 +23,11 @@ async def handle_home_greeting_node(state: AgentGraphState) -> dict:
     
     # Create simple greeting output
     greeting_output = {
-        "text_for_tts": f"Hello {student_name}! Welcome to your TOEFL speaking practice session.",
-        "ui_actions": None  # No UI actions needed for the greeting
+        "response": f"Hello {student_name}! Welcome to your TOEFL speaking practice session.", # Updated from text_for_tts
+        "ui_actions": []  # Initialize as empty list, consistent with model
     }
     
-    logger.info(f"ConversationalManagerNode: Generated greeting: {greeting_output['text_for_tts']}")
+    logger.info(f"ConversationalManagerNode: Generated greeting: {greeting_output['response']}")
     
     # Return state update
     return {"output_content": greeting_output}

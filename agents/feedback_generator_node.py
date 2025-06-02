@@ -37,17 +37,17 @@ async def generate_speaking_feedback_stub_node(state: AgentGraphState) -> dict:
     ui_actions = [
         {
             "action_type": "HIGHLIGHT_TRANSCRIPT", 
-            "payload": {"area": "overall", "color": "yellow"}
+            "parameters": {"area": "overall", "color": "yellow"} # Updated from payload
         },
         {
             "action_type": "SHOW_FEEDBACK_PANEL",
-            "payload": {"visible": True}
+            "parameters": {"visible": True} # Updated from payload
         }
     ]
     
     # Set output content
     output_content = {
-        "text_for_tts": feedback_text,
+        "response": feedback_text, # Updated from text_for_tts
         "ui_actions": ui_actions
     }
     

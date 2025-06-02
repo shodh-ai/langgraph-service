@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 
 from graph_builder import build_graph
 from state import AgentGraphState
-from models import InteractionRequest, InteractionResponse, InteractionRequestContext, DomAction
+from models import InteractionRequest, InteractionResponse, InteractionRequestContext, ReactUIAction
 
 load_dotenv()
 
@@ -102,14 +102,15 @@ async def process_interaction_route(request_data: InteractionRequest):
             output_content = final_state.get("feedback_content", {})
             logger.info("Using feedback_content for backward compatibility")
         
-        # Extract text for TTS from output_content
-        text_for_tts = ""
+        # Extract response text from output_content
+        response_text = ""
         if output_content:
-            text_for_tts = output_content.get("text_for_tts", output_content.get("text", ""))
+            # First look for the new field name 'response', then fall back to old 'text_for_tts'
+            response_text = output_content.get("response", output_content.get("text_for_tts", output_content.get("text", "")))
         
-        if not text_for_tts:
-            text_for_tts = "No response text was generated. Please check the system logs."
-            logger.warning("No text_for_tts found in output_content")
+        if not response_text:
+            response_text = "No response text was generated. Please check the system logs."
+            logger.warning("No response text found in output_content")
         
         # Extract UI actions from output_content
         ui_actions = None
@@ -155,36 +156,39 @@ async def process_interaction_route(request_data: InteractionRequest):
                 })
         
         # Create the response
-        # Convert ui_actions (list of dicts) to List[DomAction]
-        dom_actions_list: Optional[List[DomAction]] = None
+        # Convert ui_actions (list of dicts) to List[ReactUIAction]
+        ui_actions_list: Optional[List[ReactUIAction]] = None
         if ui_actions: # ui_actions is the list of dicts prepared by current app.py logic
-            dom_actions_list = []
+            ui_actions_list = []
             for action_dict in ui_actions:
-                # Construct the payload for DomAction as expected by main.py's trigger_client_ui_action
-                # It expects: {"targetElementId": "optional_id", "parameters": {...}}
-                current_payload_for_dom_action = {
-                    "parameters": action_dict.get("parameters", {})
-                }
-                # Check if targetElementId is in the action_dict from the graph node
-                # If your graph nodes provide 'target_element_id' or similar, adjust key here.
-                if "targetElementId" in action_dict: 
-                    current_payload_for_dom_action["targetElementId"] = action_dict["targetElementId"]
-                elif "target_element_id" in action_dict: # Common alternative casing
-                    current_payload_for_dom_action["targetElementId"] = action_dict["target_element_id"]
+                # Extract the action_type from action_type_str (new field name)
+                action_type = action_dict.get("action_type_str", "")
                 
-                dom_actions_list.append(
-                    DomAction(
-                        action=action_dict.get("action_type_str", ""), # action_type_str is already prepared
-                        payload=current_payload_for_dom_action
+                # Extract the target_element_id, preferring the standard format if present
+                target_element_id = None
+                if "target_element_id" in action_dict:
+                    target_element_id = action_dict["target_element_id"]
+                elif "targetElementId" in action_dict:
+                    target_element_id = action_dict["targetElementId"]
+                
+                # Extract the parameters
+                parameters = action_dict.get("parameters", {})
+                
+                # Create the ReactUIAction with the new field names
+                ui_actions_list.append(
+                    ReactUIAction(
+                        action_type=action_type,
+                        target_element_id=target_element_id,
+                        parameters=parameters
                     )
                 )
 
         response = InteractionResponse(
-            response_for_tts=text_for_tts,
-            dom_actions=dom_actions_list # Use the new field with List[DomAction]
+            response=response_text,  # Using new field name and new variable name
+            ui_actions=ui_actions_list  # New field name: ui_actions instead of dom_actions
         )
         
-        logger.info(f"Response prepared, text length: {len(text_for_tts)}, dom_actions: {len(dom_actions_list) if dom_actions_list else 0}")
+        logger.info(f"Response prepared, text length: {len(response_text)}, ui_actions: {len(ui_actions_list) if ui_actions_list else 0}")
         return response
 
     except Exception as e:

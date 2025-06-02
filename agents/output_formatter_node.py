@@ -21,24 +21,24 @@ async def format_final_output_node(state: AgentGraphState) -> dict:
         # If no output_content has been set by previous nodes, create a default
         logger.warning("OutputFormatterNode: No output_content found in state, creating default")
         default_output = {
-            "text_for_tts": "I'm ready to assist with your TOEFL speaking practice.",
-            "ui_actions": None
+            "response": "I'm ready to assist with your TOEFL speaking practice.", # Updated from text_for_tts
+            "ui_actions": [] # Initialize as empty list as per ReactUIAction default_factory
         }
         return {"output_content": default_output}
     
     # In Phase 1, we just log the existing output_content
     output_content = state.get("output_content", {})
-    text_for_tts = output_content.get("text_for_tts", "")
-    ui_actions = output_content.get("ui_actions", [])
+    response_text = output_content.get("response", "") # Updated from text_for_tts
+    ui_actions = output_content.get("ui_actions", []) # Name is consistent
     
-    logger.info(f"OutputFormatterNode: Final text_for_tts: '{text_for_tts}'")
+    logger.info(f"OutputFormatterNode: Final response text: '{response_text}'")
     logger.info(f"OutputFormatterNode: Original ui_actions: {ui_actions}")
 
-    # ---- TEST CODE TO INJECT A DOM ACTION ----
+    # ---- TEST CODE TO INJECT A UI ACTION (formerly DOM Action) ----
     test_ui_action = {
-        "action_type_str": "SHOW_ALERT",
-        "parameters": {"message": "TEST: DOM Action from Backend (output_formatter_node)!"}
-        # No targetElementId needed for SHOW_ALERT
+        "action_type": "SHOW_ALERT", # Updated from action_type_str
+        "parameters": {"message": "TEST: UI Action from Backend (output_formatter_node)!"}
+        # target_element_id is optional and not needed for SHOW_ALERT
     }
     # Ensure ui_actions is a list and append the test action
     if not isinstance(ui_actions, list):

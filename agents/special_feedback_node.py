@@ -18,21 +18,20 @@ async def generate_test_button_feedback_stub_node(state: AgentGraphState) -> dic
     # Define the UI action to be sent to the frontend
     ui_actions = [
         {
-            "action_type_str": "SHOW_ALERT",  # String identifier for the action type
+            "action_type": "SHOW_ALERT",  # Updated from action_type_str
             "parameters": {                   # Payload for the action
                 "message": "Backend UI Action Test: Success!"
             }
-            # If this action needed a targetElementId, it would be included here:
-            # "targetElementId": "some_element_id"
+            # target_element_id is optional and not needed for SHOW_ALERT
         }
     ]
     
     # This node is responsible for setting the content that app.py will use.
     # 'output_content' is the preferred key, with 'ui_actions' nested within.
-    # 'text_for_tts' (or 'text') can also be included if TTS is desired for this step.
+    # 'response' (formerly 'text_for_tts') can also be included if TTS is desired for this step.
     return {
         "output_content": {
-            "text_for_tts": text_response_for_tts,
+            "response": text_response_for_tts, # Updated from text_for_tts
             "ui_actions": ui_actions
         }
     }

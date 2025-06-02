@@ -31,11 +31,11 @@ async def determine_next_pedagogical_step_stub_node(state: AgentGraphState) -> d
     
     # Create output content to inform user about the task
     output_content = {
-        "text_for_tts": f"Let's practice with a speaking task about '{next_task['title']}'. You'll have {next_task['prep_time_seconds']} seconds to prepare and {next_task['response_time_seconds']} seconds to respond.",
+        "response": f"Let's practice with a speaking task about '{next_task['title']}'. You'll have {next_task['prep_time_seconds']} seconds to prepare and {next_task['response_time_seconds']} seconds to respond.", # Updated from text_for_tts
         "ui_actions": [
             {
                 "action_type": "DISPLAY_NEXT_TASK_BUTTON",
-                "payload": next_task
+                "parameters": next_task # Updated from payload
             }
         ]
     }
