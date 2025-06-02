@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import json
 import vertexai
 
-# Load environment variables from .env file
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -14,15 +13,11 @@ logger = logging.getLogger(__name__)
 class Mem0Memory:
     """A memory class using mem0 for storing and retrieving user-centric data."""
     def __init__(self, user_id_field: str = "user_id"):
-        # Initialize mem0 with default settings
-        # For multiple users, mem0 handles data isolation internally based on the `user_id` 
-        # you pass to its methods, or you can create separate Memory instances per user if preferred.
         self.mem0_instance = Memory()
         self.user_id_field = user_id_field # Field name to identify user in data
         logger.info(f"Mem0Memory initialized. Using '{user_id_field}' as user identifier.")
 
     def get_student_data(self, user_id: str) -> Dict[str, Any]:
-        """Retrieves all data for a given user_id using mem0."""
         logger.info(f"Mem0Memory: Attempting to get all data for user_id: {user_id}")
         try:
             # mem0's get_all retrieves all memories. We might need to filter by user_id if not implicitly handled
@@ -68,7 +63,6 @@ class Mem0Memory:
             }
 
     def add_interaction_to_history(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
-        """Adds an interaction summary to the user's history using mem0."""
         logger.info(f"Mem0Memory: Attempting to add interaction for user_id: {user_id} with summary: {interaction_summary}")
         try:
             memory_content = {
@@ -119,7 +113,6 @@ class Mem0Memory:
         except Exception as e:
             logger.error(f"Mem0Memory: Error clearing data for {user_id}: {e}")
 
-# Example usage (for testing purposes):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     

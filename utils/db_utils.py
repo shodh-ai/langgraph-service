@@ -4,13 +4,11 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Database connection parameters
-DB_HOST = os.getenv("DB_HOST", "localhost")  # Use 'db' when connecting from Docker to Docker
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "pronity")
 DB_USER = os.getenv("DB_USER", "postgres")
@@ -59,7 +57,6 @@ def fetch_user_by_id(user_id):
         
         user_data = cursor.fetchone()
         
-        # Close cursor and connection
         cursor.close()
         connection.close()
         
@@ -87,7 +84,6 @@ def fetch_user_skills(user_id):
         connection = get_db_connection()
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         
-        # Check if UserSkill table exists (using proper case)
         cursor.execute(
             """
             SELECT table_name 
@@ -99,7 +95,6 @@ def fetch_user_skills(user_id):
         skills_table_exists = cursor.fetchone()
         
         if skills_table_exists:
-            # If the skills table exists, query it
             cursor.execute(
                 """
                 SELECT * FROM "UserSkill" 
