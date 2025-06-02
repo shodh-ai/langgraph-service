@@ -9,4 +9,5 @@ langchain-openai
 python-dotenv
 google-cloud-aiplatform
 mem0ai
+psycopg2-binary>=2.9.5
 # PyYAML for configs if needed

@@ -1,41 +1,20 @@
 from typing import Any, Dict, List
 import logging
 from mem0 import Memory
+import os
+from dotenv import load_dotenv
+import json
+import vertexai
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Configure mem0 client (example with default in-memory vector store)
-# For production, you might configure a persistent vector store and other settings.
-# See mem0 documentation for more advanced configurations: https://docs.mem0.ai/
-config = {
-    "vector_store": {
-        "provider": "qdrant", # or "chroma", "lancedb"
-        "config": {
-            "host": "localhost", # Or your Qdrant instance details
-            "port": 6333
-        }
-    },
-    # "llm": {
-    #     "provider": "openai",
-    #     "config": {
-    #         "model": "gpt-3.5-turbo",
-    #         # "api_key": "YOUR_OPENAI_API_KEY" # Ensure this is handled securely, e.g., via env vars
-    #     }
-    # },
-    # "embedder": {
-    #     "provider": "openai",
-    #     "config": {
-    #         "model": "text-embedding-ada-002",
-    #         # "api_key": "YOUR_OPENAI_API_KEY"
-    #     }
-    # }
-}
-
 class Mem0Memory:
-    """A memory class using mem0ai for storing and retrieving user-centric data."""
+    """A memory class using mem0 for storing and retrieving user-centric data."""
     def __init__(self, user_id_field: str = "user_id"):
-        # Initialize mem0. You can pass a config dictionary here.
-        # If no config is passed, mem0 uses default settings (e.g., in-memory Qdrant).
+        # Initialize mem0 with default settings
         # For multiple users, mem0 handles data isolation internally based on the `user_id` 
         # you pass to its methods, or you can create separate Memory instances per user if preferred.
         self.mem0_instance = Memory()
@@ -48,7 +27,6 @@ class Mem0Memory:
         try:
             # mem0's get_all retrieves all memories. We might need to filter by user_id if not implicitly handled
             # or structure data with user_id as a key part of the memory entries.
-            # For now, let's assume we store data with a user_id tag or in a user-specific collection.
             # This part will need refinement based on how mem0 structures multi-user data.
             # A common pattern is to pass user_id to methods like add, search, etc.
             all_memories = self.mem0_instance.get_all(user_id=user_id)
@@ -61,14 +39,18 @@ class Mem0Memory:
                 "interaction_history": []
             }
             
+            # Based on error messages, it seems all_memories contains strings
             for mem in all_memories:
-                # Example: if memories have a 'type' field (e.g., 'profile' or 'interaction')
-                if mem.data.get('type') == 'profile':
-                    student_data["profile"].update(mem.data.get('content', {}))
-                elif mem.data.get('type') == 'interaction':
-                    student_data["interaction_history"].append(mem.data.get('content', {}))
-                # If no type, maybe just append to a general list or a default category
-                # This logic needs to be robust based on actual storage strategy.
+                try:
+                    # Try to parse the memory as JSON
+                    memory_data = json.loads(mem)
+                    if memory_data.get('type') == 'profile':
+                        student_data["profile"].update(memory_data.get('content', {}))
+                    elif memory_data.get('type') == 'interaction':
+                        student_data["interaction_history"].append(memory_data.get('content', {}))
+                except (json.JSONDecodeError, AttributeError):
+                    # If it's not JSON or doesn't have the expected structure, skip it
+                    logger.warning(f"Skipping memory that couldn't be parsed: {mem}")
 
             if not student_data["profile"] and not student_data["interaction_history"]:
                  # Initialize with a default structure if user is new or no data found
@@ -89,13 +71,16 @@ class Mem0Memory:
         """Adds an interaction summary to the user's history using mem0."""
         logger.info(f"Mem0Memory: Attempting to add interaction for user_id: {user_id} with summary: {interaction_summary}")
         try:
-            # We can add metadata to distinguish this memory, e.g., type: 'interaction'
-            # The `user_id` is passed to associate the memory with the specific user.
-            self.mem0_instance.add(
-                data=interaction_summary, 
-                user_id=user_id, 
-                metadata={'type': 'interaction', self.user_id_field: user_id}
-            )
+            memory_content = {
+                'type': 'interaction',
+                'content': interaction_summary,
+                self.user_id_field: user_id
+            }
+            
+            memory_str = json.dumps(memory_content)
+            
+            self.mem0_instance.add(memory_str, user_id=user_id)
+            
             logger.info(f"Mem0Memory: Added interaction for {user_id}.")
         except Exception as e:
             logger.error(f"Mem0Memory: Error adding interaction for {user_id}: {e}")
@@ -104,16 +89,16 @@ class Mem0Memory:
         """Updates or sets profile data for a student using mem0."""
         logger.info(f"Mem0Memory: Attempting to update profile for user_id: {user_id} with data: {profile_data}")
         try:
-            # For updates, mem0 might require searching for an existing profile memory and then updating it,
-            # or it might have a direct update/upsert mechanism if a memory ID is known.
-            # A simple approach is to add it as a new memory, and retrieval logic handles the latest profile.
-            # Or, search for existing profile memory and use mem0.update(id=memory_id, data=...)
-            # For simplicity here, we'll add it. Retrieval logic in get_student_data would need to find the latest.
-            self.mem0_instance.add(
-                data=profile_data, 
-                user_id=user_id, 
-                metadata={'type': 'profile', self.user_id_field: user_id}
-            )
+            memory_content = {
+                'type': 'profile',
+                'content': profile_data,
+                self.user_id_field: user_id
+            }
+            
+            memory_str = json.dumps(memory_content)
+            
+            self.mem0_instance.add(memory_str, user_id=user_id)
+            
             logger.info(f"Mem0Memory: Updated/added profile for {user_id}.")
         except Exception as e:
             logger.error(f"Mem0Memory: Error updating profile for {user_id}: {e}")
@@ -122,14 +107,14 @@ class Mem0Memory:
         """Clears all memory for a specific user in mem0."""
         logger.info(f"Mem0Memory: Attempting to clear all data for user_id: {user_id}")
         try:
-            # mem0.delete_user_memories(user_id=user_id) or similar is expected.
-            # If not available, we might need to get all memories for the user and delete them one by one.
-            # Checking mem0 docs, there should be a way to clear by user_id or by tags.
-            # Assuming mem0.delete_all(user_id=user_id) or similar exists.
-            # Based on mem0 docs, it seems we might need to fetch all memories for the user and delete by ID.
             memories_to_delete = self.mem0_instance.get_all(user_id=user_id)
+            
             for mem in memories_to_delete:
-                self.mem0_instance.delete(memory_id=mem.id)
+                try:
+                    self.mem0_instance.delete(mem)
+                except Exception as inner_e:
+                    logger.warning(f"Failed to delete memory {mem}: {inner_e}")
+            
             logger.info(f"Mem0Memory: Cleared all data for user_id: {user_id}")
         except Exception as e:
             logger.error(f"Mem0Memory: Error clearing data for {user_id}: {e}")
@@ -138,11 +123,54 @@ class Mem0Memory:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     
-    # This example assumes Qdrant is running locally on default port 6333.
-    # If not, mem0 will fall back to a default in-memory setup if Qdrant is not reachable,
-    # or you can configure a different vector store.
     try:
+        print("Environment variables check:")
+        for key in ['GOOGLE_APPLICATION_CREDENTIALS', 'GOOGLE_CLOUD_PROJECT', 'QDRANT_URL']:
+            print(f"  {key}: {'✓ Set' if os.getenv(key) else '✗ Not set'}")
+        
+        # Print mem0 version info if available
+        try:
+            import importlib.metadata
+            print(f"mem0 version: {importlib.metadata.version('mem0')}")
+        except (ImportError, importlib.metadata.PackageNotFoundError):
+            print("Could not determine mem0 version")
+        
+        # Check Vertex AI access
+        print("\nChecking Vertex AI access:")
+        try:
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "windy-orb-460108-t0")
+            location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+            vertexai.init(project=project_id, location=location)
+            print(f"  Successfully initialized Vertex AI with project: {project_id}")
+            
+            try:
+                model = GenerativeModel("gemini-1.5-pro")
+                print("  Successfully loaded Gemini model")
+            except Exception as model_error:
+                print(f"  Failed to load Gemini model: {model_error}")
+        except Exception as vertex_error:
+            print(f"  Failed to initialize Vertex AI: {vertex_error}")
+        
+        print("\n--- Starting mem0 memory test ---")
         mem0_memory_instance = Mem0Memory()
+        
+        print("\nTesting direct mem0 API:")
+        try:
+            test_memory = json.dumps({"test": "value", "user_id": "test_user"})
+            print(f"  Adding test memory: {test_memory}")
+            mem0_memory_instance.mem0_instance.add(test_memory, user_id="test_user")
+            
+            print("  Retrieving memories for test_user")
+            test_memories = mem0_memory_instance.mem0_instance.get_all(user_id="test_user")
+            print(f"  Retrieved {len(test_memories)} memories")
+            
+            if test_memories:
+                print("  Cleaning up test memory")
+                for mem in test_memories:
+                    mem0_memory_instance.mem0_instance.delete(mem)
+        except Exception as api_test_error:
+            print(f"  Direct API test failed: {api_test_error}")
+        
         user1 = "student_gamma_003"
         user2 = "student_delta_004"
 
@@ -177,4 +205,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"An error occurred during the mem0_memory.py example: {e}")
         print("Please ensure any external services like Qdrant are running if configured, or check API keys.")
-
