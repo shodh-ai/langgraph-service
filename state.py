@@ -1,21 +1,28 @@
-from typing import TypedDict, List, Optional, Dict, Any
+from typing import TypedDict, List, Optional, Dict, Any, Union
 from models import InteractionRequestContext # Import your Pydantic model
 
 class AgentGraphState(TypedDict):
+    # User and session identifiers
     user_id: str
     session_id: str
-    transcript: Optional[str]
-    current_context: InteractionRequestContext # Use the Pydantic model for type hinting
-    chat_history: Optional[List[Dict[str, str]]]
     
-    # Placeholder for data retrieved from memory stub
-    student_memory_context: Optional[Dict[str, Any]]
-
-    diagnosis_result: Optional[Dict[str, Any]]
-    feedback_content: Optional[Dict[str, Any]] # To hold {"text": "...", "dom_actions": [...]}
-
-    # No need for final_response_for_user or final_dom_actions here,
-    # the node that produces the final output will populate feedback_content
-    # or a similar field that the FastAPI route handler then uses.
-    # Or, a dedicated "final_output" field could be used.
-    # Let's use feedback_content for now as the source of final output.
+    # Input data from the current interaction
+    transcript: Optional[str]  # The most recent transcript from the user
+    full_submitted_transcript: Optional[str]  # Complete transcript when a task is submitted (P2->P5)
+    current_context: InteractionRequestContext  # Current UI state and context information
+    chat_history: Optional[List[Dict[str, str]]]  # Previous conversation turns
+    
+    # Student model and memory data
+    student_memory_context: Optional[Dict[str, Any]]  # Data retrieved from memory system
+    
+    # Task management
+    next_task_details: Optional[Dict[str, Any]]  # Information about the next task to present
+    
+    # Processing results
+    diagnosis_result: Optional[Dict[str, Any]]  # Results from diagnostic analysis
+    
+    # Output data to be returned to the frontend
+    output_content: Optional[Dict[str, Any]]  # Contains text_for_tts, ui_actions, and frontend_rpc_calls
+    
+    # For backward compatibility during transition
+    feedback_content: Optional[Dict[str, Any]]  # To be deprecated in favor of output_content
