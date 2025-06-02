@@ -21,7 +21,7 @@ class InteractionRequest(BaseModel):
     current_context: Optional[InteractionRequestContext] = None
     session_id: Optional[str] = None
     chat_history: Optional[List[Dict[str, str]]] = None  # e.g. [{"role": "user", "content": "..."}, {"role": "ai", "content": "..."}]
-
+    usertoken: Optional[str] = None
 
 class DomAction(BaseModel):
     action: str  # e.g., "update_text", "highlight_element", "play_audio"
