@@ -25,7 +25,7 @@ class InteractionRequestContext(BaseModel):
     # Fields for error or raw data logging if needed during RPC/context transfer
     error_during_context_preparation: Optional[str] = None
     raw_frontend_event_data: Optional[Any] = None
-
+    
 
 class InteractionRequest(BaseModel):
     """
@@ -36,7 +36,9 @@ class InteractionRequest(BaseModel):
     current_context: InteractionRequestContext # This should ideally be non-optional
     session_id: str # LiveKit room SID or a persistent custom session ID; CRITICAL for LangSmith thread_id
     chat_history: Optional[List[Dict[str, str]]] = Field(default_factory=list) # e.g. [{"role": "user", "content": "..."}, {"role": "ai", "content": "..."}]
-
+    
+    user_id: Optional[str] = None
+    usertoken: Optional[str] = None
 
 # --- Response Models (and UI Action sub-models) ---
 
