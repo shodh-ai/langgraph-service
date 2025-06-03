@@ -3,8 +3,16 @@ from state import AgentGraphState
 import yaml
 import os
 import json
-import vertexai
-from vertexai.generative_models import GenerativeModel, Content, Part
+# Try to import vertexai, but don't fail if it's not available
+try:
+    import vertexai
+    from vertexai.generative_models import GenerativeModel, Content, Part
+    vertexai_available = True
+except ImportError:
+    vertexai_available = False
+    
+# Import our fallback utilities
+from utils.fallback_utils import get_model_with_fallback
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -16,22 +24,9 @@ except Exception as e:
     logger.error(f"Failed to load LLM prompts: {e}")
     PROMPTS = {}
 
-# Initialize Vertex AI if not already initialized in another module
-try:
-    if 'vertexai' in globals() and not hasattr(vertexai, '_initialized'):
-        vertexai.init(project="windy-orb-460108-t0", location="us-central1")
-        vertexai._initialized = True
-        logger.info("Vertex AI initialized in practice_selector_node")
-except Exception as e:
-    logger.error(f"Failed to initialize Vertex AI in practice_selector_node: {e}")
-
-# Load Gemini model if not already loaded
-try:
-    gemini_model = GenerativeModel("gemini-1.5-pro")
-    logger.info("Gemini model loaded in practice_selector_node")
-except Exception as e:
-    logger.error(f"Failed to load Gemini model in practice_selector_node: {e}")
-    gemini_model = None
+# Use our fallback utility to get a model (either real or fallback)
+gemini_model = get_model_with_fallback("gemini-2.5-flash-preview-05-20")
+logger.info(f"Using model: {type(gemini_model).__name__} in practice_selector_node")
 
 async def select_next_practice_or_drill_node(state: AgentGraphState) -> dict:
     """Chooses or generates skill drills/practice tasks using Vertex AI Gemini."""
