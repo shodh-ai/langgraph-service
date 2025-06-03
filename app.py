@@ -9,10 +9,17 @@ from graph_builder import build_graph
 from state import AgentGraphState
 from models import InteractionRequest, InteractionResponse, InteractionRequestContext, ReactUIAction
 
+# Configure basic logging for the application
+# This will set the root logger level and format, affecting all module loggers unless they are specifically configured otherwise.
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 load_dotenv()
 
-# Configure logging
-logger = logging.getLogger("uvicorn.error")
+# Get the uvicorn logger, which might have its own settings from uvicorn itself.
+# Our basicConfig will ensure other modules' logs are also visible at DEBUG level.
+logger = logging.getLogger("uvicorn.error") # This logger is primarily for uvicorn's own messages
+# To make our application logs more prominent and ensure they use the basicConfig settings:
+app_logger = logging.getLogger(__name__) # Use a specific logger for app.py messages
 
 app = FastAPI(title="TOEFL Tutor AI Backend", version="0.1.0")
 

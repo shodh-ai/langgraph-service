@@ -102,6 +102,9 @@ def build_graph():
         if task_stage == "session_start_home":
             logger.info(f"Router: User '{user_id}', Routing to load_student_data for home screen.")
             return NODE_LOAD_STUDENT_DATA
+        elif task_stage == "ROX_WELCOME_INIT": # New route for Rox Welcome Initialization
+            logger.info(f"Router: User '{user_id}', Routing to load_student_data for Rox Welcome Init.")
+            return NODE_LOAD_STUDENT_DATA
         elif task_stage == "speaking_task_submitted":
             logger.info(f"Router: User '{user_id}', Routing to process_speaking_submission.")
             return NODE_PROCESS_SPEAKING_SUBMISSION
@@ -110,7 +113,7 @@ def build_graph():
             logger.info(f"Router: User '{user_id}', Routing to legacy test button feedback.")
             return NODE_FEEDBACK_FOR_TEST_BUTTON
         else:
-            logger.info(f"Router: User '{user_id}', Unknown task_stage. Defaulting to load_student_data.")
+            logger.info(f"Router: User '{user_id}', Unknown task_stage '{task_stage}'. Defaulting to load_student_data.")
             return NODE_LOAD_STUDENT_DATA
 
     # Set the entry point to the router node

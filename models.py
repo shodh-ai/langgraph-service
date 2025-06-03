@@ -13,6 +13,7 @@ class InteractionRequestContext(BaseModel):
     question_type: Optional[str] = None  # e.g., "Q1_Independent", "Integrated_Essay"
     task_stage: str  # CRITICAL: What the student is currently doing/what page/mode they are in.
                      # e.g., "ROX_WELCOME_INIT", "SPEAKING_TESTING_SUBMITTED", "SPEAKING_FEEDBACK_QA"
+    student_name: Optional[str] = None # Student's name, if available
     current_prompt_id: Optional[str] = None
     ui_element_in_focus: Optional[str] = None
     timer_value_seconds: Optional[int] = None

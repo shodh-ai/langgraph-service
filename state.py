@@ -20,6 +20,10 @@ class AgentGraphState(TypedDict):
     
     # Processing results
     diagnosis_result: Optional[Dict[str, Any]]  # Results from diagnostic analysis
+
+    # Data from specific welcome flow nodes
+    greeting_data: Optional[Dict[str, str]]  # Expected: {"greeting_tts": "..."}
+    task_suggestion_llm_output: Optional[Dict[str, str]]  # Expected: {"task_suggestion_tts": "..."}
     
     # Output data to be returned to the frontend
     output_content: Optional[Dict[str, Any]]  # Contains text_for_tts, ui_actions, and frontend_rpc_calls
