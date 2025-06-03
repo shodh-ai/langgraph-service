@@ -12,7 +12,7 @@ async def load_or_initialize_student_profile(state: AgentGraphState) -> dict:
     student_data = mem0_memory.get_student_data(user_id)
     
     if not student_data.get("profile") or student_data["profile"].get("name", "").startswith("New Student"):
-        logger.info(f"StudentModelNode: Fetching user data from PostgreSQL for user_id: '{user_id}'")
+        logger.info(f"StudentModelNode: Fetching user data from API for user_id: '{user_id}'")
         try:
             db_user_data = fetch_user_by_id(user_id)
             
@@ -29,17 +29,20 @@ async def load_or_initialize_student_profile(state: AgentGraphState) -> dict:
                 }
                 
                 if db_user_data.get('createdAt'):
-                    profile["account_created"] = db_user_data.get('createdAt').isoformat()
+                    # Handle createdAt as a string (already in ISO format from API)
+                    created_at = db_user_data.get('createdAt')
+                    # If it's already a string, use it directly; otherwise call isoformat()
+                    profile["account_created"] = created_at if isinstance(created_at, str) else created_at.isoformat()
                 
                 student_data["profile"] = profile
                 
                 mem0_memory.update_student_profile(user_id, profile)
                 
-                logger.info(f"StudentModelNode: Updated profile from PostgreSQL for user_id: '{user_id}'")
+                logger.info(f"StudentModelNode: Updated profile from API for user_id: '{user_id}'")
             else:
-                logger.warning(f"StudentModelNode: No user found in PostgreSQL for user_id: '{user_id}'")
+                logger.warning(f"StudentModelNode: No user found in API for user_id: '{user_id}'")
         except Exception as e:
-            logger.error(f"StudentModelNode: Error fetching user data from PostgreSQL: {e}")
+            logger.error(f"StudentModelNode: Error fetching user data from API: {e}")
     
     return {"student_memory_context": student_data}
 

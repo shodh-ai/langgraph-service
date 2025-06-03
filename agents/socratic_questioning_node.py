@@ -4,7 +4,7 @@ import yaml
 import os
 import json
 import vertexai
-from vertexai.generative_models import GenerativeModel, Content
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -61,9 +61,9 @@ async def generate_socratic_question_node(state: AgentGraphState) -> dict:
             user_prompt = user_prompt.replace("{{task_prompt.main_topic}}", task_prompt.get("main_topic", "the topic"))
             
             contents = [
-                Content(role="user", parts=[system_prompt]),
-                Content(role="model", parts=["I understand. I'll generate Socratic questions to help the student reflect on their response."]),
-                Content(role="user", parts=[user_prompt])
+                Content(role="user", parts=[Part.from_text(system_prompt)]),
+                Content(role="model", parts=[Part.from_text("I understand. I'll generate Socratic questions to help the student reflect on their response.")]),
+                Content(role="user", parts=[Part.from_text(user_prompt)])
             ]
             
             response = gemini_model.generate_content(contents, generation_config={

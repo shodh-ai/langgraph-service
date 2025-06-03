@@ -4,7 +4,7 @@ import yaml
 import os
 import json
 import vertexai
-from vertexai.generative_models import GenerativeModel, Content
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -35,7 +35,7 @@ except Exception as e:
 
 async def select_next_practice_or_drill_node(state: AgentGraphState) -> dict:
     """Chooses or generates skill drills/practice tasks using Vertex AI Gemini."""
-    diagnosis = state.get("diagnosis_result", {})
+    diagnosis = state.get("diagnosis_result") or {}  # Ensure diagnosis is never None
     student_data = state.get("student_memory_context", {})
     context = state.get("current_context")
     task_prompt = state.get("task_prompt", {})

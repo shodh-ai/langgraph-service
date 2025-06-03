@@ -4,7 +4,7 @@ from state import AgentGraphState
 logger = logging.getLogger(__name__)
 
 async def generate_feedback_stub_node(state: AgentGraphState) -> dict:
-    diagnosis = state.get("diagnosis_result", {})
+    diagnosis = state.get("diagnosis_result") or {}  # Ensure diagnosis is never None
     user_id = state['user_id']
     logger.info(f"FeedbackNodeStub: Generating feedback for user_id: {user_id}, Diagnosis: {diagnosis}")
     text_response = "FeedbackStub: Default feedback. Everything seems okay!"
@@ -23,4 +23,3 @@ async def generate_feedback_stub_node(state: AgentGraphState) -> dict:
         frontend_rpc_calls = [{"function_name": "showAlert", "args": ["Excellent work!"]}]
 
     return {"feedback_content": {"text": text_response, "frontend_rpc_calls": frontend_rpc_calls}}
-

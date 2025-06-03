@@ -4,7 +4,7 @@ import yaml
 import os
 import json
 import vertexai
-from vertexai.generative_models import GenerativeModel, Content
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -37,7 +37,7 @@ async def determine_next_pedagogical_step_node(state: AgentGraphState) -> dict:
     """The primary decision-maker for what the student should do next using Vertex AI Gemini."""
     context = state.get("current_context")
     student_data = state.get("student_memory_context", {})
-    diagnosis = state.get("diagnosis_result", {})
+    diagnosis = state.get("diagnosis_result") or {}  # Ensure diagnosis is never None
     feedback = state.get("feedback_content", {})
     next_practice = state.get("next_practice", {})
     

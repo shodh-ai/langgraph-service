@@ -4,7 +4,7 @@ import yaml
 import os
 import json
 import vertexai
-from vertexai.generative_models import GenerativeModel, Content
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -87,9 +87,9 @@ async def deliver_teaching_module_node(state: AgentGraphState) -> dict:
         
         # Create content for the model
         contents = [
-            Content(role="user", parts=[system_prompt]),
-            Content(role="model", parts=["I'll create an engaging teaching module based on the material."]),
-            Content(role="user", parts=[user_prompt])
+            Content(role="user", parts=[Part.from_text(system_prompt)]),
+            Content(role="model", parts=[Part.from_text("I'll create an engaging teaching module based on the material.")]),
+            Content(role="user", parts=[Part.from_text(user_prompt)])
         ]
         
         # Call the Gemini model
@@ -195,9 +195,9 @@ async def manage_skill_drill_node(state: AgentGraphState) -> dict:
         
         # Create content for the model
         contents = [
-            Content(role="user", parts=[system_prompt]),
-            Content(role="model", parts=["I'll create an engaging skill drill exercise."]),
-            Content(role="user", parts=[user_prompt])
+            Content(role="user", parts=[Part.from_text(system_prompt)]),
+            Content(role="model", parts=[Part.from_text("I'll create an engaging skill drill exercise.")]),
+            Content(role="user", parts=[Part.from_text(user_prompt)])
         ]
         
         # Call the Gemini model

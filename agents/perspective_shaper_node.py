@@ -31,7 +31,7 @@ async def apply_teacher_persona_node(state: AgentGraphState) -> dict:
     """Sets the current AI teacher persona in the graph state."""
     context = state.get("current_context")
     student_data = state.get("student_memory_context", {})
-    diagnosis = state.get("diagnosis_result", {})
+    diagnosis = state.get("diagnosis_result") or {}  # Ensure diagnosis is never None
     affective_state = state.get("student_affective_state", {})
     
     # Default persona
