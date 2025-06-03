@@ -11,36 +11,58 @@ async def load_or_initialize_student_profile(state: AgentGraphState) -> dict:
     
     student_data = mem0_memory.get_student_data(user_id)
     
-    if not student_data.get("profile") or student_data["profile"].get("name", "").startswith("New Student"):
-        logger.info(f"StudentModelNode: Fetching user data from PostgreSQL for user_id: '{user_id}'")
+    # Attempt to fetch from DB if mem0 profile is incomplete or default-named
+    profile_from_mem0 = student_data.get("profile", {})
+    if not profile_from_mem0 or profile_from_mem0.get("name", "").startswith("New Student") or not profile_from_mem0.get("name"): # Added check for empty name
+        logger.info(f"StudentModelNode: Profile from mem0 is incomplete or default. Attempting DB fetch for user_id: '{user_id}'")
         try:
-            db_user_data = fetch_user_by_id(user_id)
+            db_user_data = fetch_user_by_id(user_id) # This function needs to be defined or imported
             
             if db_user_data:
-                user_skills = fetch_user_skills(user_id)
+                user_skills = fetch_user_skills(user_id) # This function needs to be defined or imported
                 
                 profile = {
                     "name": f"{db_user_data.get('firstName', '')} {db_user_data.get('lastName', '')}".strip(),
                     "occupation": db_user_data.get('occupation', ''),
                     "major": db_user_data.get('major', ''),
                     "native_language": db_user_data.get('nativeLanguage', ''),
-                    "level": "Beginner",  # Default level if not available in DB
+                    "level": "Beginner", 
                     "skills": user_skills or {}
                 }
                 
                 if db_user_data.get('createdAt'):
                     profile["account_created"] = db_user_data.get('createdAt').isoformat()
                 
-                student_data["profile"] = profile
-                
-                mem0_memory.update_student_profile(user_id, profile)
-                
-                logger.info(f"StudentModelNode: Updated profile from PostgreSQL for user_id: '{user_id}'")
+                # Ensure name is not empty after DB fetch
+                if not profile.get("name"):
+                    logger.warning(f"StudentModelNode: DB fetch for user_id '{user_id}' resulted in an empty name. Will use default.")
+                    # Let it fall through to the default Harshit profile logic
+                else:
+                    student_data["profile"] = profile
+                    mem0_memory.update_student_profile(user_id, profile)
+                    logger.info(f"StudentModelNode: Updated profile from PostgreSQL for user_id: '{user_id}'")
+
             else:
-                logger.warning(f"StudentModelNode: No user found in PostgreSQL for user_id: '{user_id}'")
+                logger.warning(f"StudentModelNode: No user found in PostgreSQL for user_id: '{user_id}'.")
         except Exception as e:
             logger.error(f"StudentModelNode: Error fetching user data from PostgreSQL: {e}")
-    
+
+    # Fallback to default "Harshit" profile if still no valid name
+    current_profile = student_data.get("profile", {})
+    if not current_profile.get("name") or current_profile.get("name").startswith("New Student"):
+        logger.warning(f"StudentModelNode: No valid student name found for user_id '{user_id}'. Using default 'Harshit' profile.")
+        student_data["profile"] = {
+            "first_name": "Harshit", # Changed from "name"
+            "last_name": "",         # Added for completeness
+            "occupation": "Student",
+            "major": "Computer Science",
+            "native_language": "Hindi",
+            "level": "Intermediate",
+            "skills": {"speaking_fluency": 70, "grammar_sva": 65}
+        }
+        # Optionally, update mem0 with this default if it's the first time
+        # mem0_memory.update_student_profile(user_id, student_data["profile"])
+
     return {"student_memory_context": student_data}
 
 async def update_student_skills_after_diagnosis(state: AgentGraphState) -> dict:
@@ -52,7 +74,7 @@ async def update_student_skills_after_diagnosis(state: AgentGraphState) -> dict:
     profile = student_data.get("profile", {})
     skills = profile.get("skills", {})
     
-    if "speaking" in diagnosis:
+    if diagnosis and "speaking" in diagnosis:
         for skill, score in diagnosis["speaking"].get("skill_scores", {}).items():
             skills[f"speaking_{skill}"] = score
     

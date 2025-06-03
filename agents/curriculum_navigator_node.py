@@ -4,7 +4,7 @@ import yaml
 import os
 import json
 import vertexai
-from vertexai.generative_models import GenerativeModel, Content
+from vertexai.generative_models import GenerativeModel, Content, Part
 
 logger = logging.getLogger(__name__)
 PROMPTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_prompts.yaml")
@@ -34,17 +34,101 @@ except Exception as e:
     gemini_model = None
 
 async def determine_next_pedagogical_step_node(state: AgentGraphState) -> dict:
-    """The primary decision-maker for what the student should do next using Vertex AI Gemini."""
-    context = state.get("current_context")
+    """The primary decision-maker for what the student should do next.
+    For ROX_WELCOME_INIT, it suggests a predefined first task.
+    Otherwise, it uses Vertex AI Gemini or rule-based logic."""
+    current_context = state.get("current_context")
+    task_stage = getattr(current_context, "task_stage", None)
+    active_persona_details = state.get("active_persona_details", {})
+
+    if task_stage == "ROX_WELCOME_INIT":
+        logger.info("CurriculumNavigatorNode: Handling ROX_WELCOME_INIT - suggesting predefined first task.")
+        
+        predefined_task_id = "ROX_WELCOME_TASK_SPEAKING_P1_INTRO"
+        predefined_task_title = "Quick Intro: TOEFL Speaking Part 1"
+        
+        next_task_details = {
+            "action": "start_suggested_task", 
+            "task_id": predefined_task_id,
+            "task_title": predefined_task_title,
+            "rationale": "A good starting point to get familiar with the platform and task types.",
+            "estimated_duration_minutes": 5,
+            "learning_objectives": ["Understand the format of TOEFL Speaking Part 1", "Practice a simple introductory response"]
+        }
+
+        task_suggestion_tts = f"To get you started, how about we try a '{predefined_task_title}'? It's a great way to see how things work."
+
+        if gemini_model:
+            try:
+                prompt_template = PROMPTS.get("welcome_task_suggestion", {}).get("system_prompt", "")
+                if not prompt_template:
+                    logger.error("CurriculumNavigatorNode: Welcome task suggestion prompt template not found.")
+                else:
+                    system_prompt = prompt_template.replace("{{persona_details}}", json.dumps(active_persona_details))
+                    system_prompt = system_prompt.replace("{{task_title}}", predefined_task_title)
+                    user_prompt = PROMPTS.get("welcome_task_suggestion", {}).get("user_prompt", "Suggest this task.")
+
+                    contents = [
+                        Content(role="user", parts=[Part.from_text(system_prompt)]),
+                        Content(role="model", parts=[Part.from_text("Okay, I will generate the task suggestion TTS as a JSON object.")]),
+                        Content(role="user", parts=[Part.from_text(user_prompt)])
+                    ]
+                    response = await gemini_model.generate_content_async(contents, generation_config={"temperature": 0.7, "max_output_tokens": 150})
+                    response_text = response.text
+                    parsed_response = {}
+                    try:
+                        if "```json" in response_text and "```" in response_text.rsplit("```json", 1)[-1]:
+                            json_text = response_text.split("```json", 1)[1].split("```", 1)[0].strip()
+                            parsed_response = json.loads(json_text)
+                        elif response_text.strip().startswith("{") and response_text.strip().endswith("}"):
+                            parsed_response = json.loads(response_text)
+                        else:
+                            logger.warning(f"CurriculumNavigatorNode: LLM response for task suggestion was not valid JSON: {response_text}")
+                            # Use the text directly if it's short and seems like a suggestion
+                            if len(response_text) < 200 and len(response_text) > 10:
+                                parsed_response = {"task_suggestion_tts": response_text}
+                        
+                        if "task_suggestion_tts" in parsed_response:
+                            task_suggestion_tts = parsed_response["task_suggestion_tts"]
+                        else:
+                             logger.warning(f"CurriculumNavigatorNode: 'task_suggestion_tts' not in LLM response: {parsed_response}")
+
+                    except json.JSONDecodeError as e:
+                        logger.error(f"CurriculumNavigatorNode: Failed to parse task suggestion JSON: {e}. Response: {response_text}")
+            except Exception as e:
+                logger.error(f"CurriculumNavigatorNode: Error generating welcome task suggestion TTS with Gemini: {e}", exc_info=True)
+        
+        task_suggestion_ui_actions = [
+            {
+                "action_name": "ENABLE_BUTTON_WITH_TASK",
+                "target_element_id": "rox_start_task_button", 
+                "parameters": {
+                    "button_text": f"Start: {predefined_task_title}",
+                    "task_id_to_launch": predefined_task_id,
+                    "enabled": True
+                }
+            }
+        ]
+        
+        logger.info(f"CurriculumNavigatorNode: Suggesting welcome task '{predefined_task_title}' with TTS and UI actions.")
+        return {
+            "task_suggestion_tts_intermediate": task_suggestion_tts,
+            "task_suggestion_ui_actions_intermediate": task_suggestion_ui_actions,
+            "next_task_details": next_task_details
+        }
+
+    # --- Existing logic from here onwards if not ROX_WELCOME_INIT --- 
+    context = state.get("current_context") # Re-fetch context as it might be different from current_context above
     student_data = state.get("student_memory_context", {})
     diagnosis = state.get("diagnosis_result", {})
     feedback = state.get("feedback_content", {})
     next_practice = state.get("next_practice", {})
     
-    logger.info(f"CurriculumNavigatorNode: Determining next pedagogical step")
+    logger.info(f"CurriculumNavigatorNode: Determining next pedagogical step (standard flow)")
     
     if not gemini_model:
         logger.warning("CurriculumNavigatorNode: Gemini model not available, using rule-based implementation")
+
         # Fallback to rule-based implementation
         # Default next step
         next_step = {
@@ -237,6 +321,9 @@ async def determine_next_pedagogical_step_node(state: AgentGraphState) -> dict:
                     "learning_objectives": [f"Address weakness in {diagnosis.get('primary_error', 'fundamental skills')}"]
                 }
     
-    logger.info(f"CurriculumNavigatorNode: Next step - {next_step['action']}: {next_step['task_id']}")
+    # Ensure next_step is a dictionary before trying to access keys with .get()
+    action_log = next_step.get('action', 'N/A') if isinstance(next_step, dict) else 'N/A (next_step not a dict)'
+    task_id_log = next_step.get('task_id', 'N/A') if isinstance(next_step, dict) else 'N/A (next_step not a dict)'
+    logger.info(f"CurriculumNavigatorNode: Next step - {action_log}: {task_id_log}")
     
-    return {"next_task_details": next_step}
+    return {"next_task_details_for_client": next_step} # Changed key here
