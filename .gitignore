@@ -69,3 +69,4 @@ main/
 *.sw?
 
 .venv
+__pycache__

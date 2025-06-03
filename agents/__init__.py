@@ -19,6 +19,12 @@ from .output_formatter_node import format_final_output_node
 from .feedback_node import generate_feedback_stub_node
 from .special_feedback_node import generate_test_button_feedback_stub_node
 
+from .handle_welcome import handle_welcome_node
+from .student_data import student_data_node
+from .welcome_prompt import welcome_prompt_node
+
+from .conversation_handler import conversation_handler_node
+
 __all__ = [
     # Student model nodes
     "load_student_data_node",
@@ -40,4 +46,10 @@ __all__ = [
     # Legacy nodes (to be deprecated)
     "generate_feedback_stub_node",
     "generate_test_button_feedback_stub_node"
+
+    # Welcome node
+    "handle_welcome_node",
+    "welcome_prompt_node"
+    "student_data_node"
+    "conversation_handler_node"
 ]

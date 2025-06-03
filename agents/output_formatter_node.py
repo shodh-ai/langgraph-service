@@ -36,6 +36,7 @@ async def format_final_output_node(state: AgentGraphState) -> dict:
         if final_combined_tts: # Add a space if greeting_tts was also present
             final_combined_tts += " " 
         final_combined_tts += task_suggestion_tts
+    logger.info(f"OutputFormatterNode: Final combined TTS: '{final_combined_tts[:100]}...')")
     
     if not final_combined_tts:
         logger.warning("OutputFormatterNode: No TTS strings found from previous nodes. Using default response.")
@@ -44,7 +45,11 @@ async def format_final_output_node(state: AgentGraphState) -> dict:
     # Retrieve UI Actions (set by determine_next_pedagogical_step_stub_node in output_content.ui_actions)
     # The output_content in the state at this point is the one from the last node that modified it (curriculum_navigator)
     current_output_content_from_state = state.get("output_content", {})
-    ui_actions = current_output_content_from_state.get("ui_actions", [])
+    if not current_output_content_from_state:
+        logger.warning("OutputFormatterNode: No output_content found in state. Using default UI actions.")
+        ui_actions = []
+    else:
+        ui_actions = current_output_content_from_state.get("ui_actions", [])
     if not isinstance(ui_actions, list):
         logger.warning(f"OutputFormatterNode: ui_actions was not a list, re-initializing. Value: {ui_actions}")
         ui_actions = []

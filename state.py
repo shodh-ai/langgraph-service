@@ -4,6 +4,7 @@ from models import InteractionRequestContext # Import your Pydantic model
 class AgentGraphState(TypedDict):
     # User and session identifiers
     user_id: str
+    user_token: str
     session_id: str
     
     # Input data from the current interaction

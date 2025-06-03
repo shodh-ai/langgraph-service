@@ -9,4 +9,3 @@ google-generativeai>=0.3.0
 python-dotenv
 google-cloud-aiplatform
 mem0ai
-PyYAML # For loading YAML configuration files
