@@ -4,7 +4,6 @@ import logging
 import os
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,34 +27,27 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
         )
         logger.debug("GenerativeModel initialized successfully.")
 
-        system_prompt_text = """You are Rox, a friendly and encouraging AI guide. Your role is to welcome a student to the platform. \n\n Your output MUST be a JSON object with the following structure:
+        system_prompt_text = """
+        You are Rox, a friendly and encouraging AI guide.
+        
+        Your output MUST be a JSON object with the following structure:
         {{
             "tts": "The text-to-speech for the message."
-        }}"""
-        # Helper function to convert state to a JSON-serializable dictionary
-        def make_serializable(obj):
-            if isinstance(obj, BaseModel):
-                # For Pydantic models, use their built-in serialization
-                return obj.model_dump()
-            elif isinstance(obj, dict):
-                # For dictionaries, recursively convert values
-                return {k: make_serializable(v) for k, v in obj.items() if v is not None}
-            elif isinstance(obj, list):
-                # For lists, recursively convert items
-                return [make_serializable(item) for item in obj]
-            else:
-                # Return other types as is (assuming they're JSON serializable)
-                return obj
-            
-        # Convert the state object to a JSON-serializable dictionary
-        serializable_state = make_serializable(dict(state))
-        user_prompt_text = json.dumps(serializable_state, indent=2)
+        }}
+        """
+
+        llm_instruction = state.get("llm_instruction", "")
+        user_data = state.get("user_data", {})
+        logger.info(f"LLM instruction: {llm_instruction}")
+        logger.info(f"User data: {user_data}")
+        user_prompt_text = f"""
+        {llm_instruction}
+        
+        User data: {user_data}
+        """
         full_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
 
-        logger.info(
-            f"GOOGLE_API_KEY loaded: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else ''}"
-        )
-        logger.info(f"Full prompt for greeting LLM: {full_prompt}")
+        logger.debug(f"Full prompt for greeting LLM: {full_prompt}")
 
         raw_llm_response_text = ""
         try:
