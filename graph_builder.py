@@ -1,26 +1,15 @@
 import logging
 from langgraph.graph import StateGraph, END
 from state import AgentGraphState
+import os
+import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
+import json
 
 # Import all the agent node functions
 from agents import (
-    # Student model nodes
-    load_student_data_node,
     save_interaction_node,
-    # Conversational and curriculum management nodes
-    handle_home_greeting_node,
-    determine_next_pedagogical_step_stub_node,
-    # Diagnostic nodes
-    process_speaking_submission_node,
-    diagnose_speaking_stub_node,
-    # Feedback and output nodes
-    generate_speaking_feedback_stub_node,
-    compile_session_notes_stub_node,
     format_final_output_node,
-    # Legacy nodes (kept for backward compatibility)
-    generate_feedback_stub_node,
-    generate_test_button_feedback_stub_node,
-    # Welcome node
     handle_welcome_node,
     student_data_node,
     welcome_prompt_node,
@@ -30,28 +19,9 @@ from agents import (
 logger = logging.getLogger(__name__)
 
 # Define node names for clarity
-# Student model nodes
-NODE_LOAD_STUDENT_DATA = "load_student_data"
 NODE_SAVE_INTERACTION = "save_interaction"
-
-# Conversational and curriculum management nodes
-NODE_HOME_GREETING = "home_greeting"
-NODE_CURRICULUM_NAVIGATOR = "curriculum_navigator"
-
-# Diagnostic nodes
-NODE_PROCESS_SPEAKING_SUBMISSION = "process_speaking_submission"
-NODE_DIAGNOSE_SPEAKING = "diagnose_speaking"
-
-# Feedback and output nodes
-NODE_GENERATE_SPEAKING_FEEDBACK = "generate_speaking_feedback"
-NODE_COMPILE_SESSION_NOTES = "compile_session_notes"
+NODE_CONVERSATION_HANDLER = "conversation_handler"
 NODE_FORMAT_FINAL_OUTPUT = "format_final_output"
-
-# Legacy nodes (kept for backward compatibility)
-NODE_GENERATE_FEEDBACK = "generate_feedback"
-NODE_FEEDBACK_FOR_TEST_BUTTON = "feedback_for_test_button"
-
-# Welcome node
 NODE_HANDLE_WELCOME = "handle_welcome"
 NODE_STUDENT_DATA = "student_data"
 NODE_WELCOME_PROMPT = "welcome_prompt"
@@ -69,112 +39,101 @@ async def router_node(state: AgentGraphState) -> dict:
 async def initial_router_logic(state: AgentGraphState) -> str:
     context = state.get("current_context")
     transcript = state.get("transcript")
+    chat_history = state.get("chat_history")
+    task_stage = getattr(context, "task_stage", None)
 
-    return NODE_HANDLE_WELCOME
-    # user_id = state.get('user_id', 'unknown_user')
+    if task_stage == "ROX_WELCOME_INIT":
+        return NODE_HANDLE_WELCOME
 
-    # if not context:
-    #     logger.warning(f"Router: User '{user_id}', missing current_context. Defaulting to load_student_data.")
-    #     return NODE_LOAD_STUDENT_DATA
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable is not set.")
 
-    # task_stage = getattr(context, 'task_stage', None)
-    # logger.info(f"Router: User '{user_id}', Current task_stage is '{task_stage}'")
-
-    # # Route based on task_stage
-    # if task_stage == "session_start_home":
-    #     logger.info(f"Router: User '{user_id}', Routing to load_student_data for home screen.")
-    #     return NODE_LOAD_STUDENT_DATA
-    # elif task_stage == "ROX_WELCOME_INIT": # New route for Rox Welcome Initialization
-    #     logger.info(f"Router: User '{user_id}', Routing to load_student_data for Rox Welcome Init.")
-    #     return NODE_LOAD_STUDENT_DATA
-    # elif task_stage == "speaking_task_submitted":
-    #     logger.info(f"Router: User '{user_id}', Routing to process_speaking_submission.")
-    #     return NODE_PROCESS_SPEAKING_SUBMISSION
-    # # For backward compatibility
-    # elif task_stage == "testing_specific_context_from_button":
-    #     logger.info(f"Router: User '{user_id}', Routing to legacy test button feedback.")
-    #     return NODE_FEEDBACK_FOR_TEST_BUTTON
-    # else:
-    #     logger.info(f"Router: User '{user_id}', Unknown task_stage '{task_stage}'. Defaulting to load_student_data.")
-    #     return NODE_LOAD_STUDENT_DATA
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            "gemini-2.5-flash-preview-05-20",
+            generation_config=GenerationConfig(response_mime_type="application/json"),
+        )
+        prompt = (
+            f"""
+        You are an NLU assistant for the Rox AI Tutor on its welcome page.
+        The student responded: '{transcript}'.
+        Chat History: {chat_history}
+        Categorize the student's intent from the possible intents. Possible intents:
+        - 'CONFIRM_START_SUGGESTED_TASK'
+        - 'REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE'
+        - 'ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK'
+        - 'ASK_GENERAL_KNOWLEDGE_QUESTION' (e.g., about a grammar topic, TOEFL strategy)
+        - 'REQUEST_STATUS_DETAIL'
+        - 'GENERAL_CHITCHAT'
+        - 'OTHER_OFF_TOPIC'
+        If 'ASK_GENERAL_KNOWLEDGE_QUESTION', extract the core topic/question.
+        """
+            + "Return JSON: {'intent': '<INTENT_NAME>', 'extracted_topic': '<topic if any>'}"
+        )
+        response = model.generate_content(prompt)
+        print("Response Text:", response.text)
+        response_json = json.loads(response.text)
+        intent = response_json.get("intent", "GENERAL_CHITCHAT")
+        extracted_topic = response_json.get("extracted_topic", "")
+        print("Intent:", intent)
+        print("Extracted Topic:", extracted_topic)
+        if intent == "CONFIRM_START_SUGGESTED_TASK":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "ASK_GENERAL_KNOWLEDGE_QUESTION":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "REQUEST_STATUS_DETAIL":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "GENERAL_CHITCHAT":
+            return NODE_CONVERSATION_HANDLER
+        elif intent == "OTHER_OFF_TOPIC":
+            return NODE_CONVERSATION_HANDLER
+        else:
+            return NODE_CONVERSATION_HANDLER
+    except Exception as e:
+        logger.error(f"Error processing with GenerativeModel: {e}")
+        return NODE_CONVERSATION_HANDLER
 
 
 def build_graph():
     """Builds and compiles the LangGraph application with the P1 and P2 submission flows."""
     logger.info("Building LangGraph with AgentGraphState...")
+    NODE_ROUTER = "router"
     workflow = StateGraph(AgentGraphState)
 
-    # Add all nodes to the graph
-    # Student model nodes
-    # workflow.add_node(NODE_LOAD_STUDENT_DATA, load_student_data_node)
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_node)
-
-    # Conversational and curriculum management nodes
-    workflow.add_node(NODE_HOME_GREETING, conversation_handler_node)
-    # workflow.add_node(NODE_CURRICULUM_NAVIGATOR, determine_next_pedagogical_step_stub_node)
-
-    # Diagnostic nodes
-    # workflow.add_node(NODE_PROCESS_SPEAKING_SUBMISSION, process_speaking_submission_node)
-    # workflow.add_node(NODE_DIAGNOSE_SPEAKING, diagnose_speaking_stub_node)
-
-    # Feedback and output nodes
-    # workflow.add_node(NODE_GENERATE_SPEAKING_FEEDBACK, generate_speaking_feedback_stub_node)
-    # workflow.add_node(NODE_COMPILE_SESSION_NOTES, compile_session_notes_stub_node)
+    workflow.add_node(NODE_CONVERSATION_HANDLER, conversation_handler_node)
     workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_node)
-
-    # Legacy nodes (kept for backward compatibility)
-    # workflow.add_node(NODE_GENERATE_FEEDBACK, generate_feedback_stub_node)
-    # workflow.add_node(NODE_FEEDBACK_FOR_TEST_BUTTON, generate_test_button_feedback_stub_node)
-
-    # Welcome node
     workflow.add_node(NODE_HANDLE_WELCOME, handle_welcome_node)
     workflow.add_node(NODE_STUDENT_DATA, student_data_node)
     workflow.add_node(NODE_WELCOME_PROMPT, welcome_prompt_node)
-
-    # Add the router node to the graph
-    NODE_ROUTER = "router"
     workflow.add_node(NODE_ROUTER, router_node)
 
-    # Set the entry point to the router node
     workflow.set_entry_point(NODE_ROUTER)
 
-    # Add conditional edges from the router node to the appropriate starting nodes
     workflow.add_conditional_edges(
         NODE_ROUTER,
         initial_router_logic,
         {
-            # NODE_LOAD_STUDENT_DATA: NODE_LOAD_STUDENT_DATA,
-            # NODE_PROCESS_SPEAKING_SUBMISSION: NODE_PROCESS_SPEAKING_SUBMISSION,
-            # NODE_FEEDBACK_FOR_TEST_BUTTON: NODE_FEEDBACK_FOR_TEST_BUTTON,
-            NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME
+            NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
+            NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
         },
     )
 
+    # Welcome flow
     workflow.add_edge(NODE_HANDLE_WELCOME, NODE_STUDENT_DATA)
     workflow.add_edge(NODE_HANDLE_WELCOME, NODE_WELCOME_PROMPT)
-    workflow.add_edge(NODE_STUDENT_DATA, NODE_HOME_GREETING)
-    workflow.add_edge(NODE_WELCOME_PROMPT, NODE_HOME_GREETING)
-    workflow.add_edge(NODE_HOME_GREETING, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_STUDENT_DATA, NODE_CONVERSATION_HANDLER)
+    workflow.add_edge(NODE_WELCOME_PROMPT, NODE_CONVERSATION_HANDLER)
+
+    # Conversation flow
+    workflow.add_edge(NODE_CONVERSATION_HANDLER, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
-
-    # Define P1 Flow Edges (Home screen flow)
-    # workflow.add_edge(NODE_LOAD_STUDENT_DATA, NODE_HOME_GREETING)
-    # workflow.add_edge(NODE_HOME_GREETING, NODE_CURRICULUM_NAVIGATOR)
-    # workflow.add_edge(NODE_CURRICULUM_NAVIGATOR, NODE_FORMAT_FINAL_OUTPUT)
-    # workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
-
-    # Define P2 Submission Flow Edges (Speaking task submission flow)
-    # workflow.add_edge(NODE_PROCESS_SPEAKING_SUBMISSION, NODE_DIAGNOSE_SPEAKING)
-    # workflow.add_edge(NODE_DIAGNOSE_SPEAKING, NODE_GENERATE_SPEAKING_FEEDBACK)
-    # workflow.add_edge(NODE_GENERATE_SPEAKING_FEEDBACK, NODE_COMPILE_SESSION_NOTES)
-    # workflow.add_edge(NODE_COMPILE_SESSION_NOTES, NODE_FORMAT_FINAL_OUTPUT)
-    # Note: NODE_FORMAT_FINAL_OUTPUT -> NODE_SAVE_INTERACTION is already defined above
-
-    # Legacy edges for backward compatibility
-    # workflow.add_edge(NODE_FEEDBACK_FOR_TEST_BUTTON, NODE_SAVE_INTERACTION)
-    # workflow.add_edge(NODE_GENERATE_FEEDBACK, NODE_SAVE_INTERACTION)
-
-    # All paths end after saving the interaction
     workflow.add_edge(NODE_SAVE_INTERACTION, END)
 
     # Compile the graph

@@ -38,12 +38,15 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
 
         llm_instruction = state.get("llm_instruction", "")
         user_data = state.get("user_data", {})
+        transcript = state.get("transcript", "")
         logger.info(f"LLM instruction: {llm_instruction}")
         logger.info(f"User data: {user_data}")
+        logger.info(f"Transcript: {transcript}")
         user_prompt_text = f"""
         {llm_instruction}
         
         User data: {user_data}
+        User Query: {transcript}
         """
         full_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
 
