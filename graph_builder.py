@@ -14,6 +14,12 @@ from agents import (
     student_data_node,
     welcome_prompt_node,
     conversation_handler_node,
+    error_generator_node,
+    feedback_student_data_node,
+    query_document_node,
+    RAG_document_node,
+    feedback_planner_node,
+    feedback_generator_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,6 +31,12 @@ NODE_FORMAT_FINAL_OUTPUT = "format_final_output"
 NODE_HANDLE_WELCOME = "handle_welcome"
 NODE_STUDENT_DATA = "student_data"
 NODE_WELCOME_PROMPT = "welcome_prompt"
+NODE_ERROR_GENERATION = "error_generation"
+NODE_FEEDBACK_STUDENT_DATA = "feedback_student_data"
+NODE_QUERY_DOCUMENT = "query_document"
+NODE_RAG_DOCUMENT = "RAG_document"
+NODE_FEEDBACK_PLANNER = "feedback_planner"
+NODE_FEEDBACK_GENERATOR = "feedback_generator"
 
 
 # Define a router node (empty function that doesn't modify state)
@@ -44,6 +56,8 @@ async def initial_router_logic(state: AgentGraphState) -> str:
 
     if task_stage == "ROX_WELCOME_INIT":
         return NODE_HANDLE_WELCOME
+    if task_stage == "FEEDBACK_GENERATION":
+        return NODE_FEEDBACK_STUDENT_DATA
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -112,6 +126,12 @@ def build_graph():
     workflow.add_node(NODE_HANDLE_WELCOME, handle_welcome_node)
     workflow.add_node(NODE_STUDENT_DATA, student_data_node)
     workflow.add_node(NODE_WELCOME_PROMPT, welcome_prompt_node)
+    workflow.add_node(NODE_ERROR_GENERATION, error_generator_node)
+    workflow.add_node(NODE_FEEDBACK_STUDENT_DATA, feedback_student_data_node)
+    workflow.add_node(NODE_QUERY_DOCUMENT, query_document_node)
+    workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
+    workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
+    workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
     workflow.add_node(NODE_ROUTER, router_node)
 
     workflow.set_entry_point(NODE_ROUTER)
@@ -122,6 +142,7 @@ def build_graph():
         {
             NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
             NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
+            NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
         },
     )
 
@@ -135,6 +156,14 @@ def build_graph():
     workflow.add_edge(NODE_CONVERSATION_HANDLER, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
     workflow.add_edge(NODE_SAVE_INTERACTION, END)
+
+    # Feedback generation flow
+    workflow.add_edge(NODE_FEEDBACK_STUDENT_DATA, NODE_ERROR_GENERATION)
+    workflow.add_edge(NODE_ERROR_GENERATION, NODE_QUERY_DOCUMENT)
+    workflow.add_edge(NODE_QUERY_DOCUMENT, NODE_RAG_DOCUMENT)
+    workflow.add_edge(NODE_RAG_DOCUMENT, NODE_FEEDBACK_PLANNER)
+    workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
+    workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
 
     # Compile the graph
     app_graph = workflow.compile()

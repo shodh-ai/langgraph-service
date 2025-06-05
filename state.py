@@ -17,6 +17,7 @@ class AgentGraphState(TypedDict):
         InteractionRequestContext  # Current UI state and context information
     )
     chat_history: Optional[List[Dict[str, str]]]  # Previous conversation turns
+    question_stage: Optional[str]  # Current question stage
 
     # Student model and memory data
     student_memory_context: Optional[
@@ -51,3 +52,10 @@ class AgentGraphState(TypedDict):
         str
     ]  # Instruction for the LLM, typically from a prompt node
     user_data: Optional[Dict[str, Any]]  # User data, typically from the frontend
+
+    primary_error: Optional[str]  # Primary error from the LLM
+    explanation: Optional[str]  # Explanation for the primary error
+    document_data: Optional[List[Dict]]
+
+    prioritized_issue: Optional[str]
+    chosen_pedagogical_strategy: Optional[str]
