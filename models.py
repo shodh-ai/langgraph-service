@@ -35,6 +35,20 @@ class InteractionRequestContext(BaseModel):
     error_during_context_preparation: Optional[str] = None
     raw_frontend_event_data: Optional[Any] = None
 
+    estimated_english_comfort_level: Optional[str] = (
+        None  # e.g., "Beginner", "Intermediate"
+    )
+    initial_impression: Optional[str] = (
+        None  # Overall impression of student's language skills
+    )
+    speaking_strengths: Optional[str] = None  # Positive aspects of student's speaking
+    fluency: Optional[str] = None  # Assessment of speech flow and naturalness
+    grammar: Optional[str] = None  # Grammar issues and areas for improvement
+    vocabulary: Optional[str] = None  # Assessment of vocabulary usage
+    question_one_answer: Optional[str] = None  # Student's response to first question
+    question_two_answer: Optional[str] = None  # Student's response to second question
+    question_three_answer: Optional[str] = None  # Student's response to third question
+
 
 class InteractionRequest(BaseModel):
     """

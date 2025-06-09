@@ -33,6 +33,8 @@ from .query_document import query_document_node
 from .RAG_document import RAG_document_node
 from .feedback_palnner import feedback_planner_node
 from .feedback_generator import feedback_generator_node
+from .initial_report_generation import initial_report_generation_node
+from .pedagogy_generator import pedagogy_generator_node
 
 __all__ = [
     # Student model nodes
@@ -62,4 +64,6 @@ __all__ = [
     "RAG_document_node",
     "feedback_planner_node",
     "feedback_generator_node",
+    "initial_report_generation_node",
+    "pedagogy_generator_node",
 ]

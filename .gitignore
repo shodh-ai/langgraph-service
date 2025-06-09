@@ -70,3 +70,5 @@ main/
 
 .venv
 __pycache__
+
+data/pedagogy_chroma

@@ -22,7 +22,7 @@ def query_document_node(state: AgentGraphState) -> dict:
     logger.info(f"QueryDocumentNode: User Level: {user_level}")
     logger.info(f"QueryDocumentNode: Primary Error: {primary_error}")
 
-    df = pd.read_csv("data.csv")
+    df = pd.read_csv("data/feedback.csv")
     df = df[df["Task"] == question_stage]
     df = df[df["Proficiency"] == user_level]
     df = df[df["Error"] == primary_error]

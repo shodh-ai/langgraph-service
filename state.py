@@ -57,5 +57,15 @@ class AgentGraphState(TypedDict):
     explanation: Optional[str]  # Explanation for the primary error
     document_data: Optional[List[Dict]]
 
+    estimated_overall_english_comfort_level: Optional[str]
+    initial_impression: Optional[str]
+    speaking_strengths: Optional[str]
+    fluency: Optional[str]
+    grammar: Optional[str]
+    vocabulary: Optional[str]
+    question_one_answer: Optional[str]
+    question_two_answer: Optional[str]
+    question_three_answer: Optional[str]
+
     prioritized_issue: Optional[str]
     chosen_pedagogical_strategy: Optional[str]

@@ -20,6 +20,8 @@ from agents import (
     RAG_document_node,
     feedback_planner_node,
     feedback_generator_node,
+    initial_report_generation_node,
+    pedagogy_generator_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,8 @@ NODE_QUERY_DOCUMENT = "query_document"
 NODE_RAG_DOCUMENT = "RAG_document"
 NODE_FEEDBACK_PLANNER = "feedback_planner"
 NODE_FEEDBACK_GENERATOR = "feedback_generator"
+NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
+NODE_PEDAGOGY_GENERATION = "pedagogy_generation"
 
 
 # Define a router node (empty function that doesn't modify state)
@@ -58,6 +62,10 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         return NODE_HANDLE_WELCOME
     if task_stage == "FEEDBACK_GENERATION":
         return NODE_FEEDBACK_STUDENT_DATA
+    if task_stage == "INITIAL_REPORT_GENERATION":
+        return NODE_INITIAL_REPORT_GENERATION
+    if task_stage == "PEDAGOGY_GENERATION":
+        return NODE_PEDAGOGY_GENERATION
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -132,6 +140,8 @@ def build_graph():
     workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
     workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
     workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
+    workflow.add_node(NODE_INITIAL_REPORT_GENERATION, initial_report_generation_node)
+    workflow.add_node(NODE_PEDAGOGY_GENERATION, pedagogy_generator_node)
     workflow.add_node(NODE_ROUTER, router_node)
 
     workflow.set_entry_point(NODE_ROUTER)
@@ -143,6 +153,8 @@ def build_graph():
             NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
             NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
             NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
+            NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
+            NODE_PEDAGOGY_GENERATION: NODE_PEDAGOGY_GENERATION,
         },
     )
 
@@ -164,6 +176,16 @@ def build_graph():
     workflow.add_edge(NODE_RAG_DOCUMENT, NODE_FEEDBACK_PLANNER)
     workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
     workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
+
+    # Initial report generation flow
+    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
+    workflow.add_edge(NODE_SAVE_INTERACTION, END)
+
+    # Pedagogy generation flow
+    workflow.add_edge(NODE_PEDAGOGY_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
+    workflow.add_edge(NODE_SAVE_INTERACTION, END)
 
     # Compile the graph
     app_graph = workflow.compile()
