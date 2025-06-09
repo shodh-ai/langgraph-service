@@ -3,6 +3,7 @@ import logging
 from mem0 import Memory
 import os
 import logging
+import json # Added import
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,15 @@ class Mem0Memory:
         # Initialize mem0 with default settings
         # For multiple users, mem0 handles data isolation internally based on the `user_id` 
         # you pass to its methods, or you can create separate Memory instances per user if preferred.
-        self.mem0_instance = Memory()
+        # Default initialization for Mem0 Cloud, expects MEM0_API_KEY in environment.
+        try:
+            self.mem0_instance = Memory()
+            logger.info("Successfully initialized Mem0 client (should connect to Mem0 Cloud using MEM0_API_KEY).")
+        except Exception as e:
+            logger.error(f"Failed to initialize Mem0 client (Mem0 Cloud): {e}", exc_info=True)
+            # If initialization fails, self.mem0_instance might not be set or might be a broken object.
+            # Subsequent calls to its methods will likely fail.
+            raise  # Re-raise the exception to make it clear initialization failed.
         self.user_id_field = user_id_field # Field name to identify user in data
         logger.info(f"Mem0Memory initialized. Using '{user_id_field}' as user identifier.")
 
@@ -68,20 +77,23 @@ class Mem0Memory:
                 "interaction_history": []
             }
 
-    def add_interaction_to_history(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
+    def add_interaction(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
         """Adds an interaction summary to the user's history using mem0."""
-        logger.info(f"Mem0Memory: Attempting to add interaction for user_id: {user_id} with summary: {interaction_summary}")
+        logger.info(f"Mem0Memory: Attempting to add interaction (summary): {interaction_summary} for user_id: {user_id}")
         try:
             # We can add metadata to distinguish this memory, e.g., type: 'interaction'
             # The `user_id` is passed to associate the memory with the specific user.
+            interaction_content_str = json.dumps(interaction_summary)
+            formatted_message = [{"role": "user", "content": interaction_content_str}]
             self.mem0_instance.add(
-                data=interaction_summary, 
+                messages=formatted_message, 
                 user_id=user_id, 
                 metadata={'type': 'interaction', self.user_id_field: user_id}
             )
-            logger.info(f"Mem0Memory: Added interaction for {user_id}.")
+            logger.info(f"Mem0Memory: Successfully added interaction for user_id: {user_id}")
         except Exception as e:
-            logger.error(f"Mem0Memory: Error adding interaction for {user_id}: {e}")
+            logger.error(f"Mem0Memory: ERROR during self.mem0_instance.add() for user_id: {user_id}. Exception: {e}", exc_info=True)
+            raise # Re-raise the exception to allow higher-level handlers to catch it
 
     def update_student_profile(self, user_id: str, profile_data: Dict[str, Any]) -> None:
         """Updates or sets profile data for a student using mem0."""

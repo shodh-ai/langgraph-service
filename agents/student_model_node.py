@@ -35,6 +35,6 @@ async def save_interaction_node(state: AgentGraphState) -> dict:
     logger.debug(f"StudentModelNode: Interaction data: {interaction_data}")
     
     # Save to memory stub
-    memory_stub.add_interaction_to_history(user_id, interaction_data)
+    memory_stub.add_interaction(user_id, interaction_data)
     
     return {} # No direct state update needed

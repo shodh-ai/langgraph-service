@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv() # Load .env variables at the very beginning
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -15,6 +19,7 @@ from models import (
 
 # Configure basic logging for the application
 # This will set the root logger level and format, affecting all module loggers unless they are specifically configured otherwise.
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )

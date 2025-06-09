@@ -25,6 +25,13 @@ from .special_feedback_node import generate_test_button_feedback_stub_node
 from .handle_welcome import handle_welcome_node
 from .student_data import student_data_node
 from .welcome_prompt import welcome_prompt_node
+from .motivational_support_node import motivational_support_node
+from .progress_reporter_node import progress_reporter_node
+from .inactivity_prompt_node import inactivity_prompt_node # Added inactivity_prompt_node
+from .tech_support_acknowledger_node import tech_support_acknowledger_node # Added tech support node
+from .prepare_navigation_node import prepare_navigation_node # Added prepare navigation node
+from .session_wrap_up_node import session_wrap_up_node
+from .finalize_session_in_mem0_node import finalize_session_in_mem0_node # Added session wrap up node
 
 from .conversation_handler import conversation_handler_node
 from .error_generator import error_generator_node
@@ -51,6 +58,12 @@ __all__ = [
     # Legacy nodes (to be deprecated)
     "generate_feedback_stub_node",
     "generate_test_button_feedback_stub_node",
+    "inactivity_prompt_node", # Added inactivity_prompt_node
+    "tech_support_acknowledger_node", # Added tech support node
+    "prepare_navigation_node", # Added prepare navigation node
+    "session_wrap_up_node",
+    "finalize_session_in_mem0_node", # Added session wrap up node
+
     # Welcome node
     "handle_welcome_node",
     "welcome_prompt_node",

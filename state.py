@@ -53,6 +53,18 @@ class AgentGraphState(TypedDict):
     ]  # Instruction for the LLM, typically from a prompt node
     user_data: Optional[Dict[str, Any]]  # User data, typically from the frontend
 
+    navigation_tts: Optional[str]  # TTS from prepare_navigation_node
+    ui_actions_for_formatter: Optional[List[Dict[str, Any]]] # UI actions to be consolidated by formatter
+    conversational_tts: Optional[str]  # TTS from conversation_handler_node or similar
+
+    # For motivational support node
+    triggering_event_for_motivation: Optional[str] # Context for why motivational support is being triggered
+    next_node_hint_from_motivation: Optional[str] # Suggestion from motivational node for the next graph step
+
+    # For session wrap-up
+    session_is_ending: Optional[bool] = False
+    final_session_data_to_save: Optional[Dict[str, Any]] = None
+
     primary_error: Optional[str]  # Primary error from the LLM
     explanation: Optional[str]  # Explanation for the primary error
     document_data: Optional[List[Dict]]
