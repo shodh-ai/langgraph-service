@@ -31,16 +31,19 @@ class InteractionRequestContext(BaseModel):
         None  # e.g., data from a form field on P9 drill
     )
 
+    # Modelling System Context Fields
+    example_prompt_text: Optional[str] = None
+    student_goal_context: Optional[str] = None
+    student_confidence_context: Optional[str] = None
+    teacher_initial_impression: Optional[str] = None
+    student_struggle_context: Optional[str] = None
+    english_comfort_level: Optional[str] = None
+
     # Fields for error or raw data logging if needed during RPC/context transfer
     error_during_context_preparation: Optional[str] = None
     raw_frontend_event_data: Optional[Any] = None
 
-    estimated_english_comfort_level: Optional[str] = (
-        None  # e.g., "Beginner", "Intermediate"
-    )
-    initial_impression: Optional[str] = (
-        None  # Overall impression of student's language skills
-    )
+    # Student assessment fields (from previous local feedback-system state)
     speaking_strengths: Optional[str] = None  # Positive aspects of student's speaking
     fluency: Optional[str] = None  # Assessment of speech flow and naturalness
     grammar: Optional[str] = None  # Grammar issues and areas for improvement
@@ -48,6 +51,13 @@ class InteractionRequestContext(BaseModel):
     question_one_answer: Optional[str] = None  # Student's response to first question
     question_two_answer: Optional[str] = None  # Student's response to second question
     question_three_answer: Optional[str] = None  # Student's response to third question
+
+    # Teaching System Context Fields (from origin/feedback-system)
+    teacher_persona: Optional[str] = None
+    learning_objective_id: Optional[str] = None # Corresponds to LEARNING_OBJECTIVE in CSV for RAG
+    student_proficiency_level: Optional[str] = None # Corresponds to STUDENT_PROFICIENCY in CSV for RAG
+    current_student_affective_state: Optional[str] = None # Corresponds to STUDENT_AFFECTIVE_STATE in CSV for RAG
+    current_lesson_step_number: Optional[int] = None # 1-indexed step number for multi-step content
 
 
 class InteractionRequest(BaseModel):

@@ -43,6 +43,17 @@ from .feedback_generator import feedback_generator_node
 from .initial_report_generation import initial_report_generation_node
 from .pedagogy_generator import pedagogy_generator_node
 
+# Modelling System Nodes
+from .modelling_query_document_node import modelling_query_document_node
+from .modelling_RAG_document_node import modelling_RAG_document_node
+from .modelling_generator_node import modelling_generator_node
+from .modelling_output_formatter_node import modelling_output_formatter_node
+
+# Teaching System Nodes
+from .teaching_rag_node import teaching_rag_node
+from .teaching_delivery_node import teaching_delivery_node # This might become obsolete or repurposed
+from .teaching_generator_node import teaching_generator_node
+
 __all__ = [
     # Student model nodes
     "load_student_data_node",
@@ -79,4 +90,15 @@ __all__ = [
     "feedback_generator_node",
     "initial_report_generation_node",
     "pedagogy_generator_node",
+
+    # Modelling System Nodes
+    "modelling_query_document_node",
+    "modelling_RAG_document_node",
+    "modelling_generator_node",
+    "modelling_output_formatter_node",
+
+    # Teaching System Nodes
+    "teaching_rag_node",
+    "teaching_delivery_node",
+    "teaching_generator_node",
 ]

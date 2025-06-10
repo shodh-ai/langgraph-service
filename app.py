@@ -73,14 +73,22 @@ async def process_interaction_route(request_data: InteractionRequest):
         diagnosis_result=None,
         output_content=None,
         feedback_content=None,
-        estimated_overall_english_comfort_level=request_data.current_context.estimated_english_comfort_level,
-        initial_impression=request_data.current_context.initial_impression,
-        fluency=request_data.current_context.fluency,
-        grammar=request_data.current_context.grammar,
-        vocabulary=request_data.current_context.vocabulary,
-        question_one_answer=request_data.current_context.question_one_answer,
-        question_two_answer=request_data.current_context.question_two_answer,
-        question_three_answer=request_data.current_context.question_three_answer,
+        # Fields from local feedback-system branch
+        estimated_overall_english_comfort_level=context.estimated_english_comfort_level,
+        initial_impression=context.initial_impression,
+        fluency=context.fluency,
+        grammar=context.grammar,
+        vocabulary=context.vocabulary,
+        question_one_answer=context.question_one_answer,
+        question_two_answer=context.question_two_answer,
+        question_three_answer=context.question_three_answer,
+        # Explicitly add modelling context fields to the state
+        example_prompt_text=context.example_prompt_text,
+        student_goal_context=context.student_goal_context,
+        student_confidence_context=context.student_confidence_context,
+        teacher_initial_impression=context.teacher_initial_impression,
+        student_struggle_context=context.student_struggle_context,
+        english_comfort_level=context.english_comfort_level,
     )
 
     try:
@@ -170,8 +178,13 @@ async def process_interaction_route(request_data: InteractionRequest):
         return response
 
     except Exception as e:
+        logger.error(f"Exception in /process_interaction: {e}", exc_info=True)
+        # The following import and print_exc are for more verbose console output if needed, 
+        # but logger.error with exc_info=True should capture it well.
+        # import traceback
+        # traceback.print_exc()
         raise HTTPException(
-            status_code=500, detail="Internal Server Error during AI processing"
+            status_code=500, detail=f"Internal Server Error during AI processing: {str(e)}"
         )
 
 
