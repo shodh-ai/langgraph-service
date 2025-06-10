@@ -1,0 +1,404 @@
+{
+  "user_id": "test_user_123",
+  "transcript": "I'm having trouble organizing my TOEFL speaking response. I know what I want to say but I keep rambling and going off-topic.",
+  "current_context": {
+    "task_stage": "SCAFFOLDING_GENERATION"
+  },
+  "task_suggestion_llm_output": {
+    "task_suggestion_tts": "Harshit, I'm so excited for you to try out this new tool! It's designed to make organizing your thoughts much clearer and boost your confidence."
+  },
+  "output_content": {
+    "response": "Harshit, I'm so excited for you to try out this new tool! It's designed to make organizing your thoughts much clearer and boost your confidence.",
+    "ui_actions": [
+      {
+        "type": "text",
+        "content": "Hi Harshit! It's absolutely normal to feel a bit anxious when speaking under time constraints, especially when you're working on organizing your thoughts. But guess what? We have a fantastic strategy that's going to help you turn those anxious feelings into confident, well-structured responses!\n\nThis 'Opinion-Reason-Example' (ORE) Template is like your personal roadmap for every speaking task. It's specifically designed to help you organize your ideas logically, prevent rambling, and ensure you hit all the key points effectively. You'll start by brainstorming your thoughts, then follow a clear structure, and even have helpful sentence starters to guide you along the way. This comprehensive approach will build your confidence step by step, making the speaking process feel much smoother and more manageable."
+      },
+      {
+        "type": "scaffold",
+        "scaffold_type": "template",
+        "content": {
+          "pre_brainstorming": [
+            {
+              "step": 1,
+              "instruction": "Choose a side: Do you agree or disagree with the statement?"
+            },
+            {
+              "step": 2,
+              "instruction": "Reason 1: Write down one clear reason for your choice."
+            },
+            {
+              "step": 3,
+              "instruction": "Example 1: Write down a specific example that supports your reason."
+            },
+            {
+              "step": 4,
+              "instruction": "Reason 2: Write down a second clear reason for your choice."
+            },
+            {
+              "step": 5,
+              "instruction": "Example 2: Write down a specific example that supports your second reason."
+            }
+          ],
+          "speaking_template": {
+            "introduction": "I believe that [State your opinion clearly].",
+            "reason_1": "Firstly, [State your first reason clearly and concisely]. For example, [Provide a specific example to support your first reason].",
+            "reason_2": "Secondly, [State your second reason clearly and concisely]. To illustrate, [Provide a specific example to support your second reason].",
+            "conclusion": "Therefore, due to these reasons, I strongly believe that [Restate your opinion briefly]."
+          },
+          "sentence_starters": {
+            "opinion": [
+              "I strongly believe that...",
+              "In my opinion...",
+              "I think that...",
+              "Personally, I feel that..."
+            ],
+            "reason": [
+              "One reason is that...",
+              "Another important factor is...",
+              "Furthermore...",
+              "Moreover..."
+            ],
+            "example": [
+              "For example...",
+              "For instance...",
+              "A good example of this is...",
+              "To illustrate..."
+            ],
+            "conclusion": [
+              "Therefore...",
+              "In conclusion...",
+              "For these reasons...",
+              "As a result..."
+            ]
+          }
+        }
+      },
+      {
+        "type": "guidance",
+        "content": "Here's how to use this amazing template for your TOEFL speaking practice:\n\n1.  **Before you speak (Pre-Brainstorming):** When you get a speaking question, take a few seconds (or use your prep time if available) to quickly jot down notes following the 'Pre-Brainstorming' steps. This helps you get your core ideas down before you even open your mouth, preventing you from going off-topic. Don't worry about perfect sentences, just keywords!\n2.  **During your response (Speaking Template):** As you begin speaking, use the 'Speaking Template' as your guide. Start with your opinion, then transition smoothly to your first reason and its example, then your second reason and its example, and finally, a brief conclusion.\n3.  **Boost your flow (Sentence Starters):** Feeling stuck for words? The 'Sentence Starters' are there to give you a helpful nudge! Pick one that fits the part of your response you're on (opinion, reason, example, conclusion) and let it help you get started.\n\n**Why this will help you:** This structured approach will directly address your primary struggle. By outlining your thoughts *before* speaking, you'll feel more prepared and less likely to ramble. The clear template gives you a predictable path, making it easier to stay organized under time pressure. The sentence starters reduce the mental effort of finding the right words, freeing you to focus on delivering your message confidently. You've got this, Harshit!"
+      }
+    ]
+  },
+  "feedback_content": {
+    "response": "Harshit, I'm so excited for you to try out this new tool! It's designed to make organizing your thoughts much clearer and boost your confidence.",
+    "ui_actions": [
+      {
+        "type": "text",
+        "content": "Hi Harshit! It's absolutely normal to feel a bit anxious when speaking under time constraints, especially when you're working on organizing your thoughts. But guess what? We have a fantastic strategy that's going to help you turn those anxious feelings into confident, well-structured responses!\n\nThis 'Opinion-Reason-Example' (ORE) Template is like your personal roadmap for every speaking task. It's specifically designed to help you organize your ideas logically, prevent rambling, and ensure you hit all the key points effectively. You'll start by brainstorming your thoughts, then follow a clear structure, and even have helpful sentence starters to guide you along the way. This comprehensive approach will build your confidence step by step, making the speaking process feel much smoother and more manageable."
+      },
+      {
+        "type": "scaffold",
+        "scaffold_type": "template",
+        "content": {
+          "pre_brainstorming": [
+            {
+              "step": 1,
+              "instruction": "Choose a side: Do you agree or disagree with the statement?"
+            },
+            {
+              "step": 2,
+              "instruction": "Reason 1: Write down one clear reason for your choice."
+            },
+            {
+              "step": 3,
+              "instruction": "Example 1: Write down a specific example that supports your reason."
+            },
+            {
+              "step": 4,
+              "instruction": "Reason 2: Write down a second clear reason for your choice."
+            },
+            {
+              "step": 5,
+              "instruction": "Example 2: Write down a specific example that supports your second reason."
+            }
+          ],
+          "speaking_template": {
+            "introduction": "I believe that [State your opinion clearly].",
+            "reason_1": "Firstly, [State your first reason clearly and concisely]. For example, [Provide a specific example to support your first reason].",
+            "reason_2": "Secondly, [State your second reason clearly and concisely]. To illustrate, [Provide a specific example to support your second reason].",
+            "conclusion": "Therefore, due to these reasons, I strongly believe that [Restate your opinion briefly]."
+          },
+          "sentence_starters": {
+            "opinion": [
+              "I strongly believe that...",
+              "In my opinion...",
+              "I think that...",
+              "Personally, I feel that..."
+            ],
+            "reason": [
+              "One reason is that...",
+              "Another important factor is...",
+              "Furthermore...",
+              "Moreover..."
+            ],
+            "example": [
+              "For example...",
+              "For instance...",
+              "A good example of this is...",
+              "To illustrate..."
+            ],
+            "conclusion": [
+              "Therefore...",
+              "In conclusion...",
+              "For these reasons...",
+              "As a result..."
+            ]
+          }
+        }
+      },
+      {
+        "type": "guidance",
+        "content": "Here's how to use this amazing template for your TOEFL speaking practice:\n\n1.  **Before you speak (Pre-Brainstorming):** When you get a speaking question, take a few seconds (or use your prep time if available) to quickly jot down notes following the 'Pre-Brainstorming' steps. This helps you get your core ideas down before you even open your mouth, preventing you from going off-topic. Don't worry about perfect sentences, just keywords!\n2.  **During your response (Speaking Template):** As you begin speaking, use the 'Speaking Template' as your guide. Start with your opinion, then transition smoothly to your first reason and its example, then your second reason and its example, and finally, a brief conclusion.\n3.  **Boost your flow (Sentence Starters):** Feeling stuck for words? The 'Sentence Starters' are there to give you a helpful nudge! Pick one that fits the part of your response you're on (opinion, reason, example, conclusion) and let it help you get started.\n\n**Why this will help you:** This structured approach will directly address your primary struggle. By outlining your thoughts *before* speaking, you'll feel more prepared and less likely to ramble. The clear template gives you a predictable path, making it easier to stay organized under time pressure. The sentence starters reduce the mental effort of finding the right words, freeing you to focus on delivering your message confidently. You've got this, Harshit!"
+      }
+    ]
+  },
+  "primary_struggle": "Difficulty organizing and structuring spoken responses, leading to rambling and going off-topic.",
+  "secondary_struggles": [
+    "Fluency challenges (uncontrolled and verbose delivery)",
+    "Confidence/anxiety factors (potential exacerbation of disorganization under pressure)"
+  ],
+  "learning_objective_id": "S_Q1_Structure",
+  "scaffolding_strategies": [
+    {
+      "Persona": "The Structuralist",
+      "Learning_Objective_Task": "Speaking Fluently for TOEFL Speaking Question 1 (Independent Task - e.g., giving an opinion)",
+      "Student_Goal_Context": "Great to meet you too! My main goal is to score at least 105 on the TOEFL. I'm especially focused on the speaking and writing sections since I need strong scores for my graduate school applications.",
+      "Student_Confidence_Context": "I feel fairly confident overall. I can understand lectures and academic texts pretty well, but I still want to polish my writing and make sure my speaking sounds more natural and fluent, especially under time pressure.",
+      "Student_Attitude_Context": "I feel okay about it. I know I still have some weak spots, but I think with regular practice and some support, I can definitely reach my target score. I'm trying to stay positive.",
+      "English_Comfort_Level": "Beginner",
+      "Teacher_Initial_Impression": "Needs Strategic Refinement for Test",
+      "Specific_Struggle_Point": "Student starts speaking but hesitates frequently after the first few words, using many filler words like 'um' and 'uh'.",
+      "reasoning_for_scaffold_choice": "Given the student's frequent hesitations and use of filler words, a structured template will provide a framework to organize their thoughts and reduce the need to search for words mid-sentence. This addresses the fluency issue directly by pre-planning the response.",
+      "scaffold_type_selected": "Detailed Paragraph Template",
+      "scaffold_content_delivered_type": "template",
+      "scaffold_content_delivered_name": "P-E-E-L Paragraph Template for TOEFL Speaking Q1",
+      "scaffold_content_delivered_content_json": "{\"fields\": [{\"label\": \"Point (Main Idea):\", \"placeholder\": \"State your opinion clearly and concisely. (e.g., I believe that... / In my opinion...)\"}, {\"label\": \"Elaboration (Explanation):\", \"placeholder\": \"Explain WHY you hold this opinion. Provide reasoning and background. (e.g., This is because... / The reason I say this is...)\"}, {\"label\": \"Example (Specific Instance):\", \"placeholder\": \"Give a specific example or personal experience that supports your opinion. (e.g., For example... / A good example of this is... / I remember when...)\"}, {\"label\": \"Link (Connect back to the Point):\", \"placeholder\": \"Briefly restate your opinion in light of the example. (e.g., Therefore... / That's why I think... / As a result...)\"}]}",
+      "scaffold_delivery_script": "Alright, let's tackle those hesitations head-on. We're going to use a structured template to pre-plan your response. This will give you a clear roadmap and reduce the 'umms' and 'uhhs'. I call it the P-E-E-L method: Point, Elaboration, Example, Link. Think of it as building a solid argument, one brick at a time.",
+      "guidance_on_use_script": "Before you start speaking, take a few seconds to jot down keywords or phrases for each section of the template. Don't write full sentences, just enough to remind you of your ideas. Then, when the timer starts, follow the template step-by-step. Focus on delivering each section clearly and concisely. Remember, clarity trumps complexity.",
+      "monitoring_and_immediate_followup": "I'll be listening closely for how well you adhere to the template. If you still struggle with hesitations, I'll provide targeted feedback on which section is causing the most trouble and suggest specific sentence starters for that part. If you use the template effectively, we'll move on to practicing with different topics and focusing on varying your vocabulary.",
+      "fading_strategy_next_step": "In the next iteration, we'll remove the explicit labels (Point, Elaboration, etc.) from the template, leaving only the placeholder prompts. This will encourage you to internalize the structure without relying on the visual cues. Eventually, the goal is to eliminate the written template altogether, relying solely on your mental framework.",
+      "affective_state_adaptation_notes": "Given the student's 'okay' attitude and desire for support, I'll present the template as a helpful tool rather than a rigid constraint. I'll emphasize that it's a temporary aid to build confidence and fluency, not a permanent crutch. The tone will be direct but encouraging, focusing on practical steps and achievable goals."
+    },
+    {
+      "Persona": "The Structuralist",
+      "Learning_Objective_Task": "Speaking Fluently for TOEFL Speaking Question 1 (Independent Task - e.g., giving an opinion)",
+      "Student_Goal_Context": "Great to meet you too! My main goal is to score at least 105 on the TOEFL. I'm especially focused on the speaking and writing sections since I need strong scores for my graduate school applications.",
+      "Student_Confidence_Context": "I feel fairly confident overall. I can understand lectures and academic texts pretty well, but I still want to polish my writing and make sure my speaking sounds more natural and fluent, especially under time pressure.",
+      "Student_Attitude_Context": "I feel okay about it. I know I still have some weak spots, but I think with regular practice and some support, I can definitely reach my target score. I'm trying to stay positive.",
+      "English_Comfort_Level": "Beginner",
+      "Teacher_Initial_Impression": "Needs Confidence Building & Practice",
+      "Specific_Struggle_Point": "Student starts speaking but hesitates frequently after the first few words, using many filler words like 'um' and 'uh'.",
+      "reasoning_for_scaffold_choice": "Given the student's frequent hesitations and use of filler words, a structured template will provide a framework to organize their thoughts and reduce the need to search for what to say next. This addresses the fluency issue directly by providing a predictable structure to follow.",
+      "scaffold_type_selected": "Detailed Paragraph Template",
+      "scaffold_content_delivered_type": "template",
+      "scaffold_content_delivered_name": "Opinion-Reason-Example-Summary (ORES) Template",
+      "scaffold_content_delivered_content_json": "{\"fields\": [{\"label\": \"Opinion Statement:\", \"placeholder\": \"I believe that... / In my opinion...\"}, {\"label\": \"Reason 1:\", \"placeholder\": \"One reason for this is that...\"}, {\"label\": \"Example/Evidence for Reason 1:\", \"placeholder\": \"For example, I remember when... / A specific instance of this is...\"}, {\"label\": \"Reason 2:\", \"placeholder\": \"Another reason is that...\"}, {\"label\": \"Example/Evidence for Reason 2:\", \"placeholder\": \"For instance, I know someone who... / This reminds me of...\"}, {\"label\": \"Summary/Concluding Statement:\", \"placeholder\": \"Therefore, I strongly believe... / In conclusion...\"}]}",
+      "scaffold_delivery_script": "Alright, let's tackle those hesitations head-on. We're going to use a structured template to organize your thoughts *before* you start speaking. This will give you a clear roadmap and reduce the 'umms' and 'uhhs'. I call it the ORES template: Opinion, Reason, Example, Summary. It's a simple, logical structure.",
+      "guidance_on_use_script": "Before you start speaking, take a few seconds to jot down keywords or phrases for each section of the template. Don't write full sentences, just enough to remind you of your points. Focus on filling each section with specific details. The more specific your examples, the better. Practice using this template with different topics. Remember, clarity and structure are key.",
+      "monitoring_and_immediate_followup": "I'll be listening for how well you adhere to the template. If you still hesitate, I'll gently prompt you with the next section of the template (e.g., 'Okay, now give me an example for that reason.'). If you use it well, I'll ask you to reflect on how the template helped your fluency and clarity.",
+      "fading_strategy_next_step": "In the next practice session, I'll provide a *partially* filled template, removing some of the prompts (e.g., only providing 'Reason 1:' and 'Example/Evidence for Reason 2:'). This will encourage the student to recall the structure independently while still providing some support.",
+      "affective_state_adaptation_notes": "Given the student's 'okay' attitude and beginner comfort level, I'll present the template in a very straightforward and non-intimidating manner. I'll emphasize that it's a tool to *help* them, not a rigid rule to follow. I'll also offer positive reinforcement for any effort to use the template, even if the execution isn't perfect initially."
+    },
+    {
+      "Persona": "The Structuralist",
+      "Learning_Objective_Task": "Speaking Fluently for TOEFL Speaking Question 1 (Independent Task - e.g., giving an opinion)",
+      "Student_Goal_Context": "Great to meet you too! My main goal is to score at least 105 on the TOEFL. I'm especially focused on the speaking and writing sections since I need strong scores for my graduate school applications.",
+      "Student_Confidence_Context": "I feel fairly confident overall. I can understand lectures and academic texts pretty well, but I still want to polish my writing and make sure my speaking sounds more natural and fluent, especially under time pressure.",
+      "Student_Attitude_Context": "I'm honestly a bit nervous. It feels like a big challenge, especially because of the time limits and pressure. But I'm motivated to put in the work and improve\u2014I just need some guidance and practice.",
+      "English_Comfort_Level": "Beginner",
+      "Teacher_Initial_Impression": "Needs Skill-Specific Drills",
+      "Specific_Struggle_Point": "Student starts speaking but hesitates frequently after the first few words, using many filler words like 'um' and 'uh'.",
+      "reasoning_for_scaffold_choice": "Given the student's frequent hesitations and use of filler words, a structured template will provide a framework to organize their thoughts and reduce the need to search for what to say next. This addresses the fluency issue directly by providing a pre-planned structure.",
+      "scaffold_type_selected": "Detailed Speaking Template with Sentence Starters",
+      "scaffold_content_delivered_type": "template",
+      "scaffold_content_delivered_name": "Opinion-Reason-Example (ORE) Template",
+      "scaffold_content_delivered_content_json": "{\"fields\": [{\"label\": \"Opinion Statement:\", \"placeholder\": \"State your opinion clearly. (e.g., I believe that... / In my opinion... / I think...)\", \"sentence_starters\": [\"I believe that...\", \"In my opinion...\", \"I think...\", \"Personally, I feel that...\"]}, {\"label\": \"Reason 1:\", \"placeholder\": \"Provide a reason to support your opinion. (e.g., One reason is that... / This is because... / The main reason is...)\", \"sentence_starters\": [\"One reason is that...\", \"This is because...\", \"The main reason is...\", \"A significant reason is...\"]}, {\"label\": \"Example/Explanation:\", \"placeholder\": \"Give a specific example or explanation to illustrate your reason. (e.g., For example... / For instance... / To illustrate this...)\", \"sentence_starters\": [\"For example...\", \"For instance...\", \"To illustrate this...\", \"A good example of this is...\"]}, {\"label\": \"Reason 2 (Optional):\", \"placeholder\": \"Provide a second reason to support your opinion. (e.g., Another reason is... / Furthermore... / In addition...)\", \"sentence_starters\": [\"Another reason is...\", \"Furthermore...\", \"In addition...\", \"Moreover...\"]}, {\"label\": \"Example/Explanation 2 (Optional):\", \"placeholder\": \"Give a specific example or explanation to illustrate your second reason. (e.g., For example... / For instance... / To illustrate this...)\", \"sentence_starters\": [\"For example...\", \"For instance...\", \"To illustrate this...\", \"A specific instance of this is...\"]}]}",
+      "scaffold_delivery_script": "Alright, let's tackle this fluency issue head-on. We're going to use a structured template to organize your thoughts *before* you start speaking. This will give you a clear roadmap and reduce those 'um's and 'uh's. I call it the Opinion-Reason-Example (ORE) Template. It's simple, but powerful. We'll fill it out *before* you speak.",
+      "guidance_on_use_script": "Before the timer starts, quickly jot down keywords or phrases for each section of the template based on the question. Focus on clarity, not perfection. Then, when the timer begins, use the sentence starters provided as a springboard to expand on your notes. Don't deviate from the structure. Stick to the plan. The goal is to speak smoothly and logically, not to be perfectly original.",
+      "monitoring_and_immediate_followup": "I will listen carefully to the student's response, noting where they adhere to the template and where they deviate or hesitate. If they still struggle, I'll provide specific feedback on which part of the template is causing difficulty and offer more targeted sentence starters or vocabulary. If they use it well, I'll ask them to reflect on how the template helped and what they found most useful.",
+      "fading_strategy_next_step": "In the next iteration, I will remove the sentence starters from the template, leaving only the labels (Opinion, Reason 1, Example, etc.). This will encourage the student to generate their own phrases while still maintaining the overall structure. Eventually, the template itself will be removed, and the student will be expected to internalize the ORE structure.",
+      "affective_state_adaptation_notes": "Given the student's nervousness, I will emphasize that this template is a tool to *reduce* pressure, not add to it. I'll frame it as a safety net and reassure them that it's okay to rely on it heavily at first. My tone will be direct but encouraging, focusing on the practical benefits of the structure."
+    },
+    {
+      "Persona": "The Structuralist",
+      "Learning_Objective_Task": "Speaking Fluently for TOEFL Speaking Question 1 (Independent Task - e.g., giving an opinion)",
+      "Student_Goal_Context": "Great to meet you too! My main goal is to score at least 105 on the TOEFL. I'm especially focused on the speaking and writing sections since I need strong scores for my graduate school applications.",
+      "Student_Confidence_Context": "I feel fairly confident overall. I can understand lectures and academic texts pretty well, but I still want to polish my writing and make sure my speaking sounds more natural and fluent, especially under time pressure.",
+      "Student_Attitude_Context": "I'm honestly a bit nervous. It feels like a big challenge, especially because of the time limits and pressure. But I'm motivated to put in the work and improve\u2014I just need some guidance and practice.",
+      "English_Comfort_Level": "Beginner",
+      "Teacher_Initial_Impression": "Needs Confidence Building & Practice",
+      "Specific_Struggle_Point": "Student starts speaking but hesitates frequently after the first few words, using many filler words like 'um' and 'uh'.",
+      "reasoning_for_scaffold_choice": "Given the student's frequent hesitations and use of filler words, a structured template will provide a framework to organize their thoughts and reduce the cognitive load during the speaking task. This approach directly addresses the fluency issue by providing a pre-planned structure to follow.",
+      "scaffold_type_selected": "Detailed Paragraph Template",
+      "scaffold_content_delivered_type": "template",
+      "scaffold_content_delivered_name": "Opinion-Reason-Example (ORE) Template",
+      "scaffold_content_delivered_content_json": "{\"fields\": [{\"label\": \"Opinion Statement:\", \"placeholder\": \"I believe that... / In my opinion... / I think that...\"}, {\"label\": \"Reason 1:\", \"placeholder\": \"One reason is that... / Firstly... / To begin with...\"}, {\"label\": \"Example 1 (Supporting Reason 1):\", \"placeholder\": \"For example... / For instance... / A good illustration of this is...\"}, {\"label\": \"Reason 2:\", \"placeholder\": \"Another reason is that... / Secondly... / Furthermore...\"}, {\"label\": \"Example 2 (Supporting Reason 2):\", \"placeholder\": \"For example... / For instance... / A good illustration of this is...\"}, {\"label\": \"Concluding Statement:\", \"placeholder\": \"Therefore... / In conclusion... / For these reasons...\"}]}",
+      "scaffold_delivery_script": "Alright, let's tackle this fluency issue head-on. We're going to use a structured template to organize your thoughts *before* you start speaking. This will give you a clear roadmap and reduce those 'um's and 'uh's. I call it the Opinion-Reason-Example (ORE) Template. It's straightforward and effective.",
+      "guidance_on_use_script": "Before you start speaking, take a few seconds to jot down brief notes in each section of the template. Just keywords or phrases \u2013 don't write full sentences yet. Focus on clear, logical reasons and specific examples that support your opinion. Then, when the timer starts, use these notes as your guide. Stick to the template; don't deviate. This is about structure and clarity, not creativity, at this stage.",
+      "monitoring_and_immediate_followup": "I'll be listening carefully for how well you adhere to the template. If you still hesitate significantly, I'll interrupt and prompt you to refer back to a specific section of the template. If you use it well, I'll provide positive reinforcement and move on to practicing with different topics, still using the template.",
+      "fading_strategy_next_step": "In the next iteration, we'll remove the explicit labels ('Reason 1', 'Example 1', etc.) from the template, leaving only the placeholders. This will encourage the student to internalize the structure without relying on the crutch of the labels. We'll also reduce the prep time slightly to encourage quicker thinking within the framework.",
+      "affective_state_adaptation_notes": "Given the student's nervousness and beginner level, I'll emphasize that this template is a tool to *reduce* pressure, not increase it. I'll frame it as a safety net and a way to build confidence. My tone will be direct but encouraging, focusing on the practical benefits of the structure. I will also explicitly state that it is okay to make mistakes and that the goal is to improve gradually."
+    },
+    {
+      "Persona": "The Structuralist",
+      "Learning_Objective_Task": "Speaking Fluently for TOEFL Speaking Question 1 (Independent Task - e.g., giving an opinion)",
+      "Student_Goal_Context": "Great to meet you too! My main goal is to score at least 105 on the TOEFL. I'm especially focused on the speaking and writing sections since I need strong scores for my graduate school applications.",
+      "Student_Confidence_Context": "I feel fairly confident overall. I can understand lectures and academic texts pretty well, but I still want to polish my writing and make sure my speaking sounds more natural and fluent, especially under time pressure.",
+      "Student_Attitude_Context": "I'm honestly a bit nervous. It feels like a big challenge, especially because of the time limits and pressure. But I'm motivated to put in the work and improve\u2014I just need some guidance and practice.",
+      "English_Comfort_Level": "Beginner",
+      "Teacher_Initial_Impression": "Needs Strategic Refinement for Test",
+      "Specific_Struggle_Point": "Student starts speaking but hesitates frequently after the first few words, using many filler words like 'um' and 'uh'.",
+      "reasoning_for_scaffold_choice": "Given the student's frequent hesitations and use of filler words, a structured template will provide a framework to organize their thoughts and reduce the need to search for what to say next. This addresses the fluency issue directly by pre-planning the response.",
+      "scaffold_type_selected": "Detailed Speaking Template with Pre-Brainstorming",
+      "scaffold_content_delivered_type": "template",
+      "scaffold_content_delivered_name": "Opinion-Reason-Example (ORE) Template",
+      "scaffold_content_delivered_content_json": "{\"pre_brainstorming\": [{\"step\": 1, \"instruction\": \"Choose a side: Do you agree or disagree with the statement?\"}, {\"step\": 2, \"instruction\": \"Reason 1: Write down one clear reason for your choice.\"}, {\"step\": 3, \"instruction\": \"Example 1: Write down a specific example that supports your reason.\"}, {\"step\": 4, \"instruction\": \"Reason 2: Write down a second clear reason for your choice.\"}, {\"step\": 5, \"instruction\": \"Example 2: Write down a specific example that supports your second reason.\"}], \"speaking_template\": {\"introduction\": \"I believe that [State your opinion clearly].\", \"reason_1\": \"Firstly, [State your first reason clearly and concisely]. For example, [Provide a specific example to support your first reason].\", \"reason_2\": \"Secondly, [State your second reason clearly and concisely]. To illustrate, [Provide a specific example to support your second reason].\", \"conclusion\": \"Therefore, due to these reasons, I strongly believe that [Restate your opinion briefly].\"}, \"sentence_starters\": {\"opinion\": [\"I strongly believe that...\", \"In my opinion...\", \"I think that...\", \"Personally, I feel that...\"], \"reason\": [\"One reason is that...\", \"Another important factor is...\", \"Furthermore...\", \"Moreover...\"], \"example\": [\"For example...\", \"For instance...\", \"A good example of this is...\", \"To illustrate...\"], \"conclusion\": [\"Therefore...\", \"In conclusion...\", \"For these reasons...\", \"As a result...\"]}}",
+      "scaffold_delivery_script": "Alright, let's tackle this hesitation issue head-on. We're going to use a structured template to organize your thoughts *before* you start speaking. This will give you a roadmap and reduce those 'um's and 'uh's. First, we'll do a quick pre-brainstorming exercise. Then, we'll use the Opinion-Reason-Example (ORE) template to structure your response. I've also included some sentence starters to help you get going. Remember, clarity and organization are key.",
+      "guidance_on_use_script": "Before you start speaking, take 15-20 seconds to quickly fill in the pre-brainstorming section. Jot down your opinion, two reasons, and two examples. Then, use the ORE template and the sentence starters to guide your response. Focus on speaking clearly and concisely. Don't worry about being perfect; just follow the structure. The goal is to fill the template with your own ideas, not to read it word-for-word. Practice saying each section aloud a few times before recording your full response.",
+      "monitoring_and_immediate_followup": "I will listen carefully to the student's response, noting where they adhere to the template and where they deviate or hesitate. If they still struggle, I'll ask targeted questions like, 'Did you use the pre-brainstorming section effectively?' or 'Which part of the template did you find most challenging?' If they use it well, I'll provide positive reinforcement and move on to refining their examples or delivery.",
+      "fading_strategy_next_step": "In the next iteration, I would remove the sentence starters and only provide the basic ORE template structure (Opinion, Reason 1, Example 1, Reason 2, Example 2, Conclusion). The student would then be responsible for generating their own introductory phrases and transitions, relying on the underlying structure they've practiced.",
+      "affective_state_adaptation_notes": "Given the student's nervousness and beginner level, I'll emphasize that this is a tool to *help* them, not a rigid script to memorize. I'll use a calm and encouraging tone, reminding them that practice and structure will build confidence. I will also reassure them that it's okay to make mistakes and that the goal is progress, not perfection. The template is designed to reduce anxiety by providing a clear path forward."
+    }
+  ],
+  "selected_scaffold_type": "Detailed Speaking Template with Pre-Brainstorming",
+  "scaffold_adaptation_plan": "This scaffold is ideal for Harshit because it directly addresses his primary struggle of difficulty organizing and structuring spoken responses, which leads to rambling. The 'pre-brainstorming' section will help him mentally outline his thoughts before speaking, preventing him from going off-topic. The clear 'speaking template' provides a rigid structure to follow, ensuring a well-organized response. Furthermore, the 'sentence starters' are crucial for Harshit's low confidence and anxiety, as they reduce the cognitive load during the speaking phase, allowing him to focus on delivering his ideas fluently rather than searching for words or phrases. This comprehensive approach will help him build confidence and improve his ability to provide structured responses within time constraints.",
+  "scaffold_content_type": "template",
+  "scaffold_content_name": "Opinion-Reason-Example (ORE) Template with Pre-Speaking Planner and Sentence Starters",
+  "scaffold_content": {
+    "pre_brainstorming": [
+      {
+        "step": 1,
+        "instruction": "Choose a side: Do you agree or disagree with the statement?"
+      },
+      {
+        "step": 2,
+        "instruction": "Reason 1: Write down one clear reason for your choice."
+      },
+      {
+        "step": 3,
+        "instruction": "Example 1: Write down a specific example that supports your reason."
+      },
+      {
+        "step": 4,
+        "instruction": "Reason 2: Write down a second clear reason for your choice."
+      },
+      {
+        "step": 5,
+        "instruction": "Example 2: Write down a specific example that supports your second reason."
+      }
+    ],
+    "speaking_template": {
+      "introduction": "I believe that [State your opinion clearly].",
+      "reason_1": "Firstly, [State your first reason clearly and concisely]. For example, [Provide a specific example to support your first reason].",
+      "reason_2": "Secondly, [State your second reason clearly and concisely]. To illustrate, [Provide a specific example to support your second reason].",
+      "conclusion": "Therefore, due to these reasons, I strongly believe that [Restate your opinion briefly]."
+    },
+    "sentence_starters": {
+      "opinion": [
+        "I strongly believe that...",
+        "In my opinion...",
+        "I think that...",
+        "Personally, I feel that..."
+      ],
+      "reason": [
+        "One reason is that...",
+        "Another important factor is...",
+        "Furthermore...",
+        "Moreover..."
+      ],
+      "example": [
+        "For example...",
+        "For instance...",
+        "A good example of this is...",
+        "To illustrate..."
+      ],
+      "conclusion": [
+        "Therefore...",
+        "In conclusion...",
+        "For these reasons...",
+        "As a result..."
+      ]
+    }
+  },
+  "scaffolding_output": {
+    "text_for_tts": "Harshit, I'm so excited for you to try out this new tool! It's designed to make organizing your thoughts much clearer and boost your confidence.",
+    "ui_components": [
+      {
+        "type": "text",
+        "content": "Hi Harshit! It's absolutely normal to feel a bit anxious when speaking under time constraints, especially when you're working on organizing your thoughts. But guess what? We have a fantastic strategy that's going to help you turn those anxious feelings into confident, well-structured responses!\n\nThis 'Opinion-Reason-Example' (ORE) Template is like your personal roadmap for every speaking task. It's specifically designed to help you organize your ideas logically, prevent rambling, and ensure you hit all the key points effectively. You'll start by brainstorming your thoughts, then follow a clear structure, and even have helpful sentence starters to guide you along the way. This comprehensive approach will build your confidence step by step, making the speaking process feel much smoother and more manageable."
+      },
+      {
+        "type": "scaffold",
+        "scaffold_type": "template",
+        "content": {
+          "pre_brainstorming": [
+            {
+              "step": 1,
+              "instruction": "Choose a side: Do you agree or disagree with the statement?"
+            },
+            {
+              "step": 2,
+              "instruction": "Reason 1: Write down one clear reason for your choice."
+            },
+            {
+              "step": 3,
+              "instruction": "Example 1: Write down a specific example that supports your reason."
+            },
+            {
+              "step": 4,
+              "instruction": "Reason 2: Write down a second clear reason for your choice."
+            },
+            {
+              "step": 5,
+              "instruction": "Example 2: Write down a specific example that supports your second reason."
+            }
+          ],
+          "speaking_template": {
+            "introduction": "I believe that [State your opinion clearly].",
+            "reason_1": "Firstly, [State your first reason clearly and concisely]. For example, [Provide a specific example to support your first reason].",
+            "reason_2": "Secondly, [State your second reason clearly and concisely]. To illustrate, [Provide a specific example to support your second reason].",
+            "conclusion": "Therefore, due to these reasons, I strongly believe that [Restate your opinion briefly]."
+          },
+          "sentence_starters": {
+            "opinion": [
+              "I strongly believe that...",
+              "In my opinion...",
+              "I think that...",
+              "Personally, I feel that..."
+            ],
+            "reason": [
+              "One reason is that...",
+              "Another important factor is...",
+              "Furthermore...",
+              "Moreover..."
+            ],
+            "example": [
+              "For example...",
+              "For instance...",
+              "A good example of this is...",
+              "To illustrate..."
+            ],
+            "conclusion": [
+              "Therefore...",
+              "In conclusion...",
+              "For these reasons...",
+              "As a result..."
+            ]
+          }
+        }
+      },
+      {
+        "type": "guidance",
+        "content": "Here's how to use this amazing template for your TOEFL speaking practice:\n\n1.  **Before you speak (Pre-Brainstorming):** When you get a speaking question, take a few seconds (or use your prep time if available) to quickly jot down notes following the 'Pre-Brainstorming' steps. This helps you get your core ideas down before you even open your mouth, preventing you from going off-topic. Don't worry about perfect sentences, just keywords!\n2.  **During your response (Speaking Template):** As you begin speaking, use the 'Speaking Template' as your guide. Start with your opinion, then transition smoothly to your first reason and its example, then your second reason and its example, and finally, a brief conclusion.\n3.  **Boost your flow (Sentence Starters):** Feeling stuck for words? The 'Sentence Starters' are there to give you a helpful nudge! Pick one that fits the part of your response you're on (opinion, reason, example, conclusion) and let it help you get started.\n\n**Why this will help you:** This structured approach will directly address your primary struggle. By outlining your thoughts *before* speaking, you'll feel more prepared and less likely to ramble. The clear template gives you a predictable path, making it easier to stay organized under time pressure. The sentence starters reduce the mental effort of finding the right words, freeing you to focus on delivering your message confidently. You've got this, Harshit!"
+      }
+    ]
+  },
+  "user_data": {
+    "name": "Harshit",
+    "level": "Beginner",
+    "goal": "Improve TOEFL speaking score",
+    "confidence": "Low confidence in speaking under time constraints",
+    "attitude": "Eager but anxious about performance"
+  }
+}

@@ -34,6 +34,13 @@ from .RAG_document import RAG_document_node
 from .feedback_palnner import feedback_planner_node
 from .feedback_generator import feedback_generator_node
 
+# Scaffolding nodes
+from .scaffolding_student_data import scaffolding_student_data_node
+from .struggle_analyzer import struggle_analyzer_node
+from .scaffolding_retriever import scaffolding_retriever_node
+from .scaffolding_planner import scaffolding_planner_node
+from .scaffolding_generator import scaffolding_generator_node
+
 __all__ = [
     # Student model nodes
     "load_student_data_node",
@@ -62,4 +69,10 @@ __all__ = [
     "RAG_document_node",
     "feedback_planner_node",
     "feedback_generator_node",
+    # Scaffolding nodes
+    "scaffolding_student_data_node",
+    "struggle_analyzer_node",
+    "scaffolding_retriever_node",
+    "scaffolding_planner_node",
+    "scaffolding_generator_node",
 ]
