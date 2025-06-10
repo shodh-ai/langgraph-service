@@ -73,6 +73,14 @@ async def process_interaction_route(request_data: InteractionRequest):
         diagnosis_result=None,
         output_content=None,
         feedback_content=None,
+        estimated_overall_english_comfort_level=request_data.current_context.estimated_english_comfort_level,
+        initial_impression=request_data.current_context.initial_impression,
+        fluency=request_data.current_context.fluency,
+        grammar=request_data.current_context.grammar,
+        vocabulary=request_data.current_context.vocabulary,
+        question_one_answer=request_data.current_context.question_one_answer,
+        question_two_answer=request_data.current_context.question_two_answer,
+        question_three_answer=request_data.current_context.question_three_answer,
     )
 
     try:
