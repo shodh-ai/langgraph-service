@@ -49,17 +49,30 @@ class AgentGraphState(TypedDict):
     ]  # To be deprecated in favor of output_content
 
     # Scaffolding-specific fields
-    primary_struggle: Optional[str]  # The primary struggle identified for the student
-    secondary_struggles: Optional[List[str]]  # Additional struggles identified
-    learning_objective_id: Optional[str]  # ID of the learning objective to focus on
-    scaffolding_strategies: Optional[List[Dict[str, Any]]]  # Retrieved scaffolding strategies
-    selected_scaffold_type: Optional[str]  # Type of scaffold selected by planner
+    primary_struggle: Optional[str]  # Main struggle identified for scaffolding
+    scaffolding_strategies: Optional[
+        List[Dict[str, Any]]
+    ]  # List of possible scaffolding strategies
+    selected_scaffold_type: Optional[str]  # Type of scaffold chosen for this interaction
     scaffold_adaptation_plan: Optional[str]  # Plan for adapting the scaffold
     scaffold_content_type: Optional[str]  # Type of content (template, bank, etc.)
     scaffold_content_name: Optional[str]  # Name of the scaffold content
-    scaffold_content: Optional[Dict[str, Any]]  # Actual scaffold content structure
-    scaffolding_output: Optional[Dict[str, Any]]  # Final scaffolding output with TTS and UI components
-    
+    scaffold_content: Optional[
+        Dict[str, Any]
+    ]  # The generated scaffolding content details
+    scaffolding_output: Optional[Dict[str, Any]]  # Formatted output for the UI
+
+    # Cowriting-specific fields
+    student_written_chunk: Optional[str]  # Current chunk of text written by student
+    student_articulated_thought: Optional[str]  # Student's verbalized thought about their writing
+    writing_task_context: Optional[Dict[str, str]]  # Details about the writing task section
+    cowriting_lo_focus: Optional[str]  # Learning objective focus for cowriting
+    student_comfort_level: Optional[str]  # Student's comfort with the task
+    student_affective_state: Optional[str]  # Student's current emotional/affective state
+    cowriting_strategies: Optional[List[Dict[str, Any]]]  # List of possible cowriting strategies
+    selected_cowriting_intervention: Optional[Dict[str, Any]]  # Selected intervention plan
+    cowriting_output: Optional[Dict[str, Any]]  # Formatted cowriting output for UI
+
     llm_instruction: Optional[
         str
     ]  # Instruction for the LLM, typically from a prompt node

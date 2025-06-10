@@ -15,18 +15,6 @@ def semantic_search_for_scaffolding(
     learning_objective_id: str,
     top_k: int = 5
 ) -> List[Dict[str, Any]]:
-    """
-    Perform semantic search on scaffolding strategies using embeddings.
-    
-    Args:
-        data_entries: List of scaffolding strategy entries
-        query: Search query based on student struggles
-        learning_objective_id: ID of the relevant learning objective
-        top_k: Number of top results to return
-        
-    Returns:
-        List of top_k relevant scaffolding strategies
-    """
     try:
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
