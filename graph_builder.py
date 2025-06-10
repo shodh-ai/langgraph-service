@@ -28,6 +28,15 @@ from agents import (
     RAG_document_node,
     feedback_planner_node,
     feedback_generator_node,
+    # Modelling System Nodes
+    modelling_query_document_node,
+    modelling_RAG_document_node,
+    modelling_generator_node,
+    modelling_output_formatter_node,
+    # Teaching System Nodes
+    teaching_rag_node,
+    teaching_delivery_node,
+    teaching_generator_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +62,16 @@ NODE_RAG_DOCUMENT = "RAG_document"
 NODE_FEEDBACK_PLANNER = "feedback_planner"
 NODE_FEEDBACK_GENERATOR = "feedback_generator"
 
+# Modelling System Node Names
+NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
+NODE_MODELLING_RAG_DOCUMENT = "modelling_RAG_document"
+NODE_MODELLING_GENERATOR = "modelling_generator"
+NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
+
+# Teaching System Node Names
+NODE_TEACHING_RAG = "teaching_RAG_node"
+NODE_TEACHING_DELIVERY = "teaching_delivery_node" # This might become obsolete or used for non-LLM paths
+NODE_TEACHING_GENERATOR = "teaching_generator_node" # New LLM-based teaching node
 
 # Define a router node (empty function that doesn't modify state)
 async def router_node(state: AgentGraphState) -> dict:
@@ -103,8 +122,14 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     if task_stage_from_context == "ROX_WELCOME_INIT":
 
         return NODE_HANDLE_WELCOME
-    if task_stage == "FEEDBACK_GENERATION":
+    if task_stage_from_context == "FEEDBACK_GENERATION": # Corrected to use task_stage_from_context
         return NODE_FEEDBACK_STUDENT_DATA
+    if task_stage_from_context == "MODELLING_ACTIVITY_REQUESTED":
+        logger.info(f"Task stage is MODELLING_ACTIVITY_REQUESTED. Routing to NODE_MODELLING_QUERY_DOCUMENT.")
+        return NODE_MODELLING_QUERY_DOCUMENT
+    if task_stage_from_context == "TEACHING_LESSON_REQUESTED": # New task stage for teaching
+        logger.info(f"Task stage is TEACHING_LESSON_REQUESTED. Routing to NODE_TEACHING_RAG.")
+        return NODE_TEACHING_RAG
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -235,6 +260,18 @@ def build_graph():
     workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
     workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
     workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
+
+    # Modelling System Nodes
+    workflow.add_node(NODE_MODELLING_QUERY_DOCUMENT, modelling_query_document_node)
+    workflow.add_node(NODE_MODELLING_RAG_DOCUMENT, modelling_RAG_document_node)
+    workflow.add_node(NODE_MODELLING_GENERATOR, modelling_generator_node)
+    workflow.add_node(NODE_MODELLING_OUTPUT_FORMATTER, modelling_output_formatter_node)
+
+    # Teaching System Nodes
+    workflow.add_node(NODE_TEACHING_RAG, teaching_rag_node)
+    workflow.add_node(NODE_TEACHING_DELIVERY, teaching_delivery_node) # This might become obsolete or used for non-LLM paths
+    workflow.add_node(NODE_TEACHING_GENERATOR, teaching_generator_node)
+
     workflow.add_node(NODE_ROUTER, router_node)
 
     workflow.set_entry_point(NODE_ROUTER)
@@ -253,6 +290,8 @@ def build_graph():
             NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
             NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
             NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
+            NODE_MODELLING_QUERY_DOCUMENT: NODE_MODELLING_QUERY_DOCUMENT, # Added modelling route
+            NODE_TEACHING_RAG: NODE_TEACHING_RAG, # Added teaching route
         },
     )
 
@@ -318,12 +357,6 @@ def build_graph():
     # Path after session data is finalized in Mem0
     workflow.add_edge(NODE_FINALIZE_SESSION_IN_MEM0, END)
 
-    # Compile the graph with the checkpointer
-    app = workflow.compile(checkpointer=memory_saver)
-    logger.info("LangGraph compiled successfully with MemorySaver checkpointer.")
-    return app
-    workflow.add_edge(NODE_SAVE_INTERACTION, END)
-
     # Feedback generation flow
     workflow.add_edge(NODE_FEEDBACK_STUDENT_DATA, NODE_ERROR_GENERATION)
     workflow.add_edge(NODE_ERROR_GENERATION, NODE_QUERY_DOCUMENT)
@@ -332,10 +365,25 @@ def build_graph():
     workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
     workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
 
-    # Compile the graph
-    app_graph = workflow.compile()
-    logger.info("LangGraph with flows built and compiled successfully.")
-    return app_graph
+    # Modelling system flow
+    workflow.add_edge(NODE_MODELLING_QUERY_DOCUMENT, NODE_MODELLING_RAG_DOCUMENT)
+    workflow.add_edge(NODE_MODELLING_RAG_DOCUMENT, NODE_MODELLING_GENERATOR)
+    workflow.add_edge(NODE_MODELLING_GENERATOR, NODE_MODELLING_OUTPUT_FORMATTER)
+    workflow.add_edge(NODE_MODELLING_OUTPUT_FORMATTER, NODE_FORMAT_FINAL_OUTPUT)
+
+    # Teaching System Edges (LLM-based flow)
+    workflow.add_edge(NODE_TEACHING_RAG, NODE_TEACHING_GENERATOR) # RAG output goes to the new generator
+    workflow.add_edge(NODE_TEACHING_GENERATOR, NODE_FORMAT_FINAL_OUTPUT) # Generator output goes to formatter
+    # The old teaching_delivery_node path is now bypassed for LLM-based teaching:
+    # workflow.add_edge(NODE_TEACHING_DELIVERY, NODE_FORMAT_FINAL_OUTPUT) # Connects to the common output path
+    # The line workflow.add_edge(NODE_SAVE_INTERACTION, END) was removed as NODE_SAVE_INTERACTION uses conditional edges that already handle routing to END.
+    # Compile the graph with the checkpointer
+    app = workflow.compile(checkpointer=memory_saver)
+    logger.info("LangGraph compiled successfully with MemorySaver checkpointer.")
+    return app
+
+
+
 
 
 # To test the graph building process (optional, can be run directly)

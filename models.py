@@ -31,9 +31,24 @@ class InteractionRequestContext(BaseModel):
         None  # e.g., data from a form field on P9 drill
     )
 
+    # Modelling System Context Fields
+    example_prompt_text: Optional[str] = None
+    student_goal_context: Optional[str] = None
+    student_confidence_context: Optional[str] = None
+    teacher_initial_impression: Optional[str] = None
+    student_struggle_context: Optional[str] = None
+    english_comfort_level: Optional[str] = None
+
     # Fields for error or raw data logging if needed during RPC/context transfer
     error_during_context_preparation: Optional[str] = None
     raw_frontend_event_data: Optional[Any] = None
+
+    # Teaching System Context Fields (relevant when task_stage is TEACHING_LESSON_REQUESTED)
+    teacher_persona: Optional[str] = None
+    learning_objective_id: Optional[str] = None # Corresponds to LEARNING_OBJECTIVE in CSV for RAG
+    student_proficiency_level: Optional[str] = None # Corresponds to STUDENT_PROFICIENCY in CSV for RAG
+    current_student_affective_state: Optional[str] = None # Corresponds to STUDENT_AFFECTIVE_STATE in CSV for RAG
+    current_lesson_step_number: Optional[int] = None # 1-indexed step number for multi-step content
 
 
 class InteractionRequest(BaseModel):

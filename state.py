@@ -2,7 +2,18 @@ from typing import TypedDict, List, Optional, Dict, Any, Union
 from models import InteractionRequestContext  # Import your Pydantic model
 
 
-class AgentGraphState(TypedDict):
+class AgentGraphState(TypedDict, total=False):
+    # Teaching System Specific State
+    teacher_persona: Optional[str]
+    learning_objective_id: Optional[str] # To match CSV's LEARNING_OBJECTIVE (e.g., SPK_GEN_FLU_001)
+    student_proficiency_level: Optional[str] # To match CSV's STUDENT_PROFICIENCY (e.g., Beginner)
+    current_student_affective_state: Optional[str] # To match CSV's STUDENT_AFFECTIVE_STATE (e.g., Frustration)
+    current_lesson_step_number: Optional[int] # 1-indexed, to select the specific part of the lesson
+
+    retrieved_teaching_row: Optional[Dict[str, Any]] # The full row from CSV, retrieved by RAG
+    
+    teaching_output_content: Optional[Dict[str, Any]] # Output from TeachingDeliveryNode, e.g., {"text_for_tts": "...", "ui_actions": [...]}
+
     # User and session identifiers
     user_id: str
     user_token: str
@@ -47,6 +58,17 @@ class AgentGraphState(TypedDict):
     feedback_content: Optional[
         Dict[str, Any]
     ]  # To be deprecated in favor of output_content
+
+    # Modelling System Data
+    modelling_document_data: Optional[List[Dict[str, Any]]] # Data from modelling_query_document_node
+    example_prompt_text: Optional[str]
+    student_goal_context: Optional[str]
+    student_confidence_context: Optional[str]
+    teacher_initial_impression: Optional[str]
+    student_struggle_context: Optional[str]
+    english_comfort_level: Optional[str]
+    intermediate_modelling_payload: Optional[Dict[str, Any]] # Payload from modelling_generator_node
+    modelling_output_content: Optional[Dict[str, Any]] # Payload from modelling_output_formatter_node
 
     llm_instruction: Optional[
         str
