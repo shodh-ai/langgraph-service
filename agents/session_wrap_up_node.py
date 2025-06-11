@@ -35,7 +35,7 @@ async def session_wrap_up_node(state: AgentGraphState) -> Dict[str, Any]:
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel(
-                "gemini-1.5-flash-latest",
+                "gemini-2.0-flash",
                 generation_config=GenerationConfig(response_mime_type="application/json"),
             )
             

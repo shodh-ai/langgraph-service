@@ -68,9 +68,9 @@ async def determine_next_pedagogical_step_stub_node(state: AgentGraphState) -> d
                 genai.configure(api_key=api_key)
                 logger.debug("TaskSuggestion: genai.configure() successful.")
                 
-                logger.debug(f"TaskSuggestion: Attempting to initialize GenerativeModel: gemini-2.5-flash-preview-05-20")
+                logger.debug(f"TaskSuggestion: Attempting to initialize GenerativeModel: gemini-2.0-flash")
                 model = genai.GenerativeModel(
-                    'gemini-2.5-flash-preview-05-20',
+                    'gemini-2.0-flash',
                     generation_config=GenerationConfig(response_mime_type="application/json")
                 )
                 logger.debug("TaskSuggestion: GenerativeModel initialized successfully.")

@@ -6,6 +6,7 @@ except ImportError:
     print("Warning: Could not import AgentGraphState from '..state'. Using a placeholder.")
     class AgentGraphState(dict): pass
 
+
 # Import the actual agent node functions for the new teaching flow
 from agents import (
     teaching_rag_node,
@@ -15,6 +16,10 @@ from agents import (
 # Define node names for clarity
 NODE_TEACHING_RAG = "teaching_RAG"
 NODE_TEACHING_GENERATOR = "teaching_generator"
+
+# Import the actual agent node functions for the teaching flow
+# The nodes deliver_lesson_step_node and process_student_qa_on_lesson_node
+# are not implemented. Using placeholders to allow the graph to build.
 
 def create_teaching_subgraph():
     """

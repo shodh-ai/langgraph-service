@@ -4,11 +4,12 @@ import logging
 import os
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
+from typing import Dict, AsyncIterator
 
 logger = logging.getLogger(__name__)
 
 
-async def conversation_handler_node(state: AgentGraphState) -> dict:
+async def conversation_handler_node(state: AgentGraphState) -> AsyncIterator[Dict]:
     logger.info(
         f"ConversationHandlerNode: Entry point activated for user {state.get('user_id', 'unknown_user')}"
     )
@@ -19,10 +20,10 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
         logger.debug("genai.configure() successful.")
 
         logger.debug(
-            f"Attempting to initialize GenerativeModel: gemini-2.5-flash-preview-05-20"
+            f"Attempting to initialize GenerativeModel: gemini-2.0-flash"
         )
         model = genai.GenerativeModel(
-            "gemini-2.5-flash-preview-05-20",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         logger.debug("GenerativeModel initialized successfully.")
@@ -45,10 +46,7 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
             # For generic conversation turns, build the prompt using the default system prompt
             system_prompt_text = """
             You are Rox, a friendly and encouraging AI guide.
-            Your output MUST be a JSON object with the following structure:
-            {{
-                "tts": "The text-to-speech for the message."
-            }}
+            Respond directly with the text that should be spoken for text-to-speech. Do NOT use JSON or any other special formatting.
             """
             # Construct prompt for general conversation using transcript
             user_prompt_text = f"""
@@ -60,52 +58,50 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
 
         logger.debug(f"Full prompt for LLM: {full_prompt}")
 
-        raw_llm_response_text = ""
         try:
-            logger.debug("Attempting model.generate_content_async()...")
-            response = await model.generate_content_async(full_prompt)
-            logger.debug("model.generate_content_async() successful.")
-            raw_llm_response_text = response.text
-            logger.info(f"Raw LLM Response: {raw_llm_response_text}")
+            logger.debug("Attempting model.generate_content_async(stream=True)...")
+            # Use stream=True for streaming responses
+            async_stream = await model.generate_content_async(full_prompt, stream=True)
+            logger.debug("model.generate_content_async(stream=True) call successful, iterating over stream...")
+            
+            streamed_something = False
+            async for chunk in async_stream:
+                if hasattr(chunk, 'text') and chunk.text:
+                    logger.debug(f"Streaming chunk text: {chunk.text}")
+                    yield {"streaming_text_chunk": chunk.text}
+                    streamed_something = True
+                else:
+                    # Log if a chunk doesn't have text, might indicate empty parts or metadata chunks
+                    logger.debug(f"Received a chunk without text or empty text: {chunk}")
+            
+            if not streamed_something:
+                logger.warning("LLM stream completed without yielding any text chunks.")
+                # Optionally yield a fallback message if nothing was streamed
+                # yield {"streaming_text_chunk": "I'm ready, but it seems I have no specific words for this moment!"}
+
         except Exception as gen_err:
             logger.error(
-                f"Error during model.generate_content_async(): {gen_err}", exc_info=True
+                f"Error during model.generate_content_async(stream=True): {gen_err}", exc_info=True
             )
-            fallback_tts = f"I'm having a little trouble thinking right now, but I'm here to help! (LLM Generation Error)"
+            fallback_tts_chunk = f"I'm having a little trouble thinking right now, but I'm here to help! (LLM Stream Error)"
             logger.info(
-                f"ConversationHandlerNode: Using fallback TTS due to generation error: {fallback_tts}"
+                f"ConversationHandlerNode: Yielding fallback TTS chunk due to stream generation error: {fallback_tts_chunk}"
             )
-            return {"conversational_tts": fallback_tts}
-
-        try:
-            llm_output_json = json.loads(raw_llm_response_text)
-            extracted_tts = llm_output_json.get(
-                "tts",
-                f"I seem to have misplaced my words! Let's try that again. (JSON Key Missing)",
-            )
-        except json.JSONDecodeError as json_err:
-            logger.error(
-                f"JSONDecodeError parsing LLM response. Error: {json_err}. Raw text: {raw_llm_response_text}"
-            )
-            extracted_tts = f"My thoughts got a bit jumbled! What were we saying? (JSON Parse Error)"
-        except Exception as parse_err:
-            logger.error(
-                f"Unexpected error parsing LLM response. Error: {parse_err}. Raw text: {raw_llm_response_text}"
-            )
-            extracted_tts = f"A tiny hiccup in our chat! Let's continue. (Unexpected Parse Error)"
-
-        logger.info(
-            f"ConversationHandlerNode: LLM-generated TTS: {extracted_tts}"
-        )
-        return {"conversational_tts": extracted_tts}
+            yield {"streaming_text_chunk": fallback_tts_chunk}
+        # No explicit final return needed for an async generator node that only yields state updates.
+        # If there were UI actions to yield *after* the stream, they would go here.
+        # For example: yield {"final_ui_actions": [...]} 
+        # For now, we are only streaming text from this node. 
 
     except Exception as e:
         logger.error(
             f"Outer error in ConversationHandlerNode (e.g., config, model init): {e}",
             exc_info=True,
         )
-        fallback_tts = f"Looks like I'm having a bit of trouble starting up. Let's try again in a moment. (LLM Setup Error)"
+        fallback_tts_chunk = f"Looks like I'm having a bit of trouble starting up. Let's try again in a moment. (LLM Setup Error)"
         logger.info(
-            f"ConversationHandlerNode: Using fallback TTS due to setup error: {fallback_tts}"
+            f"ConversationHandlerNode: Yielding fallback TTS chunk due to setup error: {fallback_tts_chunk}"
         )
-        return {"conversational_tts": fallback_tts}
+        yield {"streaming_text_chunk": fallback_tts_chunk}
+        # Ensure the generator actually finishes if an error occurs here, though yield should handle it.
+        return # Explicitly return to signify the end of the generator in this error path

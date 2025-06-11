@@ -41,7 +41,7 @@ async def teaching_generator_node(state: AgentGraphState) -> dict:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-latest",
+            model_name="gemini-2.0-flash",
             generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
         )
         logger.info("TeachingGeneratorNode: Gemini model configured successfully.")
