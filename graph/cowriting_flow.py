@@ -6,29 +6,45 @@ except ImportError:
     print("Warning: Could not import AgentGraphState from 'state'. Using a placeholder.")
     class AgentGraphState(dict): pass
 
-def placeholder_node_factory(node_name):
-    def placeholder_node(state: AgentGraphState) -> dict:
-        print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
-        return {f"{node_name}_status": "completed"}
-    return placeholder_node
+# Import the actual agent node functions
+from agents import (
+    cowriting_student_data_node,
+    cowriting_analyzer_node,
+    cowriting_retriever_node,
+    cowriting_planner_node,
+    cowriting_generator_node,
+)
 
-# Placeholders for cowriting agent nodes
-cowriting_entry_node = placeholder_node_factory("cowriting_entry_node")
-process_cowriting_prompt_node = placeholder_node_factory("process_cowriting_prompt_node")
-generate_cowritten_text_node = placeholder_node_factory("generate_cowritten_text_node")
+# Define node names for clarity
+NODE_COWRITING_STUDENT_DATA = "cowriting_student_data"
+NODE_COWRITING_ANALYZER = "cowriting_analyzer"
+NODE_COWRITING_RETRIEVER = "cowriting_retriever"
+NODE_COWRITING_PLANNER = "cowriting_planner"
+NODE_COWRITING_GENERATOR = "cowriting_generator"
 
 def create_cowriting_subgraph():
+    """
+    Creates a LangGraph subgraph for the cowriting flow.
+    This flow assists the student with their writing task through a series of analytical and generative steps.
+    """
     workflow = StateGraph(AgentGraphState)
 
-    workflow.add_node("cowriting_entry", cowriting_entry_node)
-    workflow.add_node("process_cowriting_prompt", process_cowriting_prompt_node)
-    workflow.add_node("generate_cowritten_text", generate_cowritten_text_node)
+    # Add nodes to the subgraph
+    workflow.add_node(NODE_COWRITING_STUDENT_DATA, cowriting_student_data_node)
+    workflow.add_node(NODE_COWRITING_ANALYZER, cowriting_analyzer_node)
+    workflow.add_node(NODE_COWRITING_RETRIEVER, cowriting_retriever_node)
+    workflow.add_node(NODE_COWRITING_PLANNER, cowriting_planner_node)
+    workflow.add_node(NODE_COWRITING_GENERATOR, cowriting_generator_node)
 
-    workflow.set_entry_point("cowriting_entry")
+    # Set the entry point for the subgraph
+    workflow.set_entry_point(NODE_COWRITING_STUDENT_DATA)
 
-    workflow.add_edge("cowriting_entry", "process_cowriting_prompt")
-    workflow.add_edge("process_cowriting_prompt", "generate_cowritten_text")
-    workflow.add_edge("generate_cowritten_text", END)
+    # Define the sequential flow
+    workflow.add_edge(NODE_COWRITING_STUDENT_DATA, NODE_COWRITING_ANALYZER)
+    workflow.add_edge(NODE_COWRITING_ANALYZER, NODE_COWRITING_RETRIEVER)
+    workflow.add_edge(NODE_COWRITING_RETRIEVER, NODE_COWRITING_PLANNER)
+    workflow.add_edge(NODE_COWRITING_PLANNER, NODE_COWRITING_GENERATOR)
+    workflow.add_edge(NODE_COWRITING_GENERATOR, END) # End of the cowriting subgraph
 
     return workflow.compile()
 
