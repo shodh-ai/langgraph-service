@@ -124,8 +124,8 @@ Ensure the value for `generated_modeling_and_think_aloud_sequence_json` is a val
     try:
         logger.info(f"ModellingGeneratorNode: Sending prompt to LLM (first 500 chars):\n{llm_prompt[:500]}...")
         model = genai.GenerativeModel(
-            # Using a capable model, e.g., gemini-1.5-flash or gemini-1.5-pro if available and needed for complexity
-            "gemini-1.5-flash-latest", 
+            # Using a capable model, e.g., gemini-2.0-flash or gemini-2.0-flash-exp if available and needed for complexity
+            "gemini-2.0-flash", 
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(llm_prompt) # Use async version if available

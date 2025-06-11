@@ -1,27 +1,22 @@
 from langgraph.graph import StateGraph, END
 
 try:
-    from ..state import AgentGraphState
+    from state import AgentGraphState
 except ImportError:
     print("Warning: Could not import AgentGraphState from '..state'. Using a placeholder.")
     class AgentGraphState(dict): pass
 
 # Import the actual agent node functions for the teaching flow
-try:
-    from ..agents import (
-        deliver_lesson_step_node,
-        process_student_qa_on_lesson_node,
-    )
-except ImportError as e:
-    print(f"Warning: Could not import agent nodes from ..agents: {e}. Using placeholders.")
-    def placeholder_node_factory(node_name):
-        def placeholder_node(state: AgentGraphState) -> dict:
-            print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
-            return {f"{node_name}_status": "completed"}
-        return placeholder_node
+# The nodes deliver_lesson_step_node and process_student_qa_on_lesson_node
+# are not implemented. Using placeholders to allow the graph to build.
+def placeholder_node_factory(node_name):
+    def placeholder_node(state: AgentGraphState) -> dict:
+        print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
+        return {f"{node_name}_status": "completed"}
+    return placeholder_node
 
-    deliver_lesson_step_node = placeholder_node_factory("deliver_lesson_step_node")
-    process_student_qa_on_lesson_node = placeholder_node_factory("process_student_qa_on_lesson_node")
+deliver_lesson_step_node = placeholder_node_factory("deliver_lesson_step_node")
+process_student_qa_on_lesson_node = placeholder_node_factory("process_student_qa_on_lesson_node")
 
 # Placeholder for the router function after QA
 def router_after_qa(state: AgentGraphState):

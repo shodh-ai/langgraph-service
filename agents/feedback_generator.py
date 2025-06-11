@@ -44,7 +44,7 @@ async def feedback_generator_node(state: AgentGraphState) -> dict:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.5-flash-preview-05-20",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = model.generate_content(prompt)

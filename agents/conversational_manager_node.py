@@ -56,9 +56,9 @@ async def handle_home_greeting_node(state: AgentGraphState) -> dict:
         genai.configure(api_key=api_key)
         logger.debug("genai.configure() successful.")
         
-        logger.debug(f"Attempting to initialize GenerativeModel: gemini-2.5-flash-preview-05-20")
+        logger.debug(f"Attempting to initialize GenerativeModel: gemini-2.0-flash")
         model = genai.GenerativeModel(
-            'gemini-2.5-flash-preview-05-20',
+            'gemini-2.0-flash',
             generation_config=GenerationConfig(
                 response_mime_type="application/json"
             )
