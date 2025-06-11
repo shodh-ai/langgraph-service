@@ -18,7 +18,7 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.5-flash-preview-05-20", # Consider making model name configurable
+            "gemini-2.0-flash", # Consider making model name configurable
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         

@@ -28,7 +28,7 @@ def cowriting_analyzer_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if api_key:
             try:
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-1.5-pro",
+                    model="gemini-2.0-flash",
                     convert_system_message_to_human=True,
                     temperature=0.2,
                 )

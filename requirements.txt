@@ -3,7 +3,7 @@ pydantic
 uvicorn[standard]
 gunicorn
 langchain
-langgraph
+langgraph>=0.0.50
 langsmith
 google-generativeai>=0.3.0
 python-dotenv
@@ -11,4 +11,9 @@ google-cloud-aiplatform
 mem0ai
 pandas>=1.0.0
 langchain-google-genai
+
 pytest-asyncio
+
+langchain-community
+chromadb
+
