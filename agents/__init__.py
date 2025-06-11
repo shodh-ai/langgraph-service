@@ -40,7 +40,13 @@ from .query_document import query_document_node
 from .RAG_document import RAG_document_node
 from .feedback_palnner import feedback_planner_node
 from .feedback_generator import feedback_generator_node
+from .scaffolding_student_data import scaffolding_student_data_node
+from .struggle_analyzer import struggle_analyzer_node
+from .scaffolding_retriever import scaffolding_retriever_node
+from .scaffolding_planner import scaffolding_planner_node
+from .scaffolding_generator import scaffolding_generator_node
 from .initial_report_generation import initial_report_generation_node
+from .error_generator import error_generator_node
 from .pedagogy_generator import pedagogy_generator_node
 
 # Modelling System Nodes
@@ -60,6 +66,13 @@ from .struggle_analyzer import struggle_analyzer_node
 from .scaffolding_retriever import scaffolding_retriever_node
 from .scaffolding_planner import scaffolding_planner_node
 from .scaffolding_generator import scaffolding_generator_node
+
+# Cowriting nodes
+from .cowriting_student_data import cowriting_student_data_node
+from .cowriting_analyzer import cowriting_analyzer_node
+from .cowriting_retriever import cowriting_retriever_node
+from .cowriting_planner import cowriting_planner_node
+from .cowriting_generator import cowriting_generator_node
 
 __all__ = [
     # Student model nodes
@@ -95,15 +108,26 @@ __all__ = [
     "RAG_document_node",
     "feedback_planner_node",
     "feedback_generator_node",
+    "scaffolding_student_data_node",
+    "struggle_analyzer_node",
 
     # Scaffolding nodes
     "scaffolding_student_data_node",
+    "struggle_analyzer_node",
     "struggle_analyzer_node",
     "scaffolding_retriever_node",
     "scaffolding_planner_node",
     "scaffolding_generator_node",
 
+    # Cowriting nodes
+    "cowriting_student_data_node",
+    "cowriting_analyzer_node",
+    "cowriting_retriever_node",
+    "cowriting_planner_node",
+    "cowriting_generator_node",
+
     "initial_report_generation_node",
+    "error_generator_node",
     "pedagogy_generator_node",
 
     # Modelling System Nodes

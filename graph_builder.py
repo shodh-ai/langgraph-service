@@ -13,6 +13,9 @@ from graph.feedback_flow import create_feedback_subgraph
 from graph.scaffolding_flow import create_scaffolding_subgraph
 from graph.modeling_flow import create_modeling_subgraph
 from graph.cowriting_flow import create_cowriting_subgraph
+from graph.pedagogy_flow import create_pedagogy_subgraph
+
+# Import shared agent node functions
 from agents import (
     save_interaction_node,
     format_final_output_for_client_node,
@@ -20,39 +23,33 @@ from agents import (
     student_data_node,
     welcome_prompt_node,
     conversation_handler_node,
-    motivational_support_node, # Added motivational_support_node
-    progress_reporter_node, # Added progress_reporter_node
-    inactivity_prompt_node, # Added inactivity_prompt_node
-    tech_support_acknowledger_node, # Added tech support node
-    prepare_navigation_node, # Added prepare_navigation_node
-    session_wrap_up_node, # Added session_wrap_up_node
-    finalize_session_in_mem0_node, # Added finalize_session_in_mem0_node
+    motivational_support_node,
+    progress_reporter_node,
+    inactivity_prompt_node,
+    tech_support_acknowledger_node,
+    prepare_navigation_node,
+    session_wrap_up_node,
+    finalize_session_in_mem0_node,
+    initial_report_generation_node,
     error_generator_node,
     feedback_student_data_node,
     query_document_node,
     RAG_document_node,
     feedback_planner_node,
     feedback_generator_node,
-
-    # Import the new scaffolding nodes
     scaffolding_student_data_node,
     struggle_analyzer_node,
     scaffolding_retriever_node,
     scaffolding_planner_node,
     scaffolding_generator_node,
-
-    initial_report_generation_node,
     pedagogy_generator_node,
-    # Modelling System Nodes
     modelling_query_document_node,
     modelling_RAG_document_node,
     modelling_generator_node,
     modelling_output_formatter_node,
-    # Teaching System Nodes
     teaching_rag_node,
     teaching_delivery_node,
     teaching_generator_node,
-
 )
 
 logger = logging.getLogger(__name__)
@@ -67,45 +64,40 @@ NODE_WELCOME_PROMPT = "welcome_prompt"
 NODE_MOTIVATIONAL_SUPPORT = "motivational_support" # Added motivational node name
 NODE_PROGRESS_REPORTER = "progress_reporter" # Added progress reporter node name
 NODE_INACTIVITY_PROMPT = "inactivity_prompt" # Added inactivity prompt node name
-NODE_TECH_SUPPORT_ACKNOWLEDGER = "tech_support_acknowledger" # Added tech support node name
-NODE_PREPARE_NAVIGATION = "prepare_navigation" # Added prepare navigation node name
-NODE_SESSION_WRAP_UP = "session_wrap_up" # Added session wrap up node name
-NODE_FINALIZE_SESSION_IN_MEM0 = "finalize_session_in_mem0" # Added finalize session in Mem0 node name
+NODE_TECH_SUPPORT_ACKNOWLEDGER = "tech_support_acknowledger"
+NODE_PREPARE_NAVIGATION = "prepare_navigation"
+NODE_SESSION_WRAP_UP = "session_wrap_up"
+NODE_FINALIZE_SESSION_IN_MEM0 = "finalize_session_in_mem0"
+NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
 NODE_ERROR_GENERATION = "error_generation"
 NODE_FEEDBACK_STUDENT_DATA = "feedback_student_data"
 NODE_QUERY_DOCUMENT = "query_document"
-NODE_RAG_DOCUMENT = "RAG_document"
+NODE_RAG_DOCUMENT = "rag_document"
 NODE_FEEDBACK_PLANNER = "feedback_planner"
 NODE_FEEDBACK_GENERATOR = "feedback_generator"
-NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
-NODE_PEDAGOGY_GENERATION = "pedagogy_generation"
-
-
-# Define node names for scaffolding system
 NODE_SCAFFOLDING_STUDENT_DATA = "scaffolding_student_data"
 NODE_STRUGGLE_ANALYZER = "struggle_analyzer"
 NODE_SCAFFOLDING_RETRIEVER = "scaffolding_retriever"
 NODE_SCAFFOLDING_PLANNER = "scaffolding_planner"
 NODE_SCAFFOLDING_GENERATOR = "scaffolding_generator"
+NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
+NODE_PEDAGOGY_GENERATION = "pedagogy_generation"
+NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
+NODE_MODELLING_RAG_DOCUMENT = "modelling_rag_document"
+NODE_MODELLING_GENERATOR = "modelling_generator"
+NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
+NODE_TEACHING_RAG = "teaching_rag"
+NODE_TEACHING_DELIVERY = "teaching_delivery"
+NODE_TEACHING_GENERATOR = "teaching_generator"
 
-# Define node names for teaching module and other subgraphs
+# Define node names for subgraphs
 NODE_TEACHING_MODULE = "TEACHING_MODULE"
 NODE_FEEDBACK_MODULE = "FEEDBACK_MODULE"
 NODE_SCAFFOLDING_MODULE = "SCAFFOLDING_MODULE"
 NODE_MODELING_MODULE = "MODELING_MODULE"
 NODE_COWRITING_MODULE = "COWRITING_MODULE"
+NODE_PEDAGOGY_MODULE = "PEDAGOGY_MODULE"
 NODE_P1_CURRICULUM_NAVIGATOR = "p1_curriculum_navigator"
-
-# Modelling System Node Names
-NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
-NODE_MODELLING_RAG_DOCUMENT = "modelling_RAG_document"
-NODE_MODELLING_GENERATOR = "modelling_generator"
-NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
-
-# Teaching System Node Names
-NODE_TEACHING_RAG = "teaching_RAG_node"
-NODE_TEACHING_DELIVERY = "teaching_delivery_node" # This might become obsolete or used for non-LLM paths
-NODE_TEACHING_GENERATOR = "teaching_generator_node" # New LLM-based teaching node
 
 
 # Define a router node (empty function that doesn't modify state)
@@ -182,22 +174,17 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         return NODE_FEEDBACK_MODULE
     if task_stage == "SCAFFOLDING_GENERATION":
         return NODE_SCAFFOLDING_MODULE
-    # Add hypothetical task stages for new modules
-    if task_stage == "MODELING":
+    if task_stage == "MODELLING_ACTIVITY_REQUESTED":
         return NODE_MODELING_MODULE
-    if task_stage == "COWRITING":
+    if task_stage == "COWRITING_GENERATION": # Corrected task stage name
         return NODE_COWRITING_MODULE
+    if task_stage == "TEACHING_LESSON_REQUESTED":
+        return NODE_TEACHING_MODULE
 
     if task_stage_from_context == "INITIAL_REPORT_GENERATION":
         return NODE_INITIAL_REPORT_GENERATION
     if task_stage_from_context == "PEDAGOGY_GENERATION":
-        return NODE_PEDAGOGY_GENERATION
-    if task_stage_from_context == "MODELLING_ACTIVITY_REQUESTED":
-        logger.info(f"Task stage is MODELLING_ACTIVITY_REQUESTED. Routing to NODE_MODELLING_QUERY_DOCUMENT.")
-        return NODE_MODELLING_QUERY_DOCUMENT
-    if task_stage_from_context == "TEACHING_LESSON_REQUESTED": # New task stage for teaching
-        logger.info(f"Task stage is TEACHING_LESSON_REQUESTED. Routing to NODE_TEACHING_RAG.")
-        return NODE_TEACHING_RAG
+        return NODE_PEDAGOGY_MODULE
 
 
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -332,15 +319,12 @@ def build_graph():
     workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
     workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
 
-    
     # Add scaffolding system nodes
     workflow.add_node(NODE_SCAFFOLDING_STUDENT_DATA, scaffolding_student_data_node)
     workflow.add_node(NODE_STRUGGLE_ANALYZER, struggle_analyzer_node)
     workflow.add_node(NODE_SCAFFOLDING_RETRIEVER, scaffolding_retriever_node)
     workflow.add_node(NODE_SCAFFOLDING_PLANNER, scaffolding_planner_node)
     workflow.add_node(NODE_SCAFFOLDING_GENERATOR, scaffolding_generator_node)
-
-    
 
     workflow.add_node(NODE_INITIAL_REPORT_GENERATION, initial_report_generation_node)
     workflow.add_node(NODE_PEDAGOGY_GENERATION, pedagogy_generator_node)
@@ -356,7 +340,6 @@ def build_graph():
     workflow.add_node(NODE_TEACHING_DELIVERY, teaching_delivery_node) # This might become obsolete or used for non-LLM paths
     workflow.add_node(NODE_TEACHING_GENERATOR, teaching_generator_node)
 
-
     workflow.add_node(NODE_ROUTER, router_node)
 
     # Instantiate and add all subgraphs
@@ -365,86 +348,45 @@ def build_graph():
     scaffolding_subgraph_instance = create_scaffolding_subgraph()
     modeling_subgraph_instance = create_modeling_subgraph()
     cowriting_subgraph_instance = create_cowriting_subgraph()
+    pedagogy_subgraph_instance = create_pedagogy_subgraph()
 
     workflow.add_node(NODE_TEACHING_MODULE, teaching_subgraph_instance)
     workflow.add_node(NODE_FEEDBACK_MODULE, feedback_subgraph_instance)
     workflow.add_node(NODE_SCAFFOLDING_MODULE, scaffolding_subgraph_instance)
     workflow.add_node(NODE_MODELING_MODULE, modeling_subgraph_instance)
     workflow.add_node(NODE_COWRITING_MODULE, cowriting_subgraph_instance)
-    
+    workflow.add_node(NODE_PEDAGOGY_MODULE, pedagogy_subgraph_instance)
+
     workflow.add_node(NODE_P1_CURRICULUM_NAVIGATOR, p1_curriculum_navigator_node)
 
     workflow.set_entry_point(NODE_ROUTER)
 
     # Conditional Edges from the main router
-    workflow.add_conditional_edges(
-        NODE_ROUTER,
-        initial_router_logic,
-        {
-            NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
-            NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
+    path_map = {
+        NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
+        NODE_TEACHING_MODULE: NODE_TEACHING_MODULE,
+        NODE_FEEDBACK_MODULE: NODE_FEEDBACK_MODULE,
+        NODE_SCAFFOLDING_MODULE: NODE_SCAFFOLDING_MODULE,
+        NODE_MODELING_MODULE: NODE_MODELING_MODULE,
+        NODE_COWRITING_MODULE: NODE_COWRITING_MODULE,
+        NODE_PEDAGOGY_MODULE: NODE_PEDAGOGY_MODULE,
+        NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
+        NODE_INACTIVITY_PROMPT: NODE_INACTIVITY_PROMPT,
+        "DEFAULT_FALLBACK": NODE_CONVERSATION_HANDLER
+    }
+    workflow.add_conditional_edges(NODE_ROUTER, initial_router_logic, path_map)
 
-            NODE_MOTIVATIONAL_SUPPORT: NODE_MOTIVATIONAL_SUPPORT,
-            NODE_PROGRESS_REPORTER: NODE_PROGRESS_REPORTER,
-            NODE_INACTIVITY_PROMPT: NODE_INACTIVITY_PROMPT,
-            NODE_TECH_SUPPORT_ACKNOWLEDGER: NODE_TECH_SUPPORT_ACKNOWLEDGER,
-            NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
-            NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
-            NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
-
-            NODE_SCAFFOLDING_STUDENT_DATA: NODE_SCAFFOLDING_STUDENT_DATA,
-
-            NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
-            NODE_PEDAGOGY_GENERATION: NODE_PEDAGOGY_GENERATION,
-            NODE_MODELLING_QUERY_DOCUMENT: NODE_MODELLING_QUERY_DOCUMENT, # Added modelling route
-            NODE_TEACHING_RAG: NODE_TEACHING_RAG, # Added teaching route
-
-            NODE_TEACHING_MODULE: NODE_TEACHING_MODULE,
-            NODE_FEEDBACK_MODULE: NODE_FEEDBACK_MODULE,
-            NODE_SCAFFOLDING_MODULE: NODE_SCAFFOLDING_MODULE,
-            NODE_MODELING_MODULE: NODE_MODELING_MODULE,
-            NODE_COWRITING_MODULE: NODE_COWRITING_MODULE,
-
-        },
-    )
-
-    # Standard flow: Node Logic -> Format Output -> Save Interaction -> [Conditional Finalize] -> END
-
-    # Welcome Path
+    # Edges for flows that are NOT subgraphs
     workflow.add_edge(NODE_HANDLE_WELCOME, NODE_STUDENT_DATA)
     workflow.add_edge(NODE_STUDENT_DATA, NODE_WELCOME_PROMPT)
-    workflow.add_edge(NODE_WELCOME_PROMPT, NODE_CONVERSATION_HANDLER)  # Changed to route to conversation_handler
-
-    # General Conversation Path
+    workflow.add_edge(NODE_WELCOME_PROMPT, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_CONVERSATION_HANDLER, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Motivational Support Path
-    workflow.add_conditional_edges(
-        NODE_MOTIVATIONAL_SUPPORT,
-        route_after_motivation, # This router decides the next logical step (e.g., back to conversation or welcome)
-        {
-            NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
-            NODE_WELCOME_PROMPT: NODE_WELCOME_PROMPT, # Or directly to format if motivation has output
-            NODE_STUDENT_DATA: NODE_STUDENT_DATA,
-            NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
-            "DEFAULT_FALLBACK_AFTER_MOTIVATION": NODE_CONVERSATION_HANDLER, 
-        }
-    )
-    # If motivational_support_node itself produces output for the user immediately, it should also go to FORMAT_FINAL_OUTPUT.
-    # Assuming for now route_after_motivation sends it to a node that will eventually lead to FORMAT_FINAL_OUTPUT.
-    # If NODE_MOTIVATIONAL_SUPPORT directly has output, add: workflow.add_edge(NODE_MOTIVATIONAL_SUPPORT, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Progress Reporter Path
-    workflow.add_edge(NODE_PROGRESS_REPORTER, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Inactivity Prompt Path
     workflow.add_edge(NODE_INACTIVITY_PROMPT, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Tech Support Acknowledger Path
     workflow.add_edge(NODE_TECH_SUPPORT_ACKNOWLEDGER, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Prepare Navigation Path
     workflow.add_edge(NODE_PREPARE_NAVIGATION, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_SESSION_WRAP_UP, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_PROGRESS_REPORTER, NODE_FORMAT_FINAL_OUTPUT)
 
     # Session Wrap Up Path
     workflow.add_edge(NODE_SESSION_WRAP_UP, NODE_FORMAT_FINAL_OUTPUT) # Wrap-up message needs formatting
@@ -484,7 +426,8 @@ def build_graph():
     workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
 
     # Pedagogy generation flow
-    workflow.add_edge(NODE_PEDAGOGY_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_PEDAGOGY_MODULE, NODE_FORMAT_FINAL_OUTPUT)
+
 
     # Modelling system flow
     workflow.add_edge(NODE_MODELLING_QUERY_DOCUMENT, NODE_MODELLING_RAG_DOCUMENT)

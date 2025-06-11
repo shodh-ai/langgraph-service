@@ -66,6 +66,9 @@ def build_cowriting_graph():
     
     return builder.compile()
 
+import pytest
+
+@pytest.mark.asyncio
 async def test_cowriting_system():
     """
     Test function for running the cowriting flow of the LangGraph system.

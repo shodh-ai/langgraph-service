@@ -3,7 +3,21 @@ import logging
 import json
 import os
 from types import SimpleNamespace
-from graph_builder import build_graph
+from graph_builder import (
+    NODE_SCAFFOLDING_STUDENT_DATA,
+    NODE_STRUGGLE_ANALYZER,
+    NODE_SCAFFOLDING_RETRIEVER,
+    NODE_SCAFFOLDING_PLANNER,
+    NODE_SCAFFOLDING_GENERATOR
+)
+from agents import (
+    scaffolding_student_data_node,
+    struggle_analyzer_node,
+    scaffolding_retriever_node,
+    scaffolding_planner_node,
+    scaffolding_generator_node
+)
+from langgraph.graph import END, StateGraph
 from state import AgentGraphState
 from dotenv import load_dotenv
 
@@ -25,16 +39,48 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+import pytest
+
+def build_scaffolding_graph():
+    """
+    Build a focused scaffolding state graph with only the required nodes.
+    
+    Returns:
+        A StateGraph with the scaffolding workflow
+    """
+    builder = StateGraph(AgentGraphState)
+    
+    # Add nodes
+    builder.add_node("student_data", scaffolding_student_data_node)
+    builder.add_node("analyzer", struggle_analyzer_node)
+    builder.add_node("retriever", scaffolding_retriever_node)
+    builder.add_node("planner", scaffolding_planner_node)
+    builder.add_node("generator", scaffolding_generator_node)
+    
+    # Add edges
+    builder.add_edge("student_data", "analyzer")
+    builder.add_edge("analyzer", "retriever")
+    builder.add_edge("retriever", "planner")
+    builder.add_edge("planner", "generator")
+    builder.add_edge("generator", END)
+    
+    # Set the entry point
+    builder.set_entry_point("student_data")
+    
+    return builder.compile()
+
+@pytest.mark.asyncio
 async def test_scaffolding_system():
     """
     Test function for running the scaffolding flow of the LangGraph system.
     """
     logger.info("Building the graph...")
-    graph = build_graph()
+    graph = build_scaffolding_graph()
     
-    test_context = SimpleNamespace(
-        task_stage="SCAFFOLDING_GENERATION"
-    )
+    # Use a dictionary instead of SimpleNamespace for serialization compatibility
+    test_context = {
+        "task_stage": "SCAFFOLDING_GENERATION"
+    }
     
     test_state = AgentGraphState(
         user_id="test_user_123",
@@ -62,6 +108,7 @@ async def test_scaffolding_system():
     
     
     logger.info("Running the graph with test inputs...")
+    # Simple graph doesn't need checkpointer configuration
     result = await graph.ainvoke(test_state)
     
     logger.info("Graph execution completed!")

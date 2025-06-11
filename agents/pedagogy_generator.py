@@ -9,7 +9,9 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 
-df = pd.read_csv("data/pedagogy.csv")
+script_dir = os.path.dirname(__file__)
+file_path = os.path.join(script_dir, '..', 'data', 'pedagogy.csv')
+df = pd.read_csv(file_path)
 embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 query_columns = [
     "Answer One",

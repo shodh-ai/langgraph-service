@@ -51,7 +51,7 @@
       "Student_Articulated_Thought": "No articulated thought provided.",
       "Student_Comfort_Level": "Conversational",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The sentence contains a redundant subject ('people' and 'they'). This violates subject-verb agreement principles and creates an awkward construction.",
+      "Immediate_Assessment_of_Input": "The current sentence is too simplistic and lacks a clear connection to the upcoming example about pollution. A smoother transition is needed to link the general statement to the specific example.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "SuggestRephrasing",
@@ -105,56 +105,71 @@
       "Learning_Objective_Focus": "Crafting a clear and arguable thesis statement.",
       "Writing_Task_Context_Section": "Body Paragraph 1 - Topic Sentence",
       "Student_Written_Input_Chunk": "I think recycling is good.",
-      "Student_Articulated_Thought": "I'm trying to make my main argument here for the thesis.",
-      "Student_Comfort_Level": "Fluent",
+      "Student_Articulated_Thought": "No articulated thought provided.",
+      "Student_Comfort_Level": "Proficient",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The statement is too general and doesn't present a clear argument. It expresses an opinion without providing a specific reason or focus for the paragraph.",
+      "Immediate_Assessment_of_Input": "The statement is too simple and lacks a clear argument or direction for a thesis statement.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "Okay, you're aiming for a strong argument! Right now, 'I think recycling is good' is a bit broad. To make it a strong topic sentence, could you specify *why* recycling is good in this particular paragraph? For example, are you focusing on the economic benefits, environmental advantages, or perhaps its role in community building? How about we try rephrasing it to include a specific benefit? We could say something like, 'Recycling programs offer significant economic advantages to communities.' What do you think about that, or how would you like to make it more specific?",
+      "AI_Spoken_or_Suggested_Text": "A thesis statement should present a clear argument. Could you rephrase this to express *why* recycling is good, and perhaps hint at the main points you'll discuss in your essay? For example: \"Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.\"",
       "Original_Student_Text_if_Revision": "I think recycling is good.",
-      "Suggested_AI_Revision_if_Any": "Recycling programs offer significant economic advantages to communities.",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"Recycling programs offer significant economic advantages to communities.\", \"reason\": \"More specific and arguable topic sentence.\"}}]",
-      "Rationale_for_Intervention_Style": "As 'The Interactive Explorer,' I'm prompting the student to refine their broad statement into a more specific and arguable claim. I'm offering an example to illustrate the desired level of specificity and encouraging them to justify their choices, fostering critical thinking about their writing.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely either accept the suggested revision, modify it, or propose a different topic sentence that is more specific and arguable."
+      "Suggested_AI_Revision_if_Any": "Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.\", \"reason\": \"Provides a clear argument and outlines the essay's main points.\"}}]",
+      "Rationale_for_Intervention_Style": "As 'The Structuralist,' I'm focusing on the lack of a clear argument. The student needs to move beyond a simple statement to a thesis that outlines the essay's direction. The suggested revision provides a template for a stronger thesis.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will either accept the suggested revision, attempt their own revision based on the feedback, or ask for further clarification."
     },
     {
-      "Persona": "The Encouraging Nurturer",
-      "Learning_Objective_Focus": "Crafting a clear and arguable thesis statement.",
-      "Writing_Task_Context_Section": "Body Paragraph 1 - Evidence",
-      "Student_Written_Input_Chunk": "Furthermore, the lecturer she disagree with this idea.",
-      "Student_Articulated_Thought": "I'm not sure how to connect this idea to the previous paragraph.",
-      "Student_Comfort_Level": "Conversational",
+      "Persona": "The Pragmatic Strategist",
+      "Learning_Objective_Focus": "Ensuring subject-verb agreement.",
+      "Writing_Task_Context_Section": "Summarizing Reading Point 1",
+      "Student_Written_Input_Chunk": "I think recycling is good.",
+      "Student_Articulated_Thought": "I'm trying to make my main argument here for the thesis.",
+      "Student_Comfort_Level": "Beginner",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The sentence has a grammatical error (subject-verb agreement and unnecessary pronoun) and lacks a clear connection to the previous paragraph.",
+      "Immediate_Assessment_of_Input": "The sentence is grammatically correct but too simplistic and informal for a TOEFL essay. It doesn't directly summarize a reading point.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "That's a great start! I see what you're trying to do. How about we try this: 'Furthermore, the lecturer disagreed with this idea, [and here you can add a phrase to link it to the previous paragraph's idea]'? This corrects the grammar and gives you a space to connect it to the previous point.",
-      "Original_Student_Text_if_Revision": "Furthermore, the lecturer she disagree with this idea.",
-      "Suggested_AI_Revision_if_Any": "Furthermore, the lecturer disagreed with this idea, [and here you can add a phrase to link it to the previous paragraph's idea]",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"Furthermore, the lecturer she disagree with this idea.\", \"parameter_suggestions\": {\"suggestion_text\": \"Furthermore, the lecturer disagreed with this idea, [and here you can add a phrase to link it to the previous paragraph's idea]\", \"reason\": \"Corrects grammar and provides a connection point.\"}}, {\"action_type_suggestion\": \"HIGHLIGHT_TEXT_RANGE\", \"target_student_text_segment\": \"she disagree\", \"parameter_suggestions\": {\"style_class\": \"grammar_error\"}}]",
-      "Rationale_for_Intervention_Style": "As the Encouraging Nurturer, I'm focusing on building confidence. I'm validating the student's effort while gently correcting the grammar and providing a structural suggestion to address their stated concern about connecting ideas. The bracketed section encourages them to actively participate in making the connection, fostering ownership of their writing.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely either accept the suggestion and fill in the bracketed section or ask for further clarification on how to connect the ideas."
+      "AI_Spoken_or_Suggested_Text": "Okay, I see you're aiming for your main argument. Remember, in the integrated essay, you need to summarize a specific point from the reading passage. Instead of a general statement, try to capture a key idea from the text. For example, you could say something like, 'The reading passage argues that recycling programs are effective because they reduce landfill waste.' Can you identify a specific argument from the reading to summarize?",
+      "Original_Student_Text_if_Revision": "I think recycling is good.",
+      "Suggested_AI_Revision_if_Any": "The reading passage argues that recycling programs are effective because they reduce landfill waste.",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"The reading passage argues that recycling programs are effective because they reduce landfill waste.\", \"reason\": \"More specific and summarizes a potential reading point.\"}}]",
+      "Rationale_for_Intervention_Style": "As the Pragmatic Strategist, I'm directly addressing the student's need to create a thesis statement while emphasizing the importance of summarizing the reading passage for the integrated essay. The suggested revision provides a more appropriate and specific example.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely try to summarize a specific point from the reading passage, potentially asking for help identifying a suitable argument."
     }
   ],
   "selected_cowriting_intervention": {
     "decision_to_intervene": true,
     "intervention_type": "SuggestRephrasing",
-    "ai_spoken_or_suggested_text": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?",
+    "ai_spoken_or_suggested_text": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?",
     "original_student_text_if_revision": "I think technology is very good and have many benefits for society.",
-    "suggested_ai_revision_if_any": null,
-    "ui_action_hints": [],
-    "rationale_for_intervention_style": "The student is focused but needs guidance.  This intervention acknowledges the student's initial attempt positively and then guides them towards a more specific and arguable thesis. By offering examples and prompting the student to choose an area of focus, the intervention encourages active participation and ownership of the thesis development process.  Since the student is at the conversational comfort level, the AI's language mirrors this style, making the interaction feel more natural and less intimidating. The intervention avoids direct criticism and instead focuses on building upon the student's existing idea.",
-    "anticipated_next_student_action_or_reply": "The student will likely choose an area of focus (e.g., education, communication, healthcare) or ask clarifying questions about how to narrow down the topic."
+    "suggested_ai_revision_if_any": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
+    "ui_action_hints": [
+      {
+        "action_type_suggestion": "SHOW_INLINE_SUGGESTION",
+        "target_student_text_segment": "I think technology is very good and have many benefits for society.",
+        "parameter_suggestions": {
+          "suggestion_text": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
+          "reason": "Provides a more specific and arguable thesis statement."
+        }
+      }
+    ],
+    "rationale_for_intervention_style": "The student is focused but needs guidance.  They've expressed uncertainty about their thesis statement's strength, which is vague and lacks specific arguments.  This intervention acknowledges their initial effort positively, then offers a concrete example of a stronger thesis statement while also prompting them to identify their own specific interests within the broad topic of technology. This encourages deeper thinking and ownership of the argument. The conversational comfort level suggests a direct and supportive approach is appropriate.",
+    "anticipated_next_student_action_or_reply": "The student will likely either choose to use the suggested revision as a starting point, or they will begin to articulate more specific benefits of technology, allowing for further refinement of the thesis statement."
   },
   "cowriting_output": {
-    "text_for_tts": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?",
+    "text_for_tts": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?",
     "ui_components": [
       {
         "type": "text",
-        "content": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?"
+        "content": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?"
+      },
+      {
+        "type": "revision",
+        "original": "I think technology is very good and have many benefits for society.",
+        "suggestion": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
+        "action": "APPLY_REVISION"
       },
       {
         "type": "button",
