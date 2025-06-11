@@ -27,30 +27,38 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
         )
         logger.debug("GenerativeModel initialized successfully.")
 
-        system_prompt_text = """
-        You are Rox, a friendly and encouraging AI guide.
-        
-        Your output MUST be a JSON object with the following structure:
-        {{
-            "tts": "The text-to-speech for the message."
-        }}
-        """
-
-        llm_instruction = state.get("llm_instruction", "")
+        llm_instruction = state.get("llm_instruction", "") # This may come from welcome_prompt_node
         user_data = state.get("user_data", {})
-        transcript = state.get("transcript", "")
-        logger.info(f"LLM instruction: {llm_instruction}")
-        logger.info(f"User data: {user_data}")
-        logger.info(f"Transcript: {transcript}")
-        user_prompt_text = f"""
-        {llm_instruction}
-        
-        User data: {user_data}
-        User Query: {transcript}
-        """
-        full_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
+        transcript = state.get("transcript", "") # Will be empty on the first turn after welcome_prompt
 
-        logger.debug(f"Full prompt for greeting LLM: {full_prompt}")
+        logger.info(f"Retrieved llm_instruction from state: '{llm_instruction[:100]}...' if present else 'Not present'")
+        logger.info(f"User data: {user_data}")
+        logger.info(f"Transcript: '{transcript}'")
+
+        if llm_instruction:
+            # If welcome_prompt_node (or another node) provided specific instructions, use them directly.
+            # This instruction is assumed to be complete and already formatted for the LLM,
+            # including persona, desired output format (JSON with "tts" key), and the specific message.
+            full_prompt = llm_instruction
+            logger.info(f"Using llm_instruction from state directly as full_prompt.")
+        else:
+            # For generic conversation turns, build the prompt using the default system prompt
+            system_prompt_text = """
+            You are Rox, a friendly and encouraging AI guide.
+            Your output MUST be a JSON object with the following structure:
+            {{
+                "tts": "The text-to-speech for the message."
+            }}
+            """
+            # Construct prompt for general conversation using transcript
+            user_prompt_text = f"""
+            User data: {user_data}
+            User Query: {transcript}
+            """ # llm_instruction is empty here, so it won't be duplicated in this branch
+            full_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
+            logger.info(f"Constructed generic prompt as llm_instruction was not found in state.")
+
+        logger.debug(f"Full prompt for LLM: {full_prompt}")
 
         raw_llm_response_text = ""
         try:
@@ -58,46 +66,46 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
             response = await model.generate_content_async(full_prompt)
             logger.debug("model.generate_content_async() successful.")
             raw_llm_response_text = response.text
-            logger.info(f"Raw LLM Response for greeting: {raw_llm_response_text}")
+            logger.info(f"Raw LLM Response: {raw_llm_response_text}")
         except Exception as gen_err:
             logger.error(
                 f"Error during model.generate_content_async(): {gen_err}", exc_info=True
             )
-            fallback_tts = f"Hello! Welcome. (LLM Generation Error)"
+            fallback_tts = f"I'm having a little trouble thinking right now, but I'm here to help! (LLM Generation Error)"
             logger.info(
-                f"ConversationalManagerNode: Using fallback greeting due to generation error: {fallback_tts}"
+                f"ConversationHandlerNode: Using fallback TTS due to generation error: {fallback_tts}"
             )
-            return {"greeting_data": {"greeting_tts": fallback_tts}}
+            return {"conversational_tts": fallback_tts}
 
         try:
             llm_output_json = json.loads(raw_llm_response_text)
-            greeting_tts = llm_output_json.get(
+            extracted_tts = llm_output_json.get(
                 "tts",
-                f"Hello! I'm Rox, welcome! (JSON Key Missing)",
+                f"I seem to have misplaced my words! Let's try that again. (JSON Key Missing)",
             )
         except json.JSONDecodeError as json_err:
             logger.error(
-                f"JSONDecodeError parsing LLM greeting response. Error: {json_err}. Raw text: {raw_llm_response_text}"
+                f"JSONDecodeError parsing LLM response. Error: {json_err}. Raw text: {raw_llm_response_text}"
             )
-            greeting_tts = f"Hello! I'm Rox. (JSON Parse Error)"
+            extracted_tts = f"My thoughts got a bit jumbled! What were we saying? (JSON Parse Error)"
         except Exception as parse_err:
             logger.error(
-                f"Unexpected error parsing LLM greeting response. Error: {parse_err}. Raw text: {raw_llm_response_text}"
+                f"Unexpected error parsing LLM response. Error: {parse_err}. Raw text: {raw_llm_response_text}"
             )
-            greeting_tts = f"Hello! I'm Rox. (Unexpected Parse Error)"
+            extracted_tts = f"A tiny hiccup in our chat! Let's continue. (Unexpected Parse Error)"
 
         logger.info(
-            f"ConversationalManagerNode: LLM-generated greeting: {greeting_tts}"
+            f"ConversationHandlerNode: LLM-generated TTS: {extracted_tts}"
         )
-        return {"greeting_data": {"greeting_tts": greeting_tts}}
+        return {"conversational_tts": extracted_tts}
 
     except Exception as e:
         logger.error(
-            f"Outer error in handle_home_greeting_node (e.g., config, model init): {e}",
+            f"Outer error in ConversationHandlerNode (e.g., config, model init): {e}",
             exc_info=True,
         )
-        fallback_tts = f"Hello! Welcome. (LLM Setup Error)"
+        fallback_tts = f"Looks like I'm having a bit of trouble starting up. Let's try again in a moment. (LLM Setup Error)"
         logger.info(
-            f"ConversationalManagerNode: Using fallback greeting due to setup error: {fallback_tts}"
+            f"ConversationHandlerNode: Using fallback TTS due to setup error: {fallback_tts}"
         )
-        return {"greeting_data": {"greeting_tts": fallback_tts}}
+        return {"conversational_tts": fallback_tts}

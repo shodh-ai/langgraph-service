@@ -3,6 +3,7 @@ import logging
 from mem0 import Memory
 import os
 import logging
+import json # Added import
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -21,67 +22,97 @@ class Mem0Memory:
         # Initialize mem0 with default settings
         # For multiple users, mem0 handles data isolation internally based on the `user_id` 
         # you pass to its methods, or you can create separate Memory instances per user if preferred.
-        self.mem0_instance = Memory()
+        # Default initialization for Mem0 Cloud, expects MEM0_API_KEY in environment.
+        try:
+            self.mem0_instance = Memory()
+            logger.info("Successfully initialized Mem0 client (should connect to Mem0 Cloud using MEM0_API_KEY).")
+        except Exception as e:
+            logger.error(f"Failed to initialize Mem0 client (Mem0 Cloud): {e}", exc_info=True)
+            # If initialization fails, self.mem0_instance might not be set or might be a broken object.
+            # Subsequent calls to its methods will likely fail.
+            raise  # Re-raise the exception to make it clear initialization failed.
         self.user_id_field = user_id_field # Field name to identify user in data
         logger.info(f"Mem0Memory initialized. Using '{user_id_field}' as user identifier.")
 
     def get_student_data(self, user_id: str) -> Dict[str, Any]:
-        """Retrieves all data for a given user_id using mem0."""
+        """Retrieves and reconstructs student data (profile and interaction history) for a given user_id from mem0."""
         logger.info(f"Mem0Memory: Attempting to get all data for user_id: {user_id}")
         try:
-            # mem0's get_all retrieves all memories. We might need to filter by user_id if not implicitly handled
-            # or structure data with user_id as a key part of the memory entries.
-            # For now, let's assume we store data with a user_id tag or in a user-specific collection.
-            # This part will need refinement based on how mem0 structures multi-user data.
-            # A common pattern is to pass user_id to methods like add, search, etc.
             all_memories = self.mem0_instance.get_all(user_id=user_id)
             
-            # We need to reconstruct the student_data structure (profile, interaction_history)
-            # from the retrieved memories.
-            # This is a placeholder and will depend on how we store data in mem0.
             student_data = {
-                "profile": {}, 
-                "interaction_history": []
+                "profile": {},
+                "interaction_history": []  # List of interaction dictionaries
             }
-            
+
+            # Assuming memories are returned in a usable order (e.g., chronological for interactions)
+            # If not, sorting by mem.timestamp might be needed.
             for mem in all_memories:
-                # Example: if memories have a 'type' field (e.g., 'profile' or 'interaction')
-                if mem.data.get('type') == 'profile':
-                    student_data["profile"].update(mem.data.get('content', {}))
-                elif mem.data.get('type') == 'interaction':
-                    student_data["interaction_history"].append(mem.data.get('content', {}))
-                # If no type, maybe just append to a general list or a default category
-                # This logic needs to be robust based on actual storage strategy.
+                memory_core_data = mem.data  # This is the primary content of the memory item
+                meta = mem.metadata if mem.metadata else {} # Ensure metadata is a dict
+
+                if meta.get('type') == 'profile':
+                    # Profile data is added as a dict via mem0.add(data=profile_data, ...)
+                    # So, memory_core_data should be the profile dictionary itself.
+                    if isinstance(memory_core_data, dict):
+                        student_data["profile"].update(memory_core_data)
+                    else:
+                        logger.warning(f"Mem0Memory: Profile memory data for user {user_id} is not a dict. Data: {str(memory_core_data)[:100]}...")
+                
+                elif meta.get('type') == 'interaction':
+                    # Interaction data is added as a JSON string via messages=[{"role": "user", "content": interaction_content_str}]
+                    # mem0 typically stores the "content" part as the main data of the memory item.
+                    # So, memory_core_data should be the interaction_content_str (JSON string).
+                    if isinstance(memory_core_data, str):
+                        try:
+                            interaction_dict = json.loads(memory_core_data)
+                            student_data["interaction_history"].append(interaction_dict)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Mem0Memory: Failed to parse interaction JSON string for user {user_id}. String: '{memory_core_data[:100]}...'. Error: {e}")
+                            student_data["interaction_history"].append({"error": "failed to parse interaction", "raw_preview": memory_core_data[:100]})
+                    else:
+                        logger.warning(f"Mem0Memory: Expected string for interaction data for user {user_id}, got {type(memory_core_data)}. Data: {str(memory_core_data)[:100]}...")
+                        student_data["interaction_history"].append({"error": "unexpected interaction data type", "raw_preview": str(memory_core_data)[:100]})
+            
+            # Filter out any non-dict items from interaction_history just in case, for downstream safety
+            valid_history = [item for item in student_data["interaction_history"] if isinstance(item, dict)]
+            if len(valid_history) != len(student_data["interaction_history"]):
+                logger.warning(f"Mem0Memory: Some items in interaction_history for user {user_id} were not dicts and were filtered out.")
+            student_data["interaction_history"] = valid_history
 
             if not student_data["profile"] and not student_data["interaction_history"]:
-                 # Initialize with a default structure if user is new or no data found
-                student_data["profile"] = {"name": "New Student (mem0)", "level": "Beginner"}
-                logger.info(f"Mem0Memory: Initialized new student data for user_id: {user_id}")
+                student_data["profile"] = {"name": "New Student (mem0)", "level": "Beginner"} # Default for new user
+                logger.info(f"Mem0Memory: Initialized new student data for user_id: {user_id} (no existing profile or history found).")
 
-            logger.info(f"Mem0Memory: Retrieved data for {user_id}: {student_data}")
+            logger.info(f"Mem0Memory: Reconstructed student data for {user_id}. Profile keys: {list(student_data['profile'].keys())}, Interactions: {len(student_data['interaction_history'])}")
+            if student_data["interaction_history"]:
+                 logger.debug(f"Mem0Memory: Last interaction sample for {user_id} (first 200 chars): {str(student_data['interaction_history'][-1])[:200]}")
             return student_data
+        
         except Exception as e:
-            logger.error(f"Mem0Memory: Error getting data for {user_id}: {e}")
-            # Return a default structure on error or re-raise
-            return {
+            logger.error(f"Mem0Memory: Critical error getting and processing data for {user_id}: {e}", exc_info=True)
+            return { # Fallback on major error
                 "profile": {"name": "Error Student (mem0)", "level": "Unknown"},
                 "interaction_history": []
             }
 
-    def add_interaction_to_history(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
+    def add_interaction(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
         """Adds an interaction summary to the user's history using mem0."""
-        logger.info(f"Mem0Memory: Attempting to add interaction for user_id: {user_id} with summary: {interaction_summary}")
+        logger.info(f"Mem0Memory: Attempting to add interaction (summary): {interaction_summary} for user_id: {user_id}")
         try:
             # We can add metadata to distinguish this memory, e.g., type: 'interaction'
             # The `user_id` is passed to associate the memory with the specific user.
+            interaction_content_str = json.dumps(interaction_summary)
+            formatted_message = [{"role": "user", "content": interaction_content_str}]
             self.mem0_instance.add(
-                data=interaction_summary, 
+                messages=formatted_message, 
                 user_id=user_id, 
                 metadata={'type': 'interaction', self.user_id_field: user_id}
             )
-            logger.info(f"Mem0Memory: Added interaction for {user_id}.")
+            logger.info(f"Mem0Memory: Successfully added interaction for user_id: {user_id}")
         except Exception as e:
-            logger.error(f"Mem0Memory: Error adding interaction for {user_id}: {e}")
+            logger.error(f"Mem0Memory: ERROR during self.mem0_instance.add() for user_id: {user_id}. Exception: {e}", exc_info=True)
+            raise # Re-raise the exception to allow higher-level handlers to catch it
 
     def update_student_profile(self, user_id: str, profile_data: Dict[str, Any]) -> None:
         """Updates or sets profile data for a student using mem0."""
