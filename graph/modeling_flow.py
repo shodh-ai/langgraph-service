@@ -6,29 +6,41 @@ except ImportError:
     print("Warning: Could not import AgentGraphState from 'state'. Using a placeholder.")
     class AgentGraphState(dict): pass
 
-def placeholder_node_factory(node_name):
-    def placeholder_node(state: AgentGraphState) -> dict:
-        print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
-        return {f"{node_name}_status": "completed"}
-    return placeholder_node
+# Import the actual agent node functions for the modeling flow
+from agents import (
+    modelling_query_document_node,
+    modelling_RAG_document_node,
+    modelling_generator_node,
+    modelling_output_formatter_node,
+)
 
-# Placeholders for modeling agent nodes
-modeling_entry_node = placeholder_node_factory("modeling_entry_node")
-analyze_model_request_node = placeholder_node_factory("analyze_model_request_node")
-generate_model_response_node = placeholder_node_factory("generate_model_response_node")
+# Define node names for clarity
+NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
+NODE_MODELLING_RAG_DOCUMENT = "modelling_RAG_document"
+NODE_MODELLING_GENERATOR = "modelling_generator"
+NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
 
 def create_modeling_subgraph():
+    """
+    Creates a LangGraph subgraph for the modeling flow.
+    This flow generates a model response based on a student's request, using RAG and a generator.
+    """
     workflow = StateGraph(AgentGraphState)
 
-    workflow.add_node("modeling_entry", modeling_entry_node)
-    workflow.add_node("analyze_model_request", analyze_model_request_node)
-    workflow.add_node("generate_model_response", generate_model_response_node)
+    # Add nodes to the subgraph
+    workflow.add_node(NODE_MODELLING_QUERY_DOCUMENT, modelling_query_document_node)
+    workflow.add_node(NODE_MODELLING_RAG_DOCUMENT, modelling_RAG_document_node)
+    workflow.add_node(NODE_MODELLING_GENERATOR, modelling_generator_node)
+    workflow.add_node(NODE_MODELLING_OUTPUT_FORMATTER, modelling_output_formatter_node)
 
-    workflow.set_entry_point("modeling_entry")
+    # Set the entry point for the subgraph
+    workflow.set_entry_point(NODE_MODELLING_QUERY_DOCUMENT)
 
-    workflow.add_edge("modeling_entry", "analyze_model_request")
-    workflow.add_edge("analyze_model_request", "generate_model_response")
-    workflow.add_edge("generate_model_response", END)
+    # Define the sequential flow
+    workflow.add_edge(NODE_MODELLING_QUERY_DOCUMENT, NODE_MODELLING_RAG_DOCUMENT)
+    workflow.add_edge(NODE_MODELLING_RAG_DOCUMENT, NODE_MODELLING_GENERATOR)
+    workflow.add_edge(NODE_MODELLING_GENERATOR, NODE_MODELLING_OUTPUT_FORMATTER)
+    workflow.add_edge(NODE_MODELLING_OUTPUT_FORMATTER, END) # End of the modeling subgraph
 
     return workflow.compile()
 

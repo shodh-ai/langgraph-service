@@ -11,3 +11,4 @@ google-cloud-aiplatform
 mem0ai
 pandas>=1.0.0
 langchain-google-genai
+pytest-asyncio

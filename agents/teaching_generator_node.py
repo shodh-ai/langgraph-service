@@ -59,7 +59,7 @@ async def teaching_generator_node(state: AgentGraphState) -> dict:
         logger.error("TeachingGeneratorNode: 'current_context' is missing.")
         return {"teaching_output_content": {"text_for_tts": "Error: Missing context.", "ui_actions": []}, "error": "Missing current_context"}
 
-    retrieved_teaching_row = state.get("retrieved_teaching_row", {})
+    retrieved_teaching_row = state.get("retrieved_teaching_row") or {}
     rag_context_for_llm = format_rag_content_for_prompt(retrieved_teaching_row)
 
     # --- Gather all necessary context variables ---
