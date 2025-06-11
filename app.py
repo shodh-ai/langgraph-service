@@ -61,6 +61,126 @@ app.add_middleware(
 toefl_tutor_graph = build_graph()
 
 
+async def stream_graph_responses_sse(request_data: InteractionRequest):
+    """
+    Asynchronously streams graph execution events as Server-Sent Events (SSE).
+    Handles 'streaming_text_chunk' for live text updates and the final
+    consolidated response from the output formatter node.
+    """
+    default_user_id = "default_user_for_streaming_test"
+    default_session_id = str(uuid.uuid4())
+
+    user_id = default_user_id
+    if request_data.current_context and request_data.current_context.user_id:
+        user_id = request_data.current_context.user_id
+
+    session_id = request_data.session_id or default_session_id
+    context = request_data.current_context or InteractionRequestContext(user_id=user_id)
+    chat_history = request_data.chat_history
+    transcript = request_data.transcript
+    full_submitted_transcript = None
+
+    if context.task_stage == "speaking_task_submitted":
+        full_submitted_transcript = transcript
+
+    # Prepare initial state similar to the non-streaming endpoint
+    initial_graph_state: AgentGraphState = {
+        "user_id": user_id,
+        "user_token": request_data.usertoken,
+        "session_id": session_id,
+        "transcript": transcript,
+        "full_submitted_transcript": full_submitted_transcript,
+        "current_context": context,
+        "chat_history": chat_history,
+        "question_stage": context.question_stage,
+        # Initialize other fields as in the non-streaming endpoint
+        "student_memory_context": None,
+        "next_task_details": None,
+        "diagnosis_result": None,
+        "output_content": None, # Will be populated by output_formatter
+        "feedback_content": None,
+        "estimated_overall_english_comfort_level": context.english_comfort_level,
+        "initial_impression": context.teacher_initial_impression,
+        "fluency": context.fluency,
+        "grammar": context.grammar,
+        "vocabulary": context.vocabulary,
+        "question_one_answer": context.question_one_answer,
+        "question_two_answer": context.question_two_answer,
+        "question_three_answer": context.question_three_answer,
+        "example_prompt_text": context.example_prompt_text,
+        "modelling_output_content": None,
+        "teaching_output_content": None,
+        "task_suggestion_llm_output": None,
+        "inactivity_prompt_response": None,
+        "motivational_support_response": None,
+        "tech_support_response": None,
+        "navigation_instruction_target": None,
+        "data_for_target_page": None,
+        "conversational_tts": None, # This will be superseded by streaming_text_chunk
+        "cowriting_output_content": None, 
+        "scaffolding_output_content": None,
+        "session_summary_text": None,
+        "progress_report_text": None,
+        "student_model_summary": None,
+        "system_prompt_config": None,
+        "llm_json_validation_map": None,
+        "error_count": 0,
+        "last_error_message": None,
+        "current_node_name": None
+    }
+
+    config = {"configurable": {"thread_id": session_id, "user_id": user_id}}
+    logger.info(f"Streaming endpoint: Initializing graph stream for session {session_id}, user {user_id}")
+
+    try:
+        # Use astream_events_v2 to get detailed events
+        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values", output_keys=["output_content"]):
+            event_name = event.get("event")
+            node_name = event.get("name") # Name of the node that produced the event
+            data = event.get("data", {})
+            tags = event.get("tags", [])
+
+            # logger.debug(f"SSE Stream Event: {event_name}, Node: {node_name}, Data: {data}, Tags: {tags}")
+
+            if event_name == "on_chain_stream" and data:
+                chunk_content = data.get("chunk") # LangGraph's default key for streaming output from .stream()
+                if isinstance(chunk_content, dict):
+                    # Check if our conversation_handler_node yielded its specific chunk
+                    streaming_text = chunk_content.get("streaming_text_chunk")
+                    if streaming_text:
+                        logger.debug(f"SSE Stream: Yielding streaming_text_chunk from node '{node_name}': {streaming_text[:100]}...")
+                        yield f"event: text_chunk\ndata: {json.dumps({'text': streaming_text})}\n\n"
+                        await asyncio.sleep(0.01) # Small delay to allow client processing
+
+            elif event_name == "on_chain_end" and node_name == "format_final_output_for_client_node": # Or your actual output formatter node name
+                # This event signifies the end of a node's execution. 
+                # We are interested in the final output of the formatter node.
+                final_output_package = data.get("final_output") # LangGraph's key for final output of a node
+                if isinstance(final_output_package, dict) and final_output_package.get("output_content"):
+                    # The 'output_content' key from the state is what our formatter node populates.
+                    formatted_data = final_output_package["output_content"]
+                    logger.info(f"SSE Stream: Yielding final_response from node '{node_name}': {list(formatted_data.keys())}")
+                    yield f"event: final_response\ndata: {json.dumps(formatted_data)}\n\n"
+                    # Once the final response is sent, we can break if no further events are expected for this request.
+                    # However, other nodes might still run (e.g., memory saving), so let the stream complete naturally.
+                    # break 
+
+        logger.info(f"SSE Stream: Graph stream completed for session {session_id}")
+        yield f"event: stream_end\ndata: {{'message': 'Stream ended'}}\n\n"
+
+    except Exception as e:
+        logger.error(f"Exception in stream_graph_responses_sse for session {session_id}: {e}", exc_info=True)
+        error_message = json.dumps({"error": "An error occurred during streaming.", "details": str(e)})
+        yield f"event: error\ndata: {error_message}\n\n"
+    finally:
+        logger.info(f"SSE Stream: Closing stream for session {session_id}")
+
+@app.post("/process_interaction_streaming")
+async def process_interaction_streaming_route(request_data: InteractionRequest):
+    logger.info(f"Received request for /process_interaction_streaming: user_id={request_data.current_context.user_id if request_data.current_context else 'N/A'}, session_id={request_data.session_id}")
+    return StreamingResponse(stream_graph_responses_sse(request_data), media_type="text/event-stream")
+
+
 @app.post("/process_interaction", response_model=InteractionResponse)
 async def process_interaction_route(request_data: InteractionRequest):
     default_user_id = "default_user_for_testing"

@@ -29,8 +29,8 @@ async def format_final_output_for_client_node(state: AgentGraphState) -> Dict[st
     if current_context:
         task_stage = getattr(current_context, "task_stage", "").upper()
     
-    modelling_output_content = state.get("modelling_output_content", {})
-    teaching_output = state.get("teaching_output_content", {})
+    modelling_output_content = state.get("modelling_output_content") or {}
+    teaching_output = state.get("teaching_output_content") or {}
 
     # Prioritize modelling TTS if in a modelling stage
     if "MODELLING" in task_stage:
@@ -44,7 +44,7 @@ async def format_final_output_for_client_node(state: AgentGraphState) -> Dict[st
     # Check for PEDAGOGY_GENERATION stage if modelling TTS wasn't used or not in modelling stage
     if not conversational_tts and task_stage == "PEDAGOGY_GENERATION":
         logger.info(f"{node_name}: Task stage is 'PEDAGOGY_GENERATION'. Checking 'task_suggestion_llm_output' for TTS.")
-        pedagogy_output = state.get("task_suggestion_llm_output", {})
+        pedagogy_output = state.get("task_suggestion_llm_output") or {}
         if isinstance(pedagogy_output, dict):
             tts_candidate_pedagogy = pedagogy_output.get("task_suggestion_tts")
             if tts_candidate_pedagogy and isinstance(tts_candidate_pedagogy, str) and tts_candidate_pedagogy.strip():

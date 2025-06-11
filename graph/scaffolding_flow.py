@@ -1,14 +1,14 @@
 # graph/scaffolding_flow.py
 from langgraph.graph import StateGraph, END
 try:
-    from ..state import AgentGraphState
+    from state import AgentGraphState
 except ImportError:
     print("Warning: Could not import AgentGraphState from '..state'. Using a placeholder.")
     class AgentGraphState(dict): pass
 
 # Import the actual agent node functions
 try:
-    from ..agents import (
+    from agents import (
         scaffolding_student_data_node,
         struggle_analyzer_node,
         scaffolding_retriever_node,

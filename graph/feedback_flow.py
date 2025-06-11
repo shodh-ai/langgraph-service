@@ -1,14 +1,14 @@
 # graph/feedback_flow.py
 from langgraph.graph import StateGraph, END
 try:
-    from ..state import AgentGraphState
+    from state import AgentGraphState
 except ImportError:
     print("Warning: Could not import AgentGraphState from ..state. Using a placeholder.")
     class AgentGraphState(dict): pass
 
 # Import the actual agent node functions
 try:
-    from ..agents import (
+    from agents import (
         feedback_student_data_node,
         error_generator_node,
         query_document_node,
