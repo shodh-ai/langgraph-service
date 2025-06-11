@@ -54,6 +54,13 @@ from .teaching_rag_node import teaching_rag_node
 from .teaching_delivery_node import teaching_delivery_node # This might become obsolete or repurposed
 from .teaching_generator_node import teaching_generator_node
 
+# Scaffolding nodes
+from .scaffolding_student_data import scaffolding_student_data_node
+from .struggle_analyzer import struggle_analyzer_node
+from .scaffolding_retriever import scaffolding_retriever_node
+from .scaffolding_planner import scaffolding_planner_node
+from .scaffolding_generator import scaffolding_generator_node
+
 __all__ = [
     # Student model nodes
     "load_student_data_node",
@@ -88,6 +95,14 @@ __all__ = [
     "RAG_document_node",
     "feedback_planner_node",
     "feedback_generator_node",
+
+    # Scaffolding nodes
+    "scaffolding_student_data_node",
+    "struggle_analyzer_node",
+    "scaffolding_retriever_node",
+    "scaffolding_planner_node",
+    "scaffolding_generator_node",
+
     "initial_report_generation_node",
     "pedagogy_generator_node",
 
@@ -101,4 +116,5 @@ __all__ = [
     "teaching_rag_node",
     "teaching_delivery_node",
     "teaching_generator_node",
+
 ]
