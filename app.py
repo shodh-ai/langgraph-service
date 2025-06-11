@@ -1,13 +1,21 @@
+
 import os
 from dotenv import load_dotenv
 load_dotenv() # Load .env variables at the very beginning
 
-from fastapi import FastAPI, HTTPException
+
+# app.py
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.concurrency import run_in_threadpool # Not explicitly used in new version, can be removed if not needed elsewhere
 import logging
 import uuid
+import json
+import asyncio
 from dotenv import load_dotenv
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List # Keep for models if not fully typed
+
 from graph_builder import build_graph
 from state import AgentGraphState
 from models import (
@@ -24,20 +32,32 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
+
+# Load environment variables from .env file
 load_dotenv()
 
-logger = logging.getLogger("uvicorn.error")
+# Configure logging
+# Using uvicorn's logger for consistency if running with uvicorn
+# BasicConfig can be used as a fallback or for non-uvicorn environments
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("uvicorn.error") # Standard for Uvicorn, captures its logs and app logs if configured
 
-app = FastAPI(title="TOEFL Tutor AI Backend", version="0.1.0")
+app = FastAPI(
+    title="TOEFL Tutor AI Service",
+    version="0.1.0",
+    description="A LangGraph-based AI service for TOEFL tutoring."
+)
 
+# Add CORS middleware (from original app.py)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # Adjust in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Initialize the graph when the application starts
 toefl_tutor_graph = build_graph()
 
 
@@ -97,10 +117,46 @@ async def process_interaction_route(request_data: InteractionRequest):
     }
 
     try:
-        config = {"configurable": {"thread_id": session_id}}
-        final_state = await toefl_tutor_graph.ainvoke(
-            initial_graph_state, config=config
+        return StreamingResponse(stream_langgraph_response(request_data), media_type="text/event-stream")
+    except Exception as e:
+        logger.error(f"Error in streaming endpoint: {e}", exc_info=True)
+        # It's important to raise HTTPException for FastAPI to handle it correctly
+        raise HTTPException(status_code=500, detail=f"Error processing streaming request: {str(e)}")
+
+# Renamed original endpoint for non-streaming for clarity and to avoid conflict
+@app.post("/process_interaction_non_streaming", response_model=InteractionResponse)
+async def process_interaction_non_streaming_route(request_data: InteractionRequest):
+    logger.info(f"Non-streaming request received for user '{request_data.current_context.user_id}' session '{request_data.session_id}'")
+    try:
+        initial_graph_state = AgentGraphState(
+            user_id=request_data.current_context.user_id,
+            session_id=request_data.session_id,
+            transcript=request_data.transcript,
+            current_context=request_data.current_context,
+            chat_history=request_data.chat_history,
+            user_token=request_data.usertoken,
+            full_submitted_transcript=request_data.transcript if request_data.current_context.task_stage == "speaking_task_submitted" else None,
+            question_stage=request_data.current_context.question_stage,
+            student_memory_context=None,
+            task_stage=request_data.current_context.task_stage,
+            next_task_details=None,
+            diagnosis_result=None,
+            error_details=None,
+            document_query_result=None,
+            rag_query_result=None,
+            feedback_plan=None,
+            feedback_output=None,
+            feedback_content=None,
+            scaffolding_analysis=None,
+            scaffolding_retrieval_result=None,
+            scaffolding_plan=None,
+            scaffolding_output=None,
+            teaching_module_state=None,
+            p1_curriculum_navigator_output=None,
+            conversation_response=None,
+            output_content=None,
         )
+
 
         # --- BEGIN Detailed final_state logging ---
         logger.warning(f"APP.PY: Received final_state type: {type(final_state)}")
@@ -202,9 +258,11 @@ async def process_interaction_route(request_data: InteractionRequest):
         # Optional: Log the keys that will be sent for verification
         # logger.debug(f"InteractionResponse being sent with keys: {list(response.model_dump().keys())}")
 
-        return response
+
+        return InteractionResponse(response=response_text, ui_actions=ui_actions_list, session_id=request_data.session_id)
 
     except Exception as e:
+
         logger.error(f"Exception in /process_interaction: {e}", exc_info=True)
         # The following import and print_exc are for more verbose console output if needed, 
         # but logger.error with exc_info=True should capture it well.
@@ -215,13 +273,15 @@ async def process_interaction_route(request_data: InteractionRequest):
         )
 
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
-
 if __name__ == "__main__":
     import uvicorn
     import os
-
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "5005")))
+    # Use PORT from env, default to 8000 (common for dev, original used 5005)
+    port = int(os.getenv("PORT", "8000")) 
+    logger.info(f"Starting Uvicorn server on host 0.0.0.0:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

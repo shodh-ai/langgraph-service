@@ -42,6 +42,30 @@ class AgentGraphState(TypedDict, total=False):
 
     # Processing results
     diagnosis_result: Optional[Dict[str, Any]]  # Results from diagnostic analysis
+    error_details: Optional[Dict[str, Any]] # Detailed error information
+    document_query_result: Optional[Dict[str, Any]] # Result from document querying
+    rag_query_result: Optional[Dict[str, Any]] # Result from RAG querying
+
+    # Feedback flow specific fields
+    feedback_plan: Optional[Dict[str, Any]]
+    feedback_output: Optional[Dict[str, Any]]
+
+    # Scaffolding flow specific fields (additional)
+    scaffolding_analysis: Optional[Dict[str, Any]]
+    scaffolding_retrieval_result: Optional[Dict[str, Any]]
+    scaffolding_plan: Optional[Dict[str, Any]]
+
+    # Teaching module state
+    teaching_module_state: Optional[Dict[str, Any]]
+
+    # Curriculum / P1 specific outputs
+    p1_curriculum_navigator_output: Optional[Dict[str, Any]]
+
+    # General conversation response holder
+    conversation_response: Optional[Dict[str, Any]]
+
+    # Task stage (also in current_context, but explicitly set in app.py)
+    task_stage: Optional[str]
 
     # Data from specific welcome flow nodes
     greeting_data: Optional[Dict[str, str]]  # Expected: {"greeting_tts": "..."}
