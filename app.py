@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv() # Load .env variables at the very beginning
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -15,6 +19,7 @@ from models import (
 
 # Configure basic logging for the application
 # This will set the root logger level and format, affecting all module loggers unless they are specifically configured otherwise.
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -54,21 +59,42 @@ async def process_interaction_route(request_data: InteractionRequest):
     if context.task_stage == "speaking_task_submitted":
         full_submitted_transcript = transcript
 
-    initial_graph_state = AgentGraphState(
-        user_id=user_id,
-        user_token=request_data.usertoken,
-        session_id=session_id,
-        transcript=transcript,
-        full_submitted_transcript=full_submitted_transcript,
-        current_context=context,
-        chat_history=chat_history,
-        question_stage=context.question_stage,
-        student_memory_context=None,
-        next_task_details=None,
-        diagnosis_result=None,
-        output_content=None,
-        feedback_content=None,
-    )
+    initial_graph_state: AgentGraphState = {
+        "user_id": user_id,
+        "user_token": request_data.usertoken,
+        "session_id": session_id,
+        "transcript": transcript,
+        "full_submitted_transcript": full_submitted_transcript,
+        "current_context": context,
+        "chat_history": chat_history,
+        "question_stage": context.question_stage,
+        "student_memory_context": None,
+        "next_task_details": None,
+        "diagnosis_result": None,
+        "output_content": None,
+        "feedback_content": None,
+
+        # --- Fields from merged branches ---
+        # Populate all fields to ensure nodes from both branches work.
+
+        # 'feedback-system' fields, mapped from available context
+        "estimated_overall_english_comfort_level": context.english_comfort_level,
+        "initial_impression": context.teacher_initial_impression,
+        "fluency": context.fluency,
+        "grammar": context.grammar,
+        "vocabulary": context.vocabulary,
+        "question_one_answer": context.question_one_answer,
+        "question_two_answer": context.question_two_answer,
+        "question_three_answer": context.question_three_answer,
+
+        # 'teaching&modelling' fields
+        "example_prompt_text": context.example_prompt_text,
+        "student_goal_context": context.student_goal_context,
+        "student_confidence_context": context.student_confidence_context,
+        "teacher_initial_impression": context.teacher_initial_impression,
+        "student_struggle_context": context.student_struggle_context,
+        "english_comfort_level": context.english_comfort_level,
+    }
 
     try:
         config = {"configurable": {"thread_id": session_id}}
@@ -76,89 +102,116 @@ async def process_interaction_route(request_data: InteractionRequest):
             initial_graph_state, config=config
         )
 
-        output_content: Optional[Dict[str, Any]] = final_state.get("output_content")
-        if output_content is None:
-            output_content = final_state.get("feedback_content", {})
+        # --- BEGIN Detailed final_state logging ---
+        logger.warning(f"APP.PY: Received final_state type: {type(final_state)}")
+        if isinstance(final_state, dict):
+            logger.warning(f"APP.PY: final_state keys: {list(final_state.keys())}")
+            final_tts_content_from_log = final_state.get('final_text_for_tts') # Use a different var name to avoid confusion with response_text
+            logger.warning(f"APP.PY: final_state content for 'final_text_for_tts': '{str(final_tts_content_from_log)[:200]}...' (Type: {type(final_tts_content_from_log)})")
+            # Log a few other potentially relevant keys from output_formatter_node
+            logger.warning(f"APP.PY: final_state content for 'final_ui_actions': {final_state.get('final_ui_actions')}")
+            logger.warning(f"APP.PY: final_state content for 'raw_modelling_output': {'present' if 'raw_modelling_output' in final_state else 'missing'}")
+        elif hasattr(final_state, '__dict__'):
+            logger.warning(f"APP.PY: final_state is an object. Attributes: {list(final_state.__dict__.keys())}")
+            final_tts_content_from_log = getattr(final_state, 'final_text_for_tts', 'AttributeNotPresent')
+            logger.warning(f"APP.PY: final_state attribute 'final_text_for_tts': '{str(final_tts_content_from_log)[:200]}...' (Type: {type(final_tts_content_from_log)})")
+        else:
+            logger.warning(f"APP.PY: final_state is not a dict and has no __dict__. Dir: {dir(final_state)}")
+            logger.warning(f"APP.PY: final_state raw content: {str(final_state)[:500]}...") # Log a snippet if unknown type
+        # --- END Detailed final_state logging ---
 
-        response_text = ""
-        if output_content:
-            response_text = output_content.get(
-                "response",
-                output_content.get("text_for_tts", output_content.get("text", "")),
-            )
-
+        # Extract final outputs from the graph state based on the new structure
+        response_text = final_state.get("final_text_for_tts")
         if not response_text:
-            response_text = (
-                "No response text was generated. Please check the system logs."
-            )
+            response_text = "I'm ready for your next instruction. Please let me know how I can help!"
+            logger.warning("final_text_for_tts not found or empty in final_state. Using default message.")
 
-        ui_actions = None
-        if output_content:
-            ui_actions = output_content.get("ui_actions") or output_content.get(
-                "dom_actions"
-            )
-            if ui_actions:
-                for action in ui_actions:
-                    if "action_type" in action:
-                        action["action_type_str"] = action.get("action_type")
-                        del action["action_type"]
-                    elif "action_type_str" not in action:
-                        action["action_type_str"] = None
+        # final_ui_actions from state are expected to be List[Dict[str, Any]]
+        current_ui_action_dicts: List[Dict[str, Any]] = final_state.get("final_ui_actions") or []
 
-        next_task = final_state.get("next_task_details")
-        if next_task:
-            if ui_actions is None:
-                ui_actions = []
+        next_task_info = final_state.get("final_next_task_info")
+        navigation_instruction = final_state.get("final_navigation_instruction")
 
+        # Logic to add a default UI action for next_task if not already present
+        if next_task_info:
             has_task_button = any(
-                action.get("action_type_str") == "DISPLAY_NEXT_TASK_BUTTON"
-                for action in ui_actions
+                action.get("action_type") == "DISPLAY_NEXT_TASK_BUTTON"
+                for action in current_ui_action_dicts
             )
+            # Also consider if a navigation action might implicitly handle the next task display
+            navigates_to_task = False
+            if navigation_instruction and navigation_instruction.get("data"):
+                # This is a heuristic; actual task pages might vary
+                if "task_id" in navigation_instruction.get("data", {}) or \
+                   next_task_info.get("prompt_id") == navigation_instruction.get("data", {}).get("prompt_id") :
+                   navigates_to_task = True
+            
+            if not has_task_button and not navigates_to_task:
+                task_title = next_task_info.get("title", "New Task Available")
+                task_desc = next_task_info.get("description", "Please check your tasks.")
+                # Using SHOW_ALERT as a fallback, consider if a more specific action is better
+                current_ui_action_dicts.append({
+                    "action_type": "SHOW_ALERT",
+                    "parameters": {"message": f"Next Task: {task_title}\n{task_desc}"}
+                })
+                logger.info(f"Added SHOW_ALERT UI action for next_task_info: {task_title}")
 
-            if not has_task_button and next_task:
-                mapped_action_type_str = "SHOW_ALERT"
-                task_title = next_task.get("title", "Unknown Task")
-                task_desc = next_task.get("description", "")
-                mapped_parameters = {"message": f"Next Task: {task_title}\n{task_desc}"}
-
-                ui_actions.append(
-                    {
-                        "action_type_str": mapped_action_type_str,
-                        "parameters": mapped_parameters,
-                    }
-                )
-
+        # Convert ui_action dictionaries to ReactUIAction Pydantic models
         ui_actions_list: Optional[List[ReactUIAction]] = None
-        if ui_actions:
+        if current_ui_action_dicts:
             ui_actions_list = []
-            for action_dict in ui_actions:
-                action_type = action_dict.get("action_type_str", "")
-
-                target_element_id = None
-                if "target_element_id" in action_dict:
-                    target_element_id = action_dict["target_element_id"]
-                elif "targetElementId" in action_dict:
+            for action_dict in current_ui_action_dicts:
+                action_type_str = action_dict.get("action_type", "") # Expect 'action_type' directly
+                
+                target_element_id = action_dict.get("target_element_id")
+                # Handle potential camelCase from frontend or other systems if necessary, though backend should be consistent
+                if target_element_id is None and "targetElementId" in action_dict:
                     target_element_id = action_dict["targetElementId"]
+                    logger.debug("Used 'targetElementId' for target_element_id")
 
                 parameters = action_dict.get("parameters", {})
 
-                ui_actions_list.append(
-                    ReactUIAction(
-                        action_type=action_type,
-                        target_element_id=target_element_id,
-                        parameters=parameters,
+                try:
+                    ui_actions_list.append(
+                        ReactUIAction(
+                            action_type=action_type_str,
+                            target_element_id=target_element_id,
+                            parameters=parameters,
+                        )
                     )
-                )
+                except Exception as pydantic_exc:
+                    logger.error(f"Error creating ReactUIAction for dict {action_dict}: {pydantic_exc}", exc_info=True)
+                    # Optionally, skip this action or add a default error action
 
-        response = InteractionResponse(
-            response=response_text, ui_actions=ui_actions_list
-        )
+        # Construct the final InteractionResponse
+        # Construct the dictionary for InteractionResponse instantiation.
+        # This includes all fields from final_state, allowing raw outputs and
+        # flattened fields to be passed as 'extra' fields due to `extra = Extra.allow`
+        # in the Pydantic model. The explicitly mapped fields (`response`, `ui_actions`, etc.)
+        # will override any same-named keys from final_state.
+        model_init_kwargs = {
+            **final_state,  # Spread all of final_state
+            "response": response_text,  # Set/override with processed TTS text
+            "ui_actions": ui_actions_list,  # Set/override with processed UIAction objects
+            "next_task_info": next_task_info,  # Set/override
+            "navigation_instruction": navigation_instruction,  # Set/override
+        }
+
+        response = InteractionResponse(**model_init_kwargs)
+
+        # Optional: Log the keys that will be sent for verification
+        # logger.debug(f"InteractionResponse being sent with keys: {list(response.model_dump().keys())}")
 
         return response
 
     except Exception as e:
+        logger.error(f"Exception in /process_interaction: {e}", exc_info=True)
+        # The following import and print_exc are for more verbose console output if needed, 
+        # but logger.error with exc_info=True should capture it well.
+        # import traceback
+        # traceback.print_exc()
         raise HTTPException(
-            status_code=500, detail="Internal Server Error during AI processing"
+            status_code=500, detail=f"Internal Server Error during AI processing: {str(e)}"
         )
 
 

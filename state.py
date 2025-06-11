@@ -2,7 +2,18 @@ from typing import TypedDict, List, Optional, Dict, Any, Union
 from models import InteractionRequestContext  # Import your Pydantic model
 
 
-class AgentGraphState(TypedDict):
+class AgentGraphState(TypedDict, total=False):
+    # Teaching System Specific State
+    teacher_persona: Optional[str]
+    learning_objective_id: Optional[str] # To match CSV's LEARNING_OBJECTIVE (e.g., SPK_GEN_FLU_001)
+    student_proficiency_level: Optional[str] # To match CSV's STUDENT_PROFICIENCY (e.g., Beginner)
+    current_student_affective_state: Optional[str] # To match CSV's STUDENT_AFFECTIVE_STATE (e.g., Frustration)
+    current_lesson_step_number: Optional[int] # 1-indexed, to select the specific part of the lesson
+
+    retrieved_teaching_row: Optional[Dict[str, Any]] # The full row from CSV, retrieved by RAG
+    
+    teaching_output_content: Optional[Dict[str, Any]] # Output from TeachingDeliveryNode, e.g., {"text_for_tts": "...", "ui_actions": [...]}
+
     # User and session identifiers
     user_id: str
     user_token: str
@@ -48,6 +59,7 @@ class AgentGraphState(TypedDict):
         Dict[str, Any]
     ]  # To be deprecated in favor of output_content
 
+
     # Scaffolding-specific fields
     primary_struggle: Optional[str]  # Main struggle identified for scaffolding
     scaffolding_strategies: Optional[
@@ -72,15 +84,60 @@ class AgentGraphState(TypedDict):
     cowriting_strategies: Optional[List[Dict[str, Any]]]  # List of possible cowriting strategies
     selected_cowriting_intervention: Optional[Dict[str, Any]]  # Selected intervention plan
     cowriting_output: Optional[Dict[str, Any]]  # Formatted cowriting output for UI
+    # Modelling System Data
+    modelling_document_data: Optional[List[Dict[str, Any]]] # Data from modelling_query_document_node
+    example_prompt_text: Optional[str]
+    student_goal_context: Optional[str]
+    student_confidence_context: Optional[str]
+    teacher_initial_impression: Optional[str]
+    student_struggle_context: Optional[str]
+    english_comfort_level: Optional[str]
+    intermediate_modelling_payload: Optional[Dict[str, Any]] # Payload from modelling_generator_node
+    modelling_output_content: Optional[Dict[str, Any]] # Payload from modelling_output_formatter_node
+
+    # Keys from OutputFormatterNode for final client response
+    final_text_for_tts: Optional[str]
+    final_ui_actions: Optional[List[Any]] # Can be list of dicts or ReactUIAction Pydantic models
+    final_next_task_info: Optional[Dict[str, Any]]
+    final_navigation_instruction: Optional[Dict[str, Any]]
+    raw_modelling_output: Optional[Dict[str, Any]] # Raw output from modelling_generator_node, passed through
+    # Flattened keys from modelling_output_content, also passed through by OutputFormatterNode
+    think_aloud_sequence: Optional[List[Dict[str, Any]]]
+    pre_modeling_setup_script: Optional[str]
+    post_modeling_summary_and_key_takeaways: Optional[str]
+    comprehension_check_or_reflection_prompt_for_student: Optional[str]
+    adaptation_notes: Optional[str]
 
     llm_instruction: Optional[
         str
     ]  # Instruction for the LLM, typically from a prompt node
     user_data: Optional[Dict[str, Any]]  # User data, typically from the frontend
 
+    navigation_tts: Optional[str]  # TTS from prepare_navigation_node
+    ui_actions_for_formatter: Optional[List[Dict[str, Any]]] # UI actions to be consolidated by formatter
+    conversational_tts: Optional[str]  # TTS from conversation_handler_node or similar
+
+    # For motivational support node
+    triggering_event_for_motivation: Optional[str] # Context for why motivational support is being triggered
+    next_node_hint_from_motivation: Optional[str] # Suggestion from motivational node for the next graph step
+
+    # For session wrap-up
+    session_is_ending: Optional[bool] = False
+    final_session_data_to_save: Optional[Dict[str, Any]] = None
+
     primary_error: Optional[str]  # Primary error from the LLM
     explanation: Optional[str]  # Explanation for the primary error
     document_data: Optional[List[Dict]]
+
+    estimated_overall_english_comfort_level: Optional[str]
+    initial_impression: Optional[str]
+    speaking_strengths: Optional[str]
+    fluency: Optional[str]
+    grammar: Optional[str]
+    vocabulary: Optional[str]
+    question_one_answer: Optional[str]
+    question_two_answer: Optional[str]
+    question_three_answer: Optional[str]
 
     prioritized_issue: Optional[str]
     chosen_pedagogical_strategy: Optional[str]
