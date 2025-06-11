@@ -7,6 +7,11 @@ from google.generativeai.types import GenerationConfig
 import json
 
 # Import all the agent node functions
+from graph.teaching_flow import create_teaching_subgraph
+from graph.feedback_flow import create_feedback_subgraph
+from graph.scaffolding_flow import create_scaffolding_subgraph
+from graph.modeling_flow import create_modeling_subgraph
+from graph.cowriting_flow import create_cowriting_subgraph
 from agents import (
     save_interaction_node,
     format_final_output_node,
@@ -51,6 +56,13 @@ NODE_SCAFFOLDING_RETRIEVER = "scaffolding_retriever"
 NODE_SCAFFOLDING_PLANNER = "scaffolding_planner"
 NODE_SCAFFOLDING_GENERATOR = "scaffolding_generator"
 
+# Define node names for teaching module and other subgraphs
+NODE_TEACHING_MODULE = "TEACHING_MODULE"
+NODE_FEEDBACK_MODULE = "FEEDBACK_MODULE"
+NODE_SCAFFOLDING_MODULE = "SCAFFOLDING_MODULE"
+NODE_MODELING_MODULE = "MODELING_MODULE"
+NODE_COWRITING_MODULE = "COWRITING_MODULE"
+NODE_P1_CURRICULUM_NAVIGATOR = "p1_curriculum_navigator"
 
 # Define a router node (empty function that doesn't modify state)
 async def router_node(state: AgentGraphState) -> dict:
@@ -60,8 +72,25 @@ async def router_node(state: AgentGraphState) -> dict:
     return {}
 
 
+# Placeholder for P1 Curriculum Navigator node
+async def p1_curriculum_navigator_node(state: AgentGraphState) -> dict:
+    logger.info(
+        f"P1 Curriculum Navigator activated for user {state.get('user_id', 'unknown_user')}. Deciding next steps after teaching module."
+    )
+    # This node would typically set state to guide the next actions, e.g., next lesson, or switch to another mode.
+    # For now, it prepares for a general conversation handler.
+    return {"message": "Teaching module completed. Navigating to next steps."}
+
 # Define the initial router function based on task_stage
 async def initial_router_logic(state: AgentGraphState) -> str:
+    next_task_details = state.get("next_task_details", {})
+    user_id = state.get('user_id', 'unknown_user')
+
+    # Priority routing for specific task types like LESSON
+    if next_task_details.get("type") == "LESSON":
+        logger.info(f"Routing to TEACHING_MODULE for user {user_id}")
+        return NODE_TEACHING_MODULE
+
     context = state.get("current_context")
     transcript = state.get("transcript")
     chat_history = state.get("chat_history")
@@ -70,9 +99,14 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     if task_stage == "ROX_WELCOME_INIT":
         return NODE_HANDLE_WELCOME
     if task_stage == "FEEDBACK_GENERATION":
-        return NODE_FEEDBACK_STUDENT_DATA
+        return NODE_FEEDBACK_MODULE
     if task_stage == "SCAFFOLDING_GENERATION":
-        return NODE_SCAFFOLDING_STUDENT_DATA
+        return NODE_SCAFFOLDING_MODULE
+    # Add hypothetical task stages for new modules
+    if task_stage == "MODELING":
+        return NODE_MODELING_MODULE
+    if task_stage == "COWRITING":
+        return NODE_COWRITING_MODULE
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -81,7 +115,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.5-flash-preview-05-20",
+            "gemini-2.5-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         prompt = (
@@ -135,28 +169,30 @@ def build_graph():
     NODE_ROUTER = "router"
     workflow = StateGraph(AgentGraphState)
 
-    # Add nodes for all components
+    # Add nodes for core components
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_node)
     workflow.add_node(NODE_CONVERSATION_HANDLER, conversation_handler_node)
     workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_node)
     workflow.add_node(NODE_HANDLE_WELCOME, handle_welcome_node)
     workflow.add_node(NODE_STUDENT_DATA, student_data_node)
     workflow.add_node(NODE_WELCOME_PROMPT, welcome_prompt_node)
-    workflow.add_node(NODE_ERROR_GENERATION, error_generator_node)
-    workflow.add_node(NODE_FEEDBACK_STUDENT_DATA, feedback_student_data_node)
-    workflow.add_node(NODE_QUERY_DOCUMENT, query_document_node)
-    workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
-    workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
-    workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
-    
-    # Add scaffolding system nodes
-    workflow.add_node(NODE_SCAFFOLDING_STUDENT_DATA, scaffolding_student_data_node)
-    workflow.add_node(NODE_STRUGGLE_ANALYZER, struggle_analyzer_node)
-    workflow.add_node(NODE_SCAFFOLDING_RETRIEVER, scaffolding_retriever_node)
-    workflow.add_node(NODE_SCAFFOLDING_PLANNER, scaffolding_planner_node)
-    workflow.add_node(NODE_SCAFFOLDING_GENERATOR, scaffolding_generator_node)
     
     workflow.add_node(NODE_ROUTER, router_node)
+
+    # Instantiate and add all subgraphs
+    teaching_subgraph_instance = create_teaching_subgraph()
+    feedback_subgraph_instance = create_feedback_subgraph()
+    scaffolding_subgraph_instance = create_scaffolding_subgraph()
+    modeling_subgraph_instance = create_modeling_subgraph()
+    cowriting_subgraph_instance = create_cowriting_subgraph()
+
+    workflow.add_node(NODE_TEACHING_MODULE, teaching_subgraph_instance)
+    workflow.add_node(NODE_FEEDBACK_MODULE, feedback_subgraph_instance)
+    workflow.add_node(NODE_SCAFFOLDING_MODULE, scaffolding_subgraph_instance)
+    workflow.add_node(NODE_MODELING_MODULE, modeling_subgraph_instance)
+    workflow.add_node(NODE_COWRITING_MODULE, cowriting_subgraph_instance)
+    
+    workflow.add_node(NODE_P1_CURRICULUM_NAVIGATOR, p1_curriculum_navigator_node)
 
     workflow.set_entry_point(NODE_ROUTER)
 
@@ -166,8 +202,11 @@ def build_graph():
         {
             NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
             NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
-            NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
-            NODE_SCAFFOLDING_STUDENT_DATA: NODE_SCAFFOLDING_STUDENT_DATA,
+            NODE_TEACHING_MODULE: NODE_TEACHING_MODULE,
+            NODE_FEEDBACK_MODULE: NODE_FEEDBACK_MODULE,
+            NODE_SCAFFOLDING_MODULE: NODE_SCAFFOLDING_MODULE,
+            NODE_MODELING_MODULE: NODE_MODELING_MODULE,
+            NODE_COWRITING_MODULE: NODE_COWRITING_MODULE,
         },
     )
 
@@ -182,20 +221,15 @@ def build_graph():
     workflow.add_edge(NODE_FORMAT_FINAL_OUTPUT, NODE_SAVE_INTERACTION)
     workflow.add_edge(NODE_SAVE_INTERACTION, END)
 
-    # Feedback generation flow
-    workflow.add_edge(NODE_FEEDBACK_STUDENT_DATA, NODE_ERROR_GENERATION)
-    workflow.add_edge(NODE_ERROR_GENERATION, NODE_QUERY_DOCUMENT)
-    workflow.add_edge(NODE_QUERY_DOCUMENT, NODE_RAG_DOCUMENT)
-    workflow.add_edge(NODE_RAG_DOCUMENT, NODE_FEEDBACK_PLANNER)
-    workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
-    workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
-    
-    # Scaffolding generation flow
-    workflow.add_edge(NODE_SCAFFOLDING_STUDENT_DATA, NODE_STRUGGLE_ANALYZER)
-    workflow.add_edge(NODE_STRUGGLE_ANALYZER, NODE_SCAFFOLDING_RETRIEVER)
-    workflow.add_edge(NODE_SCAFFOLDING_RETRIEVER, NODE_SCAFFOLDING_PLANNER)
-    workflow.add_edge(NODE_SCAFFOLDING_PLANNER, NODE_SCAFFOLDING_GENERATOR)
-    workflow.add_edge(NODE_SCAFFOLDING_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
+    # Edges from subgraphs back to the main flow
+    workflow.add_edge(NODE_FEEDBACK_MODULE, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_SCAFFOLDING_MODULE, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_MODELING_MODULE, NODE_FORMAT_FINAL_OUTPUT)
+    workflow.add_edge(NODE_COWRITING_MODULE, NODE_FORMAT_FINAL_OUTPUT)
+
+    # Edges for the teaching module flow
+    workflow.add_edge(NODE_TEACHING_MODULE, NODE_P1_CURRICULUM_NAVIGATOR)
+    workflow.add_edge(NODE_P1_CURRICULUM_NAVIGATOR, NODE_CONVERSATION_HANDLER) # Or to another router/handler if needed
 
     # Compile the graph
     app_graph = workflow.compile()
