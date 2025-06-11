@@ -28,6 +28,14 @@ from agents import (
     RAG_document_node,
     feedback_planner_node,
     feedback_generator_node,
+
+    # Import the new scaffolding nodes
+    scaffolding_student_data_node,
+    struggle_analyzer_node,
+    scaffolding_retriever_node,
+    scaffolding_planner_node,
+    scaffolding_generator_node,
+
     initial_report_generation_node,
     pedagogy_generator_node,
     # Modelling System Nodes
@@ -39,6 +47,7 @@ from agents import (
     teaching_rag_node,
     teaching_delivery_node,
     teaching_generator_node,
+
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +75,15 @@ NODE_FEEDBACK_GENERATOR = "feedback_generator"
 NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
 NODE_PEDAGOGY_GENERATION = "pedagogy_generation"
 
+
+# Define node names for scaffolding system
+NODE_SCAFFOLDING_STUDENT_DATA = "scaffolding_student_data"
+NODE_STRUGGLE_ANALYZER = "struggle_analyzer"
+NODE_SCAFFOLDING_RETRIEVER = "scaffolding_retriever"
+NODE_SCAFFOLDING_PLANNER = "scaffolding_planner"
+NODE_SCAFFOLDING_GENERATOR = "scaffolding_generator"
+
+
 # Modelling System Node Names
 NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
 NODE_MODELLING_RAG_DOCUMENT = "modelling_RAG_document"
@@ -76,6 +94,7 @@ NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
 NODE_TEACHING_RAG = "teaching_RAG_node"
 NODE_TEACHING_DELIVERY = "teaching_delivery_node" # This might become obsolete or used for non-LLM paths
 NODE_TEACHING_GENERATOR = "teaching_generator_node" # New LLM-based teaching node
+
 
 # Define a router node (empty function that doesn't modify state)
 async def router_node(state: AgentGraphState) -> dict:
@@ -128,6 +147,10 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         return NODE_HANDLE_WELCOME
     if task_stage_from_context == "FEEDBACK_GENERATION": # Corrected to use task_stage_from_context
         return NODE_FEEDBACK_STUDENT_DATA
+
+    if task_stage == "SCAFFOLDING_GENERATION":
+        return NODE_SCAFFOLDING_STUDENT_DATA
+
     if task_stage_from_context == "INITIAL_REPORT_GENERATION":
         return NODE_INITIAL_REPORT_GENERATION
     if task_stage_from_context == "PEDAGOGY_GENERATION":
@@ -138,6 +161,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     if task_stage_from_context == "TEACHING_LESSON_REQUESTED": # New task stage for teaching
         logger.info(f"Task stage is TEACHING_LESSON_REQUESTED. Routing to NODE_TEACHING_RAG.")
         return NODE_TEACHING_RAG
+
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -249,6 +273,7 @@ def build_graph():
 
     workflow = StateGraph(AgentGraphState)
 
+    # Add nodes for all components
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_node)
     workflow.add_node(NODE_CONVERSATION_HANDLER, conversation_handler_node)
     workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_for_client_node)
@@ -268,6 +293,16 @@ def build_graph():
     workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
     workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
     workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
+
+    
+    # Add scaffolding system nodes
+    workflow.add_node(NODE_SCAFFOLDING_STUDENT_DATA, scaffolding_student_data_node)
+    workflow.add_node(NODE_STRUGGLE_ANALYZER, struggle_analyzer_node)
+    workflow.add_node(NODE_SCAFFOLDING_RETRIEVER, scaffolding_retriever_node)
+    workflow.add_node(NODE_SCAFFOLDING_PLANNER, scaffolding_planner_node)
+    workflow.add_node(NODE_SCAFFOLDING_GENERATOR, scaffolding_generator_node)
+    
+
     workflow.add_node(NODE_INITIAL_REPORT_GENERATION, initial_report_generation_node)
     workflow.add_node(NODE_PEDAGOGY_GENERATION, pedagogy_generator_node)
 
@@ -281,6 +316,7 @@ def build_graph():
     workflow.add_node(NODE_TEACHING_RAG, teaching_rag_node)
     workflow.add_node(NODE_TEACHING_DELIVERY, teaching_delivery_node) # This might become obsolete or used for non-LLM paths
     workflow.add_node(NODE_TEACHING_GENERATOR, teaching_generator_node)
+
 
     workflow.add_node(NODE_ROUTER, router_node)
 
@@ -300,10 +336,14 @@ def build_graph():
             NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
             NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
             NODE_FEEDBACK_STUDENT_DATA: NODE_FEEDBACK_STUDENT_DATA,
+
+            NODE_SCAFFOLDING_STUDENT_DATA: NODE_SCAFFOLDING_STUDENT_DATA,
+
             NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
             NODE_PEDAGOGY_GENERATION: NODE_PEDAGOGY_GENERATION,
             NODE_MODELLING_QUERY_DOCUMENT: NODE_MODELLING_QUERY_DOCUMENT, # Added modelling route
             NODE_TEACHING_RAG: NODE_TEACHING_RAG, # Added teaching route
+
         },
     )
 
@@ -376,6 +416,13 @@ def build_graph():
     workflow.add_edge(NODE_RAG_DOCUMENT, NODE_FEEDBACK_PLANNER)
     workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
     workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
+    
+    # Scaffolding generation flow
+    workflow.add_edge(NODE_SCAFFOLDING_STUDENT_DATA, NODE_STRUGGLE_ANALYZER)
+    workflow.add_edge(NODE_STRUGGLE_ANALYZER, NODE_SCAFFOLDING_RETRIEVER)
+    workflow.add_edge(NODE_SCAFFOLDING_RETRIEVER, NODE_SCAFFOLDING_PLANNER)
+    workflow.add_edge(NODE_SCAFFOLDING_PLANNER, NODE_SCAFFOLDING_GENERATOR)
+    workflow.add_edge(NODE_SCAFFOLDING_GENERATOR, NODE_FORMAT_FINAL_OUTPUT)
 
     # Initial report generation flow
     workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
