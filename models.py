@@ -26,14 +26,49 @@ class InteractionRequestContext(BaseModel):
     timer_value_seconds: Optional[int] = None
     selected_tools_or_options: Optional[Dict[str, Any]] = None
     # For specific UI events if not covered by task_stage
-    clicked_button_id: Optional[str] = None
-    ui_event_payload: Optional[Dict[str, Any]] = (
-        None  # e.g., data from a form field on P9 drill
-    )
+    feedback_content: Optional[Dict[str, Any]] = None
+    modelling_document_data: Optional[Dict[str, Any]] = None
+
+    # Keys from OutputFormatterNode for final client response
+    final_text_for_tts: Optional[str] = None
+    final_ui_actions: Optional[List[Any]] = None  # Assuming it can be a list of dicts or ReactUIActionModels
+    final_next_task_info: Optional[Dict[str, Any]] = None
+    final_navigation_instruction: Optional[Dict[str, Any]] = None
+    raw_modelling_output: Optional[Dict[str, Any]] = None
+    # Flattened keys from modelling_output_content
+    think_aloud_sequence: Optional[List[Dict[str, Any]]] = None
+    pre_modeling_setup_script: Optional[str] = None
+    post_modeling_summary_and_key_takeaways: Optional[str] = None
+    comprehension_check_or_reflection_prompt_for_student: Optional[str] = None
+    adaptation_notes: Optional[str] = None  # e.g., data from a form field on P9 drill
+
+    # Modelling System Context Fields
+    example_prompt_text: Optional[str] = None
+    student_goal_context: Optional[str] = None
+    student_confidence_context: Optional[str] = None
+    teacher_initial_impression: Optional[str] = None
+    student_struggle_context: Optional[str] = None
+    english_comfort_level: Optional[str] = None
 
     # Fields for error or raw data logging if needed during RPC/context transfer
     error_during_context_preparation: Optional[str] = None
     raw_frontend_event_data: Optional[Any] = None
+
+    # Student assessment fields (from previous local feedback-system state)
+    speaking_strengths: Optional[str] = None  # Positive aspects of student's speaking
+    fluency: Optional[str] = None  # Assessment of speech flow and naturalness
+    grammar: Optional[str] = None  # Grammar issues and areas for improvement
+    vocabulary: Optional[str] = None  # Assessment of vocabulary usage
+    question_one_answer: Optional[str] = None  # Student's response to first question
+    question_two_answer: Optional[str] = None  # Student's response to second question
+    question_three_answer: Optional[str] = None  # Student's response to third question
+
+    # Teaching System Context Fields (from origin/feedback-system)
+    teacher_persona: Optional[str] = None
+    learning_objective_id: Optional[str] = None # Corresponds to LEARNING_OBJECTIVE in CSV for RAG
+    student_proficiency_level: Optional[str] = None # Corresponds to STUDENT_PROFICIENCY in CSV for RAG
+    current_student_affective_state: Optional[str] = None # Corresponds to STUDENT_AFFECTIVE_STATE in CSV for RAG
+    current_lesson_step_number: Optional[int] = None # 1-indexed step number for multi-step content
 
 
 class InteractionRequest(BaseModel):
@@ -76,6 +111,8 @@ class ReactUIAction(BaseModel):  # RENAMED from DomAction
     # e.g., for NAVIGATE_TO_PAGE: {"page_name": "P6_Feedback", "data_for_page": {...}}
 
 
+from pydantic import BaseModel, Field, Extra  # Ensure Extra is imported
+
 class InteractionResponse(BaseModel):
     """
     The main response object sent from the FastAPI/LangGraph backend
@@ -97,3 +134,6 @@ class InteractionResponse(BaseModel):
     # e.g., {"target_page": "P6_Feedback",
     #        "data_for_page_load": {"submission_id": "xyz"}}
     # This might be superseded by a specific ui_action of type NAVIGATE_TO_PAGE
+
+    class Config:
+        extra = Extra.allow
