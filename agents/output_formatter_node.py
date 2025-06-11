@@ -65,12 +65,18 @@ async def format_final_output_node(state: AgentGraphState) -> dict:
     logger.info(f"OutputFormatterNode: Final combined response: '{final_combined_tts[:200]}...')")
     logger.info(f"OutputFormatterNode: Final UI actions: {ui_actions}")
 
-    # For backward compatibility, also update feedback_content
-    # If other parts of the system rely on feedback_content, ensure it's consistent.
-    # For this flow, output_content is the primary carrier of the final response.
-    update_payload = {"output_content": final_output_for_client}
+    # This is the dictionary that will be returned by the node.
+    # It includes fields for general state update and specific fields for the streaming endpoint.
+    node_return_value = {
+        "output_content": final_output_for_client,  # For state update and non-streaming endpoint
+        "streaming_text_chunk": final_combined_tts, # For streaming endpoint in app.py
+        "final_ui_actions": ui_actions              # For streaming endpoint in app.py
+    }
+
+    # For backward compatibility, also update feedback_content in the state if needed.
     if "feedback_content" not in state or state.get("feedback_content") is None:
-        logger.info("OutputFormatterNode: Also setting feedback_content for backward compatibility.")
-        update_payload["feedback_content"] = final_output_for_client
+        logger.info("OutputFormatterNode: Also setting 'feedback_content' in returned state for backward compatibility.")
+        node_return_value["feedback_content"] = final_output_for_client
     
-    return update_payload
+    logger.debug(f"OutputFormatterNode: Returning: {node_return_value}")
+    return node_return_value

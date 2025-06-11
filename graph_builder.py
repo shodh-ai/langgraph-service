@@ -87,16 +87,19 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     user_id = state.get('user_id', 'unknown_user')
 
     # Priority routing for specific task types like LESSON
-    if next_task_details.get("type") == "LESSON":
+    # Ensure next_task_details is not None before trying to access its 'type'
+    if next_task_details and next_task_details.get("type") == "LESSON":
         logger.info(f"Routing to TEACHING_MODULE for user {user_id}")
         return NODE_TEACHING_MODULE
 
     context = state.get("current_context")
     transcript = state.get("transcript")
     chat_history = state.get("chat_history")
-    task_stage = getattr(context, "task_stage", None)
+    # Access task_stage using getattr since context is an object
+    task_stage = getattr(context, "task_stage", None) if context else None
 
-    if task_stage == "ROX_WELCOME_INIT":
+    # Route both ROX_WELCOME_INIT and welcome_flow to the welcome handler
+    if task_stage in ["ROX_WELCOME_INIT", "welcome_flow"]:
         return NODE_HANDLE_WELCOME
     if task_stage == "FEEDBACK_GENERATION":
         return NODE_FEEDBACK_MODULE
