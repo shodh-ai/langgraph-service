@@ -5,15 +5,34 @@ from memory import memory_stub # Imports the instance from memory/__init__.py
 logger = logging.getLogger(__name__)
 
 async def load_student_data_node(state: AgentGraphState) -> dict:
-    """Loads student data from Mem0 and updates the state."""
+    """
+    Loads student data from Mem0, extracts 'next_task_details' from the most recent
+    interaction, and updates the state.
+    """
     user_id = state["user_id"]
     logger.info(f"StudentModelNode: Loading student data for user_id: '{user_id}' from Mem0")
-    
+
     # Get student data from memory stub
     student_data = memory_stub.get_student_data(user_id)
     logger.info(f"StudentModelNode: Retrieved student data from Mem0: {student_data}")
-    
-    return {"student_memory_context": student_data}
+
+    # Initialize updates with the full student memory context
+    updates = {"student_memory_context": student_data}
+
+    # Extract 'next_task_details' from the last interaction, if available
+    interaction_history = (student_data or {}).get("interaction_history", [])
+    if interaction_history:
+        last_interaction = interaction_history[-1]
+        next_task_details = last_interaction.get("task_details")
+        if next_task_details:
+            updates["next_task_details"] = next_task_details
+            logger.info(f"StudentModelNode: Loaded 'next_task_details' from last interaction: {next_task_details}")
+        else:
+            logger.info("StudentModelNode: Last interaction found, but it has no 'task_details'.")
+    else:
+        logger.info("StudentModelNode: No interaction history found for user, so no 'next_task_details' to load.")
+
+    return updates
 
 async def save_interaction_node(state: AgentGraphState) -> dict:
     """Saves the current interaction to Mem0."""

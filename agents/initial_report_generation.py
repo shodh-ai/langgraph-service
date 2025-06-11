@@ -18,10 +18,12 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.5-flash-preview-05-20",
+            "gemini-2.5-flash-preview-05-20", # Consider making model name configurable
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
-        prompt = f"""
+        
+        # First prompt for initial analysis (internal)
+        prompt1 = f"""
         You are an expert analyser in English. A student has written the following paragraph:
         {transcript}
         
@@ -37,17 +39,17 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
             "errors": "",
             "vocabulary_enrichment": ""
         }}
-        
         """
-        response = model.generate_content(prompt)
-        response_json = json.loads(response.text)
+        internal_response = model.generate_content(prompt1)
+        internal_report_json = json.loads(internal_response.text)
 
-        prompt = f"""
+        # Second prompt for the main report, using the internal analysis
+        prompt2 = f"""
         You are an expert analyser in English. A student has written the following paragraph:
         {transcript}
 
         A second analyser has given you the following report:
-        {response_json}
+        {internal_report_json}
         
         Analyse the paragraph and generate a diagnosis report.
         The report must answer the questions:
@@ -68,18 +70,36 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
             "vocabulary": ""
         }}
         """
-        response = model.generate_content(prompt)
-        response_json = json.loads(response.text)
-        print(response_json)
-        return response_json
+        final_response_genai = model.generate_content(prompt2)
+        final_report_json = json.loads(final_response_genai.text)
+        
+        logger.debug(f"Generated initial report: {final_report_json}") # Changed print to logger.debug
+
+        # Prepare output for AgentGraphState
+        conversational_text = final_report_json.get(
+            "initial_impression", 
+            "I've reviewed your submission. Let's look at the details." # Fallback TTS
+        )
+        
+        # This is what updates the state for downstream nodes
+        return {
+            "conversational_tts": conversational_text,
+            "initial_report_content": final_report_json # Store the full report
+        }
 
     except Exception as e:
-        logger.error(f"Error processing with GenerativeModel: {e}")
+        logger.error(f"Error processing with GenerativeModel in initial_report_generation_node: {e}")
+        error_tts = "I encountered an issue while generating your initial report. Please try again."
+        error_report_content = {
+            "error": str(e),
+            "estimated_overall_english_comfort_level": "Unknown",
+            "initial_impression": "Could not generate report due to an error.",
+            "speaking_strengths": "N/A",
+            "fluency": "N/A",
+            "grammar": "N/A",
+            "vocabulary": "N/A",
+        }
         return {
-            "estimated_overall_english_comfort_level": "Unknown Diagnosis",
-            "initial_impression": "Error processing with GenerativeModel",
-            "speaking_strengths": "Error processing with GenerativeModel",
-            "fluency": "Error processing with GenerativeModel",
-            "grammar": "Error processing with GenerativeModel",
-            "vocabulary": "Error processing with GenerativeModel",
+            "conversational_tts": error_tts,
+            "initial_report_content": error_report_content
         }

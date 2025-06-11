@@ -70,6 +70,19 @@ class AgentGraphState(TypedDict, total=False):
     intermediate_modelling_payload: Optional[Dict[str, Any]] # Payload from modelling_generator_node
     modelling_output_content: Optional[Dict[str, Any]] # Payload from modelling_output_formatter_node
 
+    # Keys from OutputFormatterNode for final client response
+    final_text_for_tts: Optional[str]
+    final_ui_actions: Optional[List[Any]] # Can be list of dicts or ReactUIAction Pydantic models
+    final_next_task_info: Optional[Dict[str, Any]]
+    final_navigation_instruction: Optional[Dict[str, Any]]
+    raw_modelling_output: Optional[Dict[str, Any]] # Raw output from modelling_generator_node, passed through
+    # Flattened keys from modelling_output_content, also passed through by OutputFormatterNode
+    think_aloud_sequence: Optional[List[Dict[str, Any]]]
+    pre_modeling_setup_script: Optional[str]
+    post_modeling_summary_and_key_takeaways: Optional[str]
+    comprehension_check_or_reflection_prompt_for_student: Optional[str]
+    adaptation_notes: Optional[str]
+
     llm_instruction: Optional[
         str
     ]  # Instruction for the LLM, typically from a prompt node

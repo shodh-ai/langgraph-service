@@ -102,14 +102,15 @@ async def pedagogy_generator_node(state: AgentGraphState) -> dict:
     
     Return a JSON object:
     {{
-        "reasoning": "The overall reasoning behind the pedagogy. Why did you choose the order you did? Why not any other order? Is the response personalised for the student, etc."
+        "task_suggestion_tts": "A friendly, user-facing message that introduces the learning plan. For example: 'Based on what you've told me, I've created a personalized learning plan for you. We'll start with some grammar and vocabulary basics to build a strong foundation, and then move on to speaking and writing practice. How does that sound?'",
+        "reasoning": "The overall reasoning behind the pedagogy. Why did you choose the order you did? Why not any other order? Is the response personalised for the student, etc.",
         "steps": [
             {{
                 "type": "Module type out of Teaching, Modelling, Scaffolding, Cowriting and Test",
                 "task": "speaking or writing",
                 "topic": "If teaching which topic out of learning objective. If any other the topic the student will be expected to write or speak upon. Try to make it varied topics so the student doesn't feel comfort or discomfort.",
                 "level": "Level of the task: Basic, Intermediate, Advanced",
-            }},
+            }}
         ]
     }}
     """
@@ -127,7 +128,7 @@ async def pedagogy_generator_node(state: AgentGraphState) -> dict:
         response = model.generate_content(prompt)
         response_json = json.loads(response.text)
         logger.info(f"Response: {response_json}")
-        return response_json
+        return {"task_suggestion_llm_output": response_json}
     except Exception as e:
         logger.error(f"Error processing with GenerativeModel: {e}")
         return None

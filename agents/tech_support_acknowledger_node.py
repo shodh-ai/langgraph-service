@@ -35,11 +35,16 @@ async def tech_support_acknowledger_node(state: AgentGraphState) -> Dict[str, An
         # If this node can be called from various points, this field name might need to be more generic
         # or passed consistently by the router.
         extracted_entities = state.get("p1_extracted_entities", state.get("extracted_entities", {}))
-        student_memory = state.get("student_memory_context", {})
+        student_memory = state.get("student_memory_context")
+        if not isinstance(student_memory, dict):
+            student_memory = {} # Ensure student_memory is a dictionary to prevent errors
+
         active_persona = state.get("active_persona", "Nurturer")
         current_context_details = state.get("current_context") # Get as object or None
 
-        student_name = student_memory.get("profile", {}).get("name", "Student") # Remains from student_memory
+        # Safely get student name from student_memory
+        profile_data = student_memory.get("profile", {})
+        student_name = profile_data.get("name", "Student")
         issue_description = extracted_entities.get("issue_description", "the issue you mentioned")
         reported_emotion = extracted_entities.get("reported_emotion", "concerned")
 
@@ -51,12 +56,14 @@ async def tech_support_acknowledger_node(state: AgentGraphState) -> Dict[str, An
 
         if current_context_details: # If it's an InteractionRequestContext object
             user_id = getattr(current_context_details, "user_id", user_id) # Update user_id if available in context, else keep state's
-            student_name = getattr(current_context_details, "student_name", student_name) # Update student_name if available
-            page = getattr(current_context_details, "current_page_name", page)
-            task = getattr(current_context_details, "current_task_name", task)
+            student_name = getattr(current_context_details, "student_name", student_name) 
+            page = getattr(current_context_details, "current_page_name", "your current activity")
+            task = getattr(current_context_details, "current_task_name", "what you were doing")
             request_timestamp_dt = getattr(current_context_details, "request_timestamp", None)
-            if request_timestamp_dt:
+            if request_timestamp_dt and hasattr(request_timestamp_dt, 'isoformat'):
                 request_timestamp_str = request_timestamp_dt.isoformat()
+            else:
+                request_timestamp_str = "unknown_time"
             logger.info(f"TechSupportNode: Fetched from current_context_details - user_id: {user_id}, student_name: {student_name}, page: {page}, task: {task}, timestamp: {request_timestamp_str}")
         else:
             logger.warning("TechSupportNode: current_context_details is None. Using default/state values.")
@@ -97,25 +104,24 @@ async def tech_support_acknowledger_node(state: AgentGraphState) -> Dict[str, An
             updated_student_memory["profile"] = {"affective_state": f"acknowledged_{reported_emotion}"}
         
         # Log the issue summary to memory
+        context_for_log = current_context_details.model_dump(mode='json') if current_context_details and hasattr(current_context_details, 'model_dump') else None
+        
         reported_issues_list = updated_student_memory.get("reported_technical_issues", [])
+        
+        issue_log_entry = {
+            "timestamp": request_timestamp_str,
+            "issue_transcript": transcript,
+            "parsed_description": issue_description,
+            "llm_summary_for_log": response_json.get("logged_issue_summary", "LLM did not provide summary."),
+            "context": context_for_log
+        }
+
         if isinstance(reported_issues_list, list):
-            reported_issues_list.append({
-                "timestamp": request_timestamp_str,
-                "issue_transcript": transcript,
-                "parsed_description": issue_description,
-                "llm_summary_for_log": response_json.get("logged_issue_summary", "LLM did not provide summary."),
-                "context": current_context_details
-            })
+            reported_issues_list.append(issue_log_entry)
             updated_student_memory["reported_technical_issues"] = reported_issues_list
         else: # In case it was not a list, reinitialize
             logger.warning("student_memory_context.reported_technical_issues was not a list. Reinitializing.")
-            updated_student_memory["reported_technical_issues"] = [{
-                "timestamp": request_timestamp_str,
-                "issue_transcript": transcript,
-                "parsed_description": issue_description,
-                "llm_summary_for_log": response_json.get("logged_issue_summary", "LLM did not provide summary."),
-                "context": current_context_details
-            }]
+            updated_student_memory["reported_technical_issues"] = [issue_log_entry]
 
         return {
             "output_content": {

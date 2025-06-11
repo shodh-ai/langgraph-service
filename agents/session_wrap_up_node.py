@@ -13,7 +13,7 @@ async def session_wrap_up_node(state: AgentGraphState) -> Dict[str, Any]:
     user_id = state.get("user_id", "unknown_user")
     logger.info(f"Session Wrap Up Node activated for user {user_id}")
 
-    student_memory = state.get("student_memory_context", {})
+    student_memory = state.get("student_memory_context") or {}
     student_name = student_memory.get("profile", {}).get("name", "student")
     active_persona = state.get("active_persona", "Nurturer")
     current_context = state.get("current_context", {})

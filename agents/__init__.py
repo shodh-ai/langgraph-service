@@ -16,7 +16,7 @@ from .diagnostic_nodes import (
 # Feedback and output nodes
 from .feedback_generator_node2 import generate_speaking_feedback_stub_node
 from .session_notes_node import compile_session_notes_stub_node
-from .output_formatter_node import format_final_output_node
+from .output_formatter_node import format_final_output_for_client_node
 
 # Kept for compatibility (to be deprecated)
 from .feedback_node import generate_feedback_stub_node
@@ -67,7 +67,7 @@ __all__ = [
     # Feedback and output nodes
     "generate_speaking_feedback_stub_node",
     "compile_session_notes_stub_node",
-    "format_final_output_node",
+    "format_final_output_for_client_node",
     # Legacy nodes (to be deprecated)
     "generate_feedback_stub_node",
     "generate_test_button_feedback_stub_node",

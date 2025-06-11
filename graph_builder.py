@@ -10,7 +10,7 @@ import json
 # Import all the agent node functions
 from agents import (
     save_interaction_node,
-    format_final_output_node,
+    format_final_output_for_client_node,
     handle_welcome_node,
     student_data_node,
     welcome_prompt_node,
@@ -251,7 +251,7 @@ def build_graph():
 
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_node)
     workflow.add_node(NODE_CONVERSATION_HANDLER, conversation_handler_node)
-    workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_node)
+    workflow.add_node(NODE_FORMAT_FINAL_OUTPUT, format_final_output_for_client_node)
     workflow.add_node(NODE_HANDLE_WELCOME, handle_welcome_node)
     workflow.add_node(NODE_STUDENT_DATA, student_data_node)
     workflow.add_node(NODE_WELCOME_PROMPT, welcome_prompt_node)

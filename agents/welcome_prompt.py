@@ -8,7 +8,7 @@ async def welcome_prompt_node(state: AgentGraphState) -> dict:
     user_id = state.get("user_id", "unknown_user")
     logger.info(f"Welcome prompt node entry point activated for user {user_id}")
 
-    student_name = state.get("student_memory_context", {}).get("profile", {}).get("name", "student")
+    student_name = (state.get("student_memory_context") or {}).get("profile", {}).get("name", "student")
     active_persona = state.get("active_persona", "Nurturer") # Assuming active_persona might be in state
 
     # Define the task to be suggested
