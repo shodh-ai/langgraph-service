@@ -152,28 +152,30 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
                         yield f"event: text_chunk\ndata: {json.dumps({'text': streaming_text})}\n\n"
                         await asyncio.sleep(0.01) # Small delay to allow client processing
 
-            elif event_name == "on_chain_end" and node_name == "format_final_output_for_client_node": # Or your actual output formatter node name
+            elif event_name == "on_chain_end" and node_name == "format_final_output":
                 # This event signifies the end of a node's execution. 
-                # We are interested in the final output of the formatter node.
-                final_output_package = data.get("final_output") # LangGraph's key for final output of a node
+                # 'data' directly contains the output of the node when stream_mode="values".
+                final_output_package = data 
                 if isinstance(final_output_package, dict) and final_output_package.get("output_content"):
-                    # The 'output_content' key from the state is what our formatter node populates.
-                    formatted_data = final_output_package["output_content"]
-                    logger.info(f"SSE Stream: Yielding final_response from node '{node_name}': {list(formatted_data.keys())}")
-                    yield f"event: final_response\ndata: {json.dumps(formatted_data)}\n\n"
-                    # Once the final response is sent, we can break if no further events are expected for this request.
-                    # However, other nodes might still run (e.g., memory saving), so let the stream complete naturally.
-                    # break 
+                    # The 'output_content' should be the fully formed InteractionResponse model or similar
+                    final_response_data = final_output_package.get("output_content")
+                    logger.info(f"SSE Stream: Yielding final_response: {json.dumps(final_response_data)[:200]}...")
+                    yield f"event: final_response\ndata: {json.dumps(final_response_data)}\n\n"
+                    # After sending the final response, we can break or ensure no more events are processed for this stream.
+                    # For now, let it continue to see if other relevant events appear, though typically this is the end.
+                    # Consider adding a break here if this is strictly the last piece of info.
+                    # break # Optional: uncomment if this is the absolute final event to send
 
-        logger.info(f"SSE Stream: Graph stream completed for session {session_id}")
-        yield f"event: stream_end\ndata: {{'message': 'Stream ended'}}\n\n"
-
-    except Exception as e:
-        logger.error(f"Exception in stream_graph_responses_sse for session {session_id}: {e}", exc_info=True)
-        error_message = json.dumps({"error": "An error occurred during streaming.", "details": str(e)})
-        yield f"event: error\ndata: {error_message}\n\n"
+            elif event_name == "on_chain_end" and node_name == "error_generator_node":
+                # 'data' directly contains the output of the node when stream_mode="values".
+                error_output = data 
+                if isinstance(error_output, dict) and error_output.get("output_content"):
+                    error_response_data = error_output.get("output_content")
+                    logger.error(f"SSE Stream: Yielding error_response: {json.dumps(error_response_data)}")
+                    yield f"event: error_response\ndata: {json.dumps(error_response_data)}\n\n"
     finally:
         logger.info(f"SSE Stream: Closing stream for session {session_id}")
+        yield f"event: stream_end\ndata: {{'message': 'Stream ended'}}\n\n"
 
 @app.post("/process_interaction_streaming")
 async def process_interaction_streaming_route(request_data: InteractionRequest):
@@ -237,7 +239,7 @@ async def process_interaction_route(request_data: InteractionRequest):
     }
 
     try:
-        return StreamingResponse(stream_langgraph_response(request_data), media_type="text/event-stream")
+        return StreamingResponse(stream_graph_responses_sse(request_data), media_type="text/event-stream")
     except Exception as e:
         logger.error(f"Error in streaming endpoint: {e}", exc_info=True)
         # It's important to raise HTTPException for FastAPI to handle it correctly
