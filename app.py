@@ -13,8 +13,11 @@ import logging
 import uuid
 import json
 import asyncio
+import os
 from dotenv import load_dotenv
-from typing import Dict, Any, Optional, List # Keep for models if not fully typed
+load_dotenv()
+print(f"--- DEBUG: MEM0_API_KEY is set to: {os.getenv('MEM0_API_KEY')} ---")
+from typing import Dict, Any, Optional, List
 
 from graph_builder import build_graph
 from state import AgentGraphState
@@ -237,7 +240,7 @@ async def process_interaction_route(request_data: InteractionRequest):
     }
 
     try:
-        return StreamingResponse(stream_langgraph_response(request_data), media_type="text/event-stream")
+        return StreamingResponse(stream_graph_responses_sse(request_data), media_type="text/event-stream")
     except Exception as e:
         logger.error(f"Error in streaming endpoint: {e}", exc_info=True)
         # It's important to raise HTTPException for FastAPI to handle it correctly
@@ -277,6 +280,23 @@ async def process_interaction_non_streaming_route(request_data: InteractionReque
             output_content=None,
         )
 
+        # Prepare config for LangGraph invocation, crucial for Mem0 checkpointer
+        config = {
+            "configurable": {
+                "thread_id": request_data.session_id, # Using session_id as thread_id
+                "user_id": request_data.current_context.user_id # Optional: if user_id is also useful in config
+            }
+        }
+        logger.info(f"Non-streaming endpoint: Invoking graph for session {request_data.session_id}, user {request_data.current_context.user_id}")
+
+        # Invoke the graph
+        # The input to ainvoke should be the initial_graph_state or a subset of it
+        # that matches the graph's expected input schema.
+        # For AgentGraphState, we pass the whole state dict as the primary input.
+        final_state = await toefl_tutor_graph.ainvoke(
+            input=initial_graph_state,  # Pass the fully prepared initial state
+            config=config
+        )
 
         # --- BEGIN Detailed final_state logging ---
         logger.warning(f"APP.PY: Received final_state type: {type(final_state)}")
