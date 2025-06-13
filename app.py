@@ -409,6 +409,6 @@ if __name__ == "__main__":
     import uvicorn
     import os
     # Use PORT from env, default to 8000 (common for dev, original used 5005)
-    port = int(os.getenv("PORT", "8000")) 
+    port = int(os.getenv("PORT", "8001")) 
     logger.info(f"Starting Uvicorn server on host 0.0.0.0:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
