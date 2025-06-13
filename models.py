@@ -135,5 +135,4 @@ class InteractionResponse(BaseModel):
     #        "data_for_page_load": {"submission_id": "xyz"}}
     # This might be superseded by a specific ui_action of type NAVIGATE_TO_PAGE
 
-    class Config:
-        extra = Extra.allow
+    model_config = {"extra": "allow"}
