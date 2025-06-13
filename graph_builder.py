@@ -1,6 +1,6 @@
 import logging
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
+from memory.mem0_memory import Mem0Memory
 from state import AgentGraphState
 import os
 import google.generativeai as genai
@@ -263,7 +263,7 @@ def build_graph():
     NODE_ROUTER = "router"
 
     # Instantiate the checkpointer for state persistence
-    memory_saver = MemorySaver()
+    checkpointer = Mem0Memory()
 
     workflow = StateGraph(AgentGraphState)
 
@@ -342,6 +342,14 @@ def build_graph():
         NODE_PEDAGOGY_MODULE: NODE_PEDAGOGY_MODULE,
         NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
         NODE_INACTIVITY_PROMPT: NODE_INACTIVITY_PROMPT,
+        NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
+        NODE_MOTIVATIONAL_SUPPORT: NODE_MOTIVATIONAL_SUPPORT,
+        NODE_PROGRESS_REPORTER: NODE_PROGRESS_REPORTER,
+        NODE_TECH_SUPPORT_ACKNOWLEDGER: NODE_TECH_SUPPORT_ACKNOWLEDGER,
+        NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
+        NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
+        "DEFAULT_FALLBACK": NODE_CONVERSATION_HANDLER
+
         NODE_PROGRESS_REPORTER: NODE_PROGRESS_REPORTER,
         NODE_MOTIVATIONAL_SUPPORT: NODE_MOTIVATIONAL_SUPPORT,
         NODE_TECH_SUPPORT_ACKNOWLEDGER: NODE_TECH_SUPPORT_ACKNOWLEDGER,
@@ -416,9 +424,9 @@ def build_graph():
     workflow.add_edge(NODE_TEACHING_GENERATOR, NODE_FORMAT_FINAL_OUTPUT) # Generator output goes to formatter
 
     # Compile the graph with the checkpointer
-    app = workflow.compile(checkpointer=memory_saver)
-    logger.info("LangGraph compiled successfully with MemorySaver checkpointer.")
-    return app
+    toefl_tutor_graph = workflow.compile(checkpointer=checkpointer)
+    logger.info("LangGraph compiled successfully with Mem0Memory checkpointer.")
+    return toefl_tutor_graph
 
 
 # To test the graph building process (optional, can be run directly)
