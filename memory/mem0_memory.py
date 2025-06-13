@@ -1,103 +1,127 @@
-from typing import Any, Dict, List
 import logging
-from mem0 import Memory
-import os
-import logging
-import json # Added import
+import pickle
+import threading
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Union
+
 from dotenv import load_dotenv
+from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.base import Checkpoint as BaseCheckpointer
+from mem0 import Memory
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()  # Load environment variables from .env file
-mem0_api_key = os.getenv("MEM0_API_KEY")
-Google_api_key = os.getenv("GOOGLE_API_KEY")
+load_dotenv()
 
-# Note: mem0ai's Memory class has built-in configuration capabilities.
-# For our initial integration, we'll use the default settings.
-# When ready to customize, check the mem0ai documentation for the proper configuration format.
+class Mem0Memory(BaseCheckpointer):
+    """
+    A LangGraph checkpointer that stores the entire graph state in Mem0.
+    It uses a singleton pattern to ensure the Mem0 client is initialized only once,
+    preventing file lock errors on Windows.
+    """
+    _instance: Optional['Mem0Memory'] = None
+    _lock = threading.Lock()
 
-class Mem0Memory:
-    """A memory class using mem0ai for storing and retrieving user-centric data."""
-    def __init__(self, user_id_field: str = "user_id"):
-        # Initialize mem0 with default settings
-        # For multiple users, mem0 handles data isolation internally based on the `user_id` 
-        # you pass to its methods, or you can create separate Memory instances per user if preferred.
-        # Default initialization for Mem0 Cloud, expects MEM0_API_KEY in environment.
-        try:
-            self.mem0_instance = Memory()
-            logger.info("Successfully initialized Mem0 client (should connect to Mem0 Cloud using MEM0_API_KEY).")
-        except Exception as e:
-            logger.error(f"Failed to initialize Mem0 client (Mem0 Cloud): {e}", exc_info=True)
-            # If initialization fails, self.mem0_instance might not be set or might be a broken object.
-            # Subsequent calls to its methods will likely fail.
-            raise  # Re-raise the exception to make it clear initialization failed.
-        self.user_id_field = user_id_field # Field name to identify user in data
-        logger.info(f"Mem0Memory initialized. Using '{user_id_field}' as user identifier.")
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
 
-    def get_student_data(self, user_id: str) -> Dict[str, Any]:
-        """Retrieves and reconstructs student data (profile and interaction history) for a given user_id from mem0."""
-        logger.info(f"Mem0Memory: Attempting to get all data for user_id: {user_id}")
-        try:
-            all_memories = self.mem0_instance.get_all(user_id=user_id)
-            
-            student_data = {
-                "profile": {},
-                "interaction_history": []  # List of interaction dictionaries
-            }
+    def __init__(self):
+        if hasattr(self, 'is_initialized') and self.is_initialized:
+            return
 
-            # Assuming memories are returned in a usable order (e.g., chronological for interactions)
-            # If not, sorting by mem.timestamp might be needed.
-            for mem in all_memories:
-                memory_core_data = mem.data  # This is the primary content of the memory item
-                meta = mem.metadata if mem.metadata else {} # Ensure metadata is a dict
+        with self._lock:
+            if hasattr(self, 'is_initialized') and self.is_initialized:
+                return
 
-                if meta.get('type') == 'profile':
-                    # Profile data is added as a dict via mem0.add(data=profile_data, ...)
-                    # So, memory_core_data should be the profile dictionary itself.
-                    if isinstance(memory_core_data, dict):
-                        student_data["profile"].update(memory_core_data)
-                    else:
-                        logger.warning(f"Mem0Memory: Profile memory data for user {user_id} is not a dict. Data: {str(memory_core_data)[:100]}...")
-                
-                elif meta.get('type') == 'interaction':
-                    # Interaction data is added as a JSON string via messages=[{"role": "user", "content": interaction_content_str}]
-                    # mem0 typically stores the "content" part as the main data of the memory item.
-                    # So, memory_core_data should be the interaction_content_str (JSON string).
-                    if isinstance(memory_core_data, str):
-                        try:
-                            interaction_dict = json.loads(memory_core_data)
-                            student_data["interaction_history"].append(interaction_dict)
-                        except json.JSONDecodeError as e:
-                            logger.error(f"Mem0Memory: Failed to parse interaction JSON string for user {user_id}. String: '{memory_core_data[:100]}...'. Error: {e}")
-                            student_data["interaction_history"].append({"error": "failed to parse interaction", "raw_preview": memory_core_data[:100]})
-                    else:
-                        logger.warning(f"Mem0Memory: Expected string for interaction data for user {user_id}, got {type(memory_core_data)}. Data: {str(memory_core_data)[:100]}...")
-                        student_data["interaction_history"].append({"error": "unexpected interaction data type", "raw_preview": str(memory_core_data)[:100]})
-            
-            # Filter out any non-dict items from interaction_history just in case, for downstream safety
-            valid_history = [item for item in student_data["interaction_history"] if isinstance(item, dict)]
-            if len(valid_history) != len(student_data["interaction_history"]):
-                logger.warning(f"Mem0Memory: Some items in interaction_history for user {user_id} were not dicts and were filtered out.")
-            student_data["interaction_history"] = valid_history
+            logger.info("Initializing Mem0Memory singleton checkpointer...")
+            super().__init__(serde=pickle) # Use pickle for serialization
+            try:
+                self.mem0_instance = Memory()
+                logger.info("Successfully initialized Mem0 client for checkpointer.")
+            except Exception as e:
+                logger.error(f"Failed to initialize Mem0 client: {e}", exc_info=True)
+                raise
+            self.is_initialized = True
+            logger.info("Mem0Memory singleton checkpointer initialized.")
 
-            if not student_data["profile"] and not student_data["interaction_history"]:
-                student_data["profile"] = {"name": "New Student (mem0)", "level": "Beginner"} # Default for new user
-                logger.info(f"Mem0Memory: Initialized new student data for user_id: {user_id} (no existing profile or history found).")
+    def get(self, config: RunnableConfig) -> Optional[Dict[str, Any]]:
+        thread_id = config["configurable"]["thread_id"]
+        checkpoint_id = config["configurable"].get("checkpoint_id")
 
-            logger.info(f"Mem0Memory: Reconstructed student data for {user_id}. Profile keys: {list(student_data['profile'].keys())}, Interactions: {len(student_data['interaction_history'])}")
-            if student_data["interaction_history"]:
-                 logger.debug(f"Mem0Memory: Last interaction sample for {user_id} (first 200 chars): {str(student_data['interaction_history'][-1])[:200]}")
-            return student_data
+        memories = self.mem0_instance.get_all(user_id=thread_id)
+        checkpoints = [m for m in memories if m.metadata.get("type") == "langgraph_checkpoint"]
+
+        if not checkpoints:
+            return None
+
+        if checkpoint_id:
+            target_memory = next((m for m in checkpoints if m.id == checkpoint_id), None)
+        else:
+            # Return the latest checkpoint if no ID is specified
+            target_memory = checkpoints[0]
+
+        if not target_memory:
+            return None
+
+        return self.serde.loads(target_memory.data.encode('latin-1'))
+
+    def put(self, config: RunnableConfig, checkpoint: Dict[str, Any]) -> RunnableConfig:
+        thread_id = config["configurable"]["thread_id"]
         
-        except Exception as e:
-            logger.error(f"Mem0Memory: Critical error getting and processing data for {user_id}: {e}", exc_info=True)
-            return { # Fallback on major error
-                "profile": {"name": "Error Student (mem0)", "level": "Unknown"},
-                "interaction_history": []
+        # The 'version' is the checkpoint_id we will return
+        version = self.get_next_version(None)
+        
+        # Save to mem0
+        created_memory = self.mem0_instance.add(
+            data=self.serde.dumps(checkpoint).decode('latin-1'),
+            user_id=thread_id,
+            metadata={
+                "type": "langgraph_checkpoint",
+                "version_ts": version
             }
+        )
+        
+        return {
+            "configurable": {
+                "thread_id": thread_id,
+                "checkpoint_id": created_memory.id,
+            }
+        }
 
-    def add_interaction(self, user_id: str, interaction_summary: Dict[str, Any]) -> None:
-        """Adds an interaction summary to the user's history using mem0."""
+    def list(self, config: RunnableConfig) -> List[RunnableConfig]:
+        thread_id = config["configurable"]["thread_id"]
+        memories = self.mem0_instance.get_all(user_id=thread_id)
+        checkpoints = [m for m in memories if m.metadata.get("type") == "langgraph_checkpoint"]
+
+        return [
+            {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "checkpoint_id": mem.id,
+                },
+                "metadata": {
+                    "source": "mem0",
+                    "timestamp": mem.metadata.get("version_ts"),
+                },
+            }
+            for mem in checkpoints
+        ]
+
+    def get_next_version(self, current_version: Optional[Union[int, str]]) -> Union[int, str]:
+        return str(datetime.now(timezone.utc).timestamp())
+
+    async def aget(self, config: RunnableConfig) -> Optional[Dict[str, Any]]:
+        return self.get(config)
+
+    async def aput(self, config: RunnableConfig, checkpoint: Dict[str, Any]) -> RunnableConfig:
+        return self.put(config, checkpoint)
+
+    async def alist(self, config: RunnableConfig) -> List[RunnableConfig]:
+        return self.list(config)
         logger.info(f"Mem0Memory: Attempting to add interaction (summary): {interaction_summary} for user_id: {user_id}")
         try:
             # We can add metadata to distinguish this memory, e.g., type: 'interaction'
@@ -148,6 +172,71 @@ class Mem0Memory:
         except Exception as e:
             logger.error(f"Mem0Memory: Error clearing data for {user_id}: {e}")
 
+    def put(self, config: Dict[str, Any], checkpoint: Dict[str, Any]) -> Dict[str, Any]:
+        """Stores a LangGraph checkpoint in Mem0.
+
+        Args:
+            config: The config for the checkpoint, including 'configurable': {'thread_id': ...}.
+            checkpoint: The checkpoint data (AgentGraphState dictionary) to store.
+
+        Returns:
+            A dictionary with the config for the stored checkpoint, including 'thread_ts' (Mem0 memory ID).
+        """
+        thread_id = config["configurable"]["thread_id"]
+        logger.debug(f"Mem0Memory Checkpointer: Putting checkpoint for thread_id: {thread_id}")
+        try:
+            meta = {
+                'type': 'graph_checkpoint',
+                'thread_id': thread_id,
+            }
+            created_memory_entry = self.mem0_instance.add(
+                data=checkpoint,  # Store the whole checkpoint dict
+                user_id=thread_id, # Use thread_id as the user_id for checkpointing
+                metadata=meta
+            )
+            logger.info(f"Mem0Memory Checkpointer: Successfully stored checkpoint for thread_id: {thread_id}, mem0_id: {created_memory_entry.id}")
+            return {"configurable": {"thread_id": thread_id, "thread_ts": created_memory_entry.id}}
+        except Exception as e:
+            logger.error(f"Mem0Memory Checkpointer: Error storing checkpoint for thread_id: {thread_id}: {e}", exc_info=True)
+            raise
+
+    def get(self, config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Retrieves the latest LangGraph checkpoint from Mem0.
+
+        Args:
+            config: The config for the checkpoint, including 'configurable': {'thread_id': ...}.
+
+        Returns:
+            The checkpoint data (AgentGraphState dictionary) if found, otherwise None.
+        """
+        thread_id = config["configurable"]["thread_id"]
+        logger.debug(f"Mem0Memory Checkpointer: Getting checkpoint for thread_id: {thread_id}")
+        try:
+            all_memories = self.mem0_instance.get_all(user_id=thread_id)
+            
+            checkpoints = []
+            for mem in all_memories:
+                if isinstance(mem.metadata, dict) and mem.metadata.get('type') == 'graph_checkpoint':
+                    if isinstance(mem.data, dict):
+                        checkpoints.append(mem) # mem object contains data and created_at
+                    else:
+                        logger.warning(f"Mem0Memory Checkpointer: Found 'graph_checkpoint' for thread_id {thread_id} but data is not dict. Mem ID: {mem.id}, Data type: {type(mem.data)}")
+            
+            if not checkpoints:
+                logger.info(f"Mem0Memory Checkpointer: No checkpoint found for thread_id: {thread_id}")
+                return None
+
+            # Sort by creation time to get the latest (MemEntry has 'created_at')
+            checkpoints.sort(key=lambda m: m.created_at, reverse=True)
+            
+            latest_checkpoint_entry = checkpoints[0]
+            logger.info(f"Mem0Memory Checkpointer: Retrieved latest checkpoint for thread_id: {thread_id}, mem0_id: {latest_checkpoint_entry.id}, created_at: {latest_checkpoint_entry.created_at}")
+            return latest_checkpoint_entry.data 
+        
+        except Exception as e:
+            logger.error(f"Mem0Memory Checkpointer: Error retrieving checkpoint for thread_id: {thread_id}: {e}", exc_info=True)
+            return None
+
 # Example usage (for testing purposes):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -163,11 +252,11 @@ if __name__ == '__main__':
         print(f"\nInitial data for {user1}: {mem0_memory_instance.get_student_data(user1)}")
         
         interaction1_user1 = {"transcript": "Hello from mem0", "diagnosis": "Good start with mem0", "feedback": "Keep exploring mem0!"}
-        mem0_memory_instance.add_interaction_to_history(user1, interaction1_user1)
+        mem0_memory_instance.add_interaction(user1, interaction1_user1)
         print(f"\nData for {user1} after 1st interaction: {mem0_memory_instance.get_student_data(user1)}")
 
         interaction2_user1 = {"transcript": "I need help with mem0.", "diagnosis": "Struggling with mem0 concepts", "feedback": "Let's review mem0 docs."}
-        mem0_memory_instance.add_interaction_to_history(user1, interaction2_user1)
+        mem0_memory_instance.add_interaction(user1, interaction2_user1)
         print(f"\nData for {user1} after 2nd interaction: {mem0_memory_instance.get_student_data(user1)}")
 
         mem0_memory_instance.update_student_profile(user1, {"level": "Intermediate (mem0)", "preferred_topic": "AI Memory"})
@@ -175,7 +264,7 @@ if __name__ == '__main__':
 
         print(f"\nInitial data for {user2}: {mem0_memory_instance.get_student_data(user2)}")
         interaction1_user2 = {"transcript": "mem0 is quite interesting!", "diagnosis": "Curious about mem0", "feedback": "Excellent!"}
-        mem0_memory_instance.add_interaction_to_history(user2, interaction1_user2)
+        mem0_memory_instance.add_interaction(user2, interaction1_user2)
         print(f"\nData for {user2} after 1st interaction: {mem0_memory_instance.get_student_data(user2)}")
 
         print(f"\n--- Searching user1 history for 'help' ---")
