@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 # Define node names for clarity
 NODE_SAVE_INTERACTION = "save_interaction"
 NODE_CONVERSATION_HANDLER = "conversation_handler"
+NODE_DEFAULT_FALLBACK = "default_fallback"
 NODE_FORMAT_FINAL_OUTPUT = "format_final_output"
 NODE_HANDLE_WELCOME = "handle_welcome"
 NODE_STUDENT_DATA = "student_data"
@@ -146,15 +147,14 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     user_id = state.get('user_id', 'unknown_user')
 
     # Priority routing for specific task types like LESSON
-    # Ensure next_task_details is not None before trying to access its 'type'
     if next_task_details and next_task_details.get("type") == "LESSON":
         logger.info(f"Routing to TEACHING_MODULE for user {user_id}")
         return NODE_TEACHING_MODULE
 
     context = state.get("current_context")
-    task_stage_from_context = getattr(context, "task_stage", None) # Get task_stage from context object if it's an object
-    if isinstance(context, dict):
-        task_stage_from_context = context.get("task_stage") # Get task_stage if context is a dict
+    task_stage_from_context = None
+    if context:
+        task_stage_from_context = getattr(context, "task_stage", None) if not isinstance(context, dict) else context.get("task_stage")
 
     # Handle inactivity prompt first
     if task_stage_from_context == "SYSTEM_USER_INACTIVITY_DETECTED":
@@ -164,127 +164,97 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     transcript = state.get("transcript")
     chat_history = state.get("chat_history")
 
-    # Access task_stage using getattr since context is an object
-    task_stage = getattr(context, "task_stage", None) if context else None
-
-    # Route both ROX_WELCOME_INIT and welcome_flow to the welcome handler
-    if task_stage in ["ROX_WELCOME_INIT", "welcome_flow"]:
+    # Route based on task_stage from context
+    if task_stage_from_context in ["ROX_WELCOME_INIT", "welcome_flow"]:
         return NODE_HANDLE_WELCOME
-    if task_stage == "FEEDBACK_GENERATION":
+    if task_stage_from_context == "FEEDBACK_GENERATION":
         return NODE_FEEDBACK_MODULE
-    if task_stage == "SCAFFOLDING_GENERATION":
+    if task_stage_from_context == "SCAFFOLDING_GENERATION":
         return NODE_SCAFFOLDING_MODULE
-    if task_stage == "MODELLING_ACTIVITY_REQUESTED":
+    if task_stage_from_context == "MODELLING_ACTIVITY_REQUESTED":
         return NODE_MODELING_MODULE
-    if task_stage == "COWRITING_GENERATION": # Corrected task stage name
+    if task_stage_from_context == "COWRITING_GENERATION":
         return NODE_COWRITING_MODULE
-    if task_stage == "TEACHING_LESSON_REQUESTED":
+    if task_stage_from_context == "TEACHING_LESSON_REQUESTED":
         return NODE_TEACHING_MODULE
-
     if task_stage_from_context == "INITIAL_REPORT_GENERATION":
         return NODE_INITIAL_REPORT_GENERATION
     if task_stage_from_context == "PEDAGOGY_GENERATION":
         return NODE_PEDAGOGY_MODULE
 
+    # If no transcript, route to welcome
+    if not transcript or not transcript.strip():
+        logger.info("Routing to: Handle Welcome (empty transcript)")
+        return NODE_HANDLE_WELCOME
 
+    # Keyword-based routing for progress and motivation
+    lower_transcript = transcript.lower()
+    progress_queries = [
+        "how am i doing", "what's my progress", "am i improving",
+        "my score went down", "check my progress", "show me my progress"
+    ]
+    if any(query in lower_transcript for query in progress_queries):
+        logger.info(f"Detected progress query in transcript: {transcript}")
+        state['triggering_event_for_motivation'] = None
+        return NODE_PROGRESS_REPORTER
+
+    if any(phrase in lower_transcript for phrase in ["frustrated", "nervous", "bored", "i can't do this"]):
+        logger.info(f"Detected potential need for motivational support in transcript: {transcript}")
+        state['triggering_event_for_motivation'] = f"Detected sentiment in user transcript: {transcript}"
+        return NODE_MOTIVATIONAL_SUPPORT
+
+    # NLU-based routing using Gemini
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+        logger.error("GOOGLE_API_KEY environment variable is not set.")
+        return NODE_DEFAULT_FALLBACK
 
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.0-flash",
+            "gemini-1.5-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         prompt = (
             f"""
-        You are an NLU assistant for the Rox AI Tutor on its welcome page.
-        The student responded: '{transcript}'.
-        Chat History: {chat_history}
-        Categorize the student's intent from the possible intents. Possible intents:
-        - 'CONFIRM_START_SUGGESTED_TASK'
-        - 'REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE'
-        - 'ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK'
-        - 'ASK_GENERAL_KNOWLEDGE_QUESTION' (e.g., about a grammar topic, TOEFL strategy)
-        - 'REQUEST_STATUS_DETAIL'
-        - 'GENERAL_CHITCHAT'
-        - 'REPORT_TECHNICAL_ISSUE'  # New intent
-        - 'INTENT_TO_QUIT_SESSION' # New intent for ending the session
-        - 'OTHER_OFF_TOPIC'
-        If 'ASK_GENERAL_KNOWLEDGE_QUESTION', extract the core topic/question.
-        If 'REPORT_TECHNICAL_ISSUE', extract 'issue_description' (what the student says is wrong, e.g., 'my audio is not working') and 'reported_emotion' (e.g., 'frustration', 'confusion', 'annoyance' based on their language).
-        """
-            + "Return JSON: {'intent': '<INTENT_NAME>', 'extracted_topic': '<topic if ASK_GENERAL_KNOWLEDGE_QUESTION>', 'extracted_entities': {'issue_description': '<description if REPORT_TECHNICAL_ISSUE>', 'reported_emotion': '<emotion if REPORT_TECHNICAL_ISSUE>'}}"
+            You are an NLU assistant for the Rox AI Tutor. The student said: '{transcript}'.
+            Chat History: {chat_history}
+            Categorize the intent from: 'CONFIRM_START_SUGGESTED_TASK', 'REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE', 
+            'ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK', 'ASK_GENERAL_KNOWLEDGE_QUESTION', 'REQUEST_STATUS_DETAIL', 
+            'GENERAL_CHITCHAT', 'REPORT_TECHNICAL_ISSUE', 'INTENT_TO_QUIT_SESSION', 'OTHER_OFF_TOPIC'.
+            If 'ASK_GENERAL_KNOWLEDGE_QUESTION', extract 'extracted_topic'.
+            If 'REPORT_TECHNICAL_ISSUE', extract 'issue_description' and 'reported_emotion'.
+            Return JSON: {{"intent": "<INTENT>", "extracted_topic": "<topic>", "extracted_entities": {{"issue_description": "<desc>", "reported_emotion": "<emotion>"}}}}
+            """
         )
         response = model.generate_content(prompt)
-        print("Response Text:", response.text)
-        # Check for progress-related queries
-        progress_queries = [
-            "how am i doing", "what's my progress", "am i improving", 
-            "my score went down", "check my progress", "show me my progress"
-        ]
-        if any(query in transcript.lower() for query in progress_queries):
-            logger.info(f"Detected progress query in transcript: {transcript}")
-            state['triggering_event_for_motivation'] = None # Clear motivational trigger if any
-            return NODE_PROGRESS_REPORTER
-
-        if "frustrated" in transcript.lower() or "nervous" in transcript.lower() or "bored" in transcript.lower() or "i can't do this" in transcript.lower():
-            logger.info(f"Detected potential need for motivational support in transcript: {transcript}")
-            # Set the trigger event for the motivational node
-            state['triggering_event_for_motivation'] = f"Detected sentiment in user transcript: {transcript}"
-            return NODE_MOTIVATIONAL_SUPPORT
-
         response_json = json.loads(response.text)
         intent = response_json.get("intent", "GENERAL_CHITCHAT")
-        extracted_topic = response_json.get("extracted_topic", "") # For ASK_GENERAL_KNOWLEDGE_QUESTION
-        extracted_entities_from_nlu = response_json.get("extracted_entities", {}) # For REPORT_TECHNICAL_ISSUE
-        state['nlu_intent'] = intent # Store NLU intent in state
+        state['nlu_intent'] = intent
+        state['extracted_entities'] = response_json.get("extracted_entities", {})
 
-        # Store extracted entities in state if present (for tech support node)
-        if extracted_entities_from_nlu and isinstance(extracted_entities_from_nlu, dict) and (extracted_entities_from_nlu.get('issue_description') or extracted_entities_from_nlu.get('reported_emotion')):
-            state['extracted_entities'] = extracted_entities_from_nlu
-            logger.info(f"NLU extracted entities for technical issue: {extracted_entities_from_nlu}")
-        else: # Ensure the key exists even if empty, or clear previous
-            state['extracted_entities'] = {}
+        logger.info(f"NLU Intent: {intent}, Entities: {state['extracted_entities']}")
 
-        print("Intent:", intent)
-        print("Extracted Topic:", extracted_topic)
-        print("Extracted Entities (for tech issue):", state.get('extracted_entities'))
+        route_destination = NODE_CONVERSATION_HANDLER # Default to conversation handler
 
         if intent == "INTENT_TO_QUIT_SESSION":
-            logger.info(f"Detected intent: INTENT_TO_QUIT_SESSION. Routing to NODE_SESSION_WRAP_UP.")
-            return NODE_SESSION_WRAP_UP
+            route_destination = NODE_SESSION_WRAP_UP
         elif intent == "REPORT_TECHNICAL_ISSUE":
-            logger.info(f"Detected intent: REPORT_TECHNICAL_ISSUE. Routing to NODE_TECH_SUPPORT_ACKNOWLEDGER.")
-            return NODE_TECH_SUPPORT_ACKNOWLEDGER
+            route_destination = NODE_TECH_SUPPORT_ACKNOWLEDGER
         elif intent == "CONFIRM_START_SUGGESTED_TASK":
-            next_task_details = state.get("next_task_details")
-            if next_task_details and isinstance(next_task_details, dict) and next_task_details.get("page_target"):
-                logger.info(f"Intent is CONFIRM_START_SUGGESTED_TASK and next_task_details are present. Routing to NODE_PREPARE_NAVIGATION.")
-                return NODE_PREPARE_NAVIGATION
+            if next_task_details and next_task_details.get("page_target"):
+                route_destination = NODE_PREPARE_NAVIGATION
             else:
-                logger.warning(f"Intent is CONFIRM_START_SUGGESTED_TASK, but 'next_task_details' are missing or invalid. Routing to NODE_CONVERSATION_HANDLER to clarify.")
-                # Potentially add a flag to state to inform conversation_handler about this situation
+                logger.warning("CONFIRM_START_SUGGESTED_TASK intent, but no next_task_details. Clarifying.")
                 state['missing_next_task_for_confirmation'] = True
-                return NODE_CONVERSATION_HANDLER
-        elif intent == "REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE":
-            return NODE_CONVERSATION_HANDLER
-        elif intent == "ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK":
-            return NODE_CONVERSATION_HANDLER
-        elif intent == "ASK_GENERAL_KNOWLEDGE_QUESTION":
-            return NODE_CONVERSATION_HANDLER
-        elif intent == "REQUEST_STATUS_DETAIL":
-            return NODE_CONVERSATION_HANDLER
-        elif intent == "GENERAL_CHITCHAT":
-            return NODE_CONVERSATION_HANDLER
-        elif intent == "OTHER_OFF_TOPIC":
-            return NODE_CONVERSATION_HANDLER
-        else:
-            return NODE_CONVERSATION_HANDLER
+                route_destination = NODE_CONVERSATION_HANDLER
+
+        logger.info(f"Final routing decision: '{route_destination}'")
+        return route_destination
+
     except Exception as e:
-        logger.error(f"Error processing with GenerativeModel: {e}")
-        return NODE_CONVERSATION_HANDLER
+        logger.error(f"Error in Gemini NLU processing: {e}", exc_info=True)
+        return NODE_DEFAULT_FALLBACK
 
 
 def build_graph():
@@ -379,6 +349,14 @@ def build_graph():
         NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
         NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
         "DEFAULT_FALLBACK": NODE_CONVERSATION_HANDLER
+
+        NODE_PROGRESS_REPORTER: NODE_PROGRESS_REPORTER,
+        NODE_MOTIVATIONAL_SUPPORT: NODE_MOTIVATIONAL_SUPPORT,
+        NODE_TECH_SUPPORT_ACKNOWLEDGER: NODE_TECH_SUPPORT_ACKNOWLEDGER,
+        NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
+        NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
+        NODE_CONVERSATION_HANDLER: NODE_CONVERSATION_HANDLER,
+        NODE_DEFAULT_FALLBACK: NODE_CONVERSATION_HANDLER
     }
     workflow.add_conditional_edges(NODE_ROUTER, initial_router_logic, path_map)
 
