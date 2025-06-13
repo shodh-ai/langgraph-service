@@ -148,35 +148,42 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
             if event_name == "on_chain_stream" and data:
                 chunk_content = data.get("chunk") # LangGraph's default key for streaming output from .stream()
                 if isinstance(chunk_content, dict):
-                    # Check if our conversation_handler_node yielded its specific chunk
+                    # Check for intermediate streaming text chunks. This is the correct place for this.
                     streaming_text = chunk_content.get("streaming_text_chunk")
                     if streaming_text:
-                        logger.debug(f"SSE Stream: Yielding streaming_text_chunk from node '{node_name}': {streaming_text[:100]}...")
-                        yield f"event: text_chunk\ndata: {json.dumps({'text': streaming_text})}\n\n"
-                        await asyncio.sleep(0.01) # Small delay to allow client processing
+                        logger.debug(f"SSE Stream: Yielding intermediate 'streaming_text_chunk' from node '{node_name}': {streaming_text[:100]}...")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': streaming_text})}\n\n"
+                        await asyncio.sleep(0.01)
 
-            elif event_name == "on_chain_end" and node_name == "format_final_output_for_client_node": # Or your actual output formatter node name
-                # This event signifies the end of a node's execution. 
-                # We are interested in the final output of the formatter node.
-                final_output_package = data.get("final_output") # LangGraph's key for final output of a node
-                if isinstance(final_output_package, dict) and final_output_package.get("output_content"):
-                    # The 'output_content' key from the state is what our formatter node populates.
-                    formatted_data = final_output_package["output_content"]
-                    logger.info(f"SSE Stream: Yielding final_response from node '{node_name}': {list(formatted_data.keys())}")
-                    yield f"event: final_response\ndata: {json.dumps(formatted_data)}\n\n"
-                    # Once the final response is sent, we can break if no further events are expected for this request.
-                    # However, other nodes might still run (e.g., memory saving), so let the stream complete naturally.
-                    # break 
+            elif event_name == "on_chain_end" and node_name == "format_final_output":
+                # This event signifies the end of the graph's main processing.
+                # The node's return value is in the 'output' key of the 'on_chain_end' event data.
+                final_output_package = data.get('output', {})
+                
+                if isinstance(final_output_package, dict):
+                    # Extract the TTS text and UI actions directly from the node's output
+                    tts_text = final_output_package.get("final_text_for_tts")
+                    ui_actions = final_output_package.get("final_ui_actions")
 
-        logger.info(f"SSE Stream: Graph stream completed for session {session_id}")
-        yield f"event: stream_end\ndata: {{'message': 'Stream ended'}}\n\n"
+                    if tts_text:
+                        logger.info(f"SSE Stream: Yielding final TTS text chunk.")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': tts_text})}\n\n"
+                    
+                    if ui_actions:
+                        logger.info(f"SSE Stream: Yielding final UI actions.")
+                        yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': ui_actions})}\n\n"
+                        await asyncio.sleep(0.01)
 
-    except Exception as e:
-        logger.error(f"Exception in stream_graph_responses_sse for session {session_id}: {e}", exc_info=True)
-        error_message = json.dumps({"error": "An error occurred during streaming.", "details": str(e)})
-        yield f"event: error\ndata: {error_message}\n\n"
+            elif event_name == "on_chain_end" and node_name == "error_generator_node":
+                # 'data' directly contains the output of the node when stream_mode="values".
+                error_output = data 
+                if isinstance(error_output, dict) and error_output.get("output_content"):
+                    error_response_data = error_output.get("output_content")
+                    logger.error(f"SSE Stream: Yielding error_response: {json.dumps(error_response_data)}")
+                    yield f"event: error_response\ndata: {json.dumps(error_response_data)}\n\n"
     finally:
         logger.info(f"SSE Stream: Closing stream for session {session_id}")
+        yield f"event: stream_end\ndata: {{'message': 'Stream ended'}}\n\n"
 
 @app.post("/process_interaction_streaming")
 async def process_interaction_streaming_route(request_data: InteractionRequest):
@@ -422,6 +429,6 @@ if __name__ == "__main__":
     import uvicorn
     import os
     # Use PORT from env, default to 8000 (common for dev, original used 5005)
-    port = int(os.getenv("PORT", "8000")) 
+    port = int(os.getenv("PORT", "8001")) 
     logger.info(f"Starting Uvicorn server on host 0.0.0.0:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
