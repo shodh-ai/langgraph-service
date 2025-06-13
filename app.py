@@ -145,26 +145,31 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
             if event_name == "on_chain_stream" and data:
                 chunk_content = data.get("chunk") # LangGraph's default key for streaming output from .stream()
                 if isinstance(chunk_content, dict):
-                    # Check if our conversation_handler_node yielded its specific chunk
+                    # Check for intermediate streaming text chunks. This is the correct place for this.
                     streaming_text = chunk_content.get("streaming_text_chunk")
                     if streaming_text:
-                        logger.debug(f"SSE Stream: Yielding streaming_text_chunk from node '{node_name}': {streaming_text[:100]}...")
-                        yield f"event: text_chunk\ndata: {json.dumps({'text': streaming_text})}\n\n"
-                        await asyncio.sleep(0.01) # Small delay to allow client processing
+                        logger.debug(f"SSE Stream: Yielding intermediate 'streaming_text_chunk' from node '{node_name}': {streaming_text[:100]}...")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': streaming_text})}\n\n"
+                        await asyncio.sleep(0.01)
 
             elif event_name == "on_chain_end" and node_name == "format_final_output":
-                # This event signifies the end of a node's execution. 
-                # 'data' directly contains the output of the node when stream_mode="values".
-                final_output_package = data 
-                if isinstance(final_output_package, dict) and final_output_package.get("output_content"):
-                    # The 'output_content' should be the fully formed InteractionResponse model or similar
-                    final_response_data = final_output_package.get("output_content")
-                    logger.info(f"SSE Stream: Yielding final_response: {json.dumps(final_response_data)[:200]}...")
-                    yield f"event: final_response\ndata: {json.dumps(final_response_data)}\n\n"
-                    # After sending the final response, we can break or ensure no more events are processed for this stream.
-                    # For now, let it continue to see if other relevant events appear, though typically this is the end.
-                    # Consider adding a break here if this is strictly the last piece of info.
-                    # break # Optional: uncomment if this is the absolute final event to send
+                # This event signifies the end of the graph's main processing.
+                # The node's return value is in the 'output' key of the 'on_chain_end' event data.
+                final_output_package = data.get('output', {})
+                
+                if isinstance(final_output_package, dict):
+                    # Extract the TTS text and UI actions directly from the node's output
+                    tts_text = final_output_package.get("final_text_for_tts")
+                    ui_actions = final_output_package.get("final_ui_actions")
+
+                    if tts_text:
+                        logger.info(f"SSE Stream: Yielding final TTS text chunk.")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': tts_text})}\n\n"
+                    
+                    if ui_actions:
+                        logger.info(f"SSE Stream: Yielding final UI actions.")
+                        yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': ui_actions})}\n\n"
+                        await asyncio.sleep(0.01)
 
             elif event_name == "on_chain_end" and node_name == "error_generator_node":
                 # 'data' directly contains the output of the node when stream_mode="values".
