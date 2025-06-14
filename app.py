@@ -209,99 +209,112 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
 
             # This is the merged and preferred logic from HEAD for handling on_chain_end events
             elif event_name == "on_chain_end":
-                node_output = data.get("output") # Output is in data.output for on_chain_end
+                node_output = data.get("output")
+                # tags = event.get("tags", []) # Kept for context, if needed later
 
-                # Handle output from format_final_output_for_client_node (primary output formatter)
-                if node_name == "format_final_output_for_client_node" and isinstance(node_output, dict) and "final_text_for_tts" in node_output:
-                    if "raw_pedagogy_output" in node_output and isinstance(node_output["raw_pedagogy_output"], dict):
-                        logger.info(f"SSE Stream: Found raw_pedagogy_output in formatter output with keys: {list(node_output['raw_pedagogy_output'].keys())}")
+                if node_name == "format_final_output_for_client_node" and isinstance(node_output, dict):
+                    final_text_for_tts = node_output.get("final_text_for_tts")
+                    final_ui_actions = node_output.get("final_ui_actions")
+
+                    if final_text_for_tts:
+                        text_fingerprint = f"final_tts:{request_data.user_id}:{request_data.session_id}:{str(final_text_for_tts)[:50]}"
+                        if text_fingerprint not in streamed_messages:
+                            streamed_messages.add(text_fingerprint)
+                            logger.info(f"SSE Stream: Yielding final_text_for_tts as streaming_text_chunk (user: {request_data.user_id}, session: {request_data.session_id})")
+                            yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': final_text_for_tts})}\n\n"
+                            await asyncio.sleep(0.01)
+                        else:
+                            logger.info(f"SSE Stream: Skipping duplicate final_text_for_tts (user: {request_data.user_id}, session: {request_data.session_id})")
                     
-                    final_text = node_output.get("final_text_for_tts", "")
-                    msg_fingerprint = f"formatter:{final_text[:50]}"
-                    
+                    if final_ui_actions is not None:
+                        try:
+                            ui_actions_str = json.dumps(final_ui_actions, sort_keys=True)
+                            actions_fingerprint = f"final_ui_actions:{request_data.user_id}:{request_data.session_id}:{ui_actions_str[:50]}"
+                        except TypeError:
+                            actions_fingerprint = f"final_ui_actions:{request_data.user_id}:{request_data.session_id}:{str(final_ui_actions)[:50]}"
+
+                        if actions_fingerprint not in streamed_messages:
+                            streamed_messages.add(actions_fingerprint)
+                            logger.info(f"SSE Stream: Yielding final_ui_actions (user: {request_data.user_id}, session: {request_data.session_id})")
+                            yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': final_ui_actions})}\n\n"
+                            await asyncio.sleep(0.01)
+                        else:
+                            logger.info(f"SSE Stream: Skipping duplicate final_ui_actions (user: {request_data.user_id}, session: {request_data.session_id})")
+
+                elif node_name == "initial_report_generation_node" and isinstance(node_output, dict):
+                    content_to_send = node_output
+                    if "initial_report_content" in node_output and isinstance(node_output["initial_report_content"], dict):
+                         content_to_send = node_output["initial_report_content"]
+                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
+                        content_to_send = node_output["output_content"]
+
+                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
+                    if not final_text_for_fingerprint:
+                         final_text_for_fingerprint = content_to_send.get("report_text", str(content_to_send))
+
+                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
                     if msg_fingerprint not in streamed_messages:
                         streamed_messages.add(msg_fingerprint)
-                        logger.info(f"SSE Stream: Yielding final_response from formatter node (fingerprint: {msg_fingerprint})")
-                        # This event should contain all necessary fields like final_text_for_tts, final_ui_actions, etc.
-                        yield f"event: final_response\ndata: {json.dumps(node_output)}\n\n"
+                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
                     else:
-                        logger.info(f"SSE Stream: Skipping duplicate formatter output (fingerprint: {msg_fingerprint})")
+                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+                
+                elif node_name == "inactivity_prompt_node" and isinstance(node_output, dict):
+                    content_to_send = node_output
+                    if "output_content" in node_output and isinstance(node_output["output_content"], dict):
+                        content_to_send = node_output["output_content"]
 
-                # Handle output from initial_report_generation_node
-                elif node_name == "initial_report_generation" and isinstance(node_output, dict) and "initial_report_content" in node_output:
-                    logger.info(f"SSE Stream: Processing initial_report_generation output with keys: {list(node_output.keys())}")
-                    report_content = node_output["initial_report_content"]
-                    
-                    if isinstance(report_content, dict) and "report_text" in report_content:
-                        report_text = report_content["report_text"]
-                        logger.info(f"SSE Stream: Found initial report text: {report_text[:100]}...")
-                        
-                        final_output_payload = {
-                            "final_text_for_tts": report_text,
-                            "raw_initial_report": report_content 
-                        }
-                        
-                        msg_fingerprint = f"report:{report_text[:50]}"
-                        if msg_fingerprint not in streamed_messages:
-                            streamed_messages.add(msg_fingerprint)
-                            logger.info(f"SSE Stream: Yielding initial report as final_response (fingerprint: {msg_fingerprint})")
-                            yield f"event: final_response\ndata: {json.dumps(final_output_payload)}\n\n"
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate initial report (fingerprint: {msg_fingerprint})")
+                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
+                    if not final_text_for_fingerprint:
+                         final_text_for_fingerprint = content_to_send.get("text_for_tts", str(content_to_send))
+
+                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
+                    if msg_fingerprint not in streamed_messages:
+                        streamed_messages.add(msg_fingerprint)
+                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
                     else:
-                        logger.warning(f"SSE Stream: initial_report_content missing 'report_text' or not a dict: {report_content}")
-                
-                # Handle output from inactivity_prompt_node
-                elif node_name == "inactivity_prompt" and isinstance(node_output, dict):
-                    output_content_from_node = node_output.get("output_content", {})
-                    if isinstance(output_content_from_node, dict) and "text_for_tts" in output_content_from_node:
-                        prompt_text = output_content_from_node["text_for_tts"]
-                        final_output_payload = {
-                            "final_text_for_tts": prompt_text,
-                            "raw_inactivity_output": output_content_from_node
-                        }
-                        msg_fingerprint = f"inactivity:{prompt_text[:50]}"
-                        if msg_fingerprint not in streamed_messages:
-                            streamed_messages.add(msg_fingerprint)
-                            logger.info(f"SSE Stream: Yielding inactivity prompt as final_response (fingerprint: {msg_fingerprint})")
-                            yield f"event: final_response\ndata: {json.dumps(final_output_payload)}\n\n"
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate inactivity prompt (fingerprint: {msg_fingerprint})")
-                
-                # Handle output from pedagogy_generation node or PEDAGOGY_MODULE subgraph
-                elif (node_name == "pedagogy_generation" or node_name == "PEDAGOGY_MODULE") and isinstance(node_output, dict):
-                    pedagogy_data_from_node = None
-                    content_text = None
+                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+
+                elif node_name == "pedagogy_generation_node" and isinstance(node_output, dict):
+                    content_to_send = node_output
+                    if "task_suggestion_llm_output" in node_output and isinstance(node_output["task_suggestion_llm_output"], dict):
+                        content_to_send = node_output["task_suggestion_llm_output"]
+                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
+                        content_to_send = node_output["output_content"]
                     
-                    if "task_suggestion_llm_output" in node_output:
-                        pedagogy_data_from_node = node_output["task_suggestion_llm_output"]
-                    
-                    if isinstance(pedagogy_data_from_node, dict) and "task_suggestion_tts" in pedagogy_data_from_node:
-                        content_text = pedagogy_data_from_node["task_suggestion_tts"]
-                        logger.info(f"SSE Stream: Found pedagogy TTS text: {content_text[:100]}...")
-                        
-                        msg_fingerprint = f"pedagogy:{content_text[:50]}"
-                        if msg_fingerprint not in streamed_messages:
-                            streamed_messages.add(msg_fingerprint)
-                            final_output_payload = {
-                                "final_text_for_tts": content_text,
-                                "raw_pedagogy_output": pedagogy_data_from_node
-                            }
-                            logger.info(f"SSE Stream: Yielding pedagogy output (fingerprint: {msg_fingerprint})")
-                            yield f"event: final_response\ndata: {json.dumps(final_output_payload)}\n\n"
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate pedagogy output (fingerprint: {msg_fingerprint})")
-                    elif "assistant_content" in node_output and node_output["assistant_content"]:
-                        content_text = node_output["assistant_content"]
-                        msg_fingerprint = f"pedagogy_assistant:{content_text[:50]}"
-                        if msg_fingerprint not in streamed_messages:
-                            streamed_messages.add(msg_fingerprint)
-                            final_output_payload = {"final_text_for_tts": content_text}
-                            logger.info(f"SSE Stream: Yielding assistant_content from {node_name} as final_response")
-                            yield f"event: final_response\ndata: {json.dumps(final_output_payload)}\n\n"
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate assistant_content (fingerprint: {msg_fingerprint})")
+                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
+                    if not final_text_for_fingerprint:
+                         final_text_for_fingerprint = content_to_send.get("task_suggestion_tts", str(content_to_send))
+
+                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
+                    if msg_fingerprint not in streamed_messages:
+                        streamed_messages.add(msg_fingerprint)
+                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
                     else:
+                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+
+                elif node_name == "PEDAGOGY_MODULE" and isinstance(node_output, dict):
+                    content_to_send = node_output
+                    if "task_suggestion_llm_output" in node_output and isinstance(node_output["task_suggestion_llm_output"], dict):
+                        content_to_send = node_output["task_suggestion_llm_output"]
+                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
+                        content_to_send = node_output["output_content"]
+
+                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
+                    if not final_text_for_fingerprint:
+                         final_text_for_fingerprint = content_to_send.get("task_suggestion_tts", str(content_to_send))
+
+                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
+                    if msg_fingerprint not in streamed_messages:
+                        streamed_messages.add(msg_fingerprint)
+                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
+                    else:
+                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
+
                         logger.info(f"SSE Stream: Received output from {node_name} but couldn't find expected fields. Output keys: {list(node_output.keys()) if isinstance(node_output, dict) else 'Not a dict'}")
             
             elif event_name == "on_chain_end" and node_name == "error_generator_node":

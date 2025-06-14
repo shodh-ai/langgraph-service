@@ -18,13 +18,13 @@
     "learning_style": "prefers feedback with suggestions",
     "language_background": "native Spanish speaker"
   },
-  "task_suggestion_llm_output": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?",
+  "task_suggestion_llm_output": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples.",
   "output_content": {
-    "text_for_tts": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?",
+    "text_for_tts": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples.",
     "ui_actions": [
       {
         "type": "text",
-        "content": "That's a great starting point!  \"Technology is very good and has many benefits for society\" is a good general idea, but a strong thesis needs to be more specific and arguable. Can you think of a particular area where technology's benefits are most evident? For example, you could focus on education, communication, or healthcare.  Once we choose an area, we can make a more focused statement.  For instance, if you choose education, you could say something like, \"Technology has revolutionized education by providing accessible learning resources and fostering global collaboration.\"  What area interests you most?"
+        "content": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples."
       },
       {
         "type": "button",
@@ -46,130 +46,115 @@
     {
       "Persona": "The Structuralist",
       "Learning_Objective_Focus": "Ensuring subject-verb agreement.",
-      "Writing_Task_Context_Section": "Summarizing Reading Point 1",
+      "Writing_Task_Context_Section": "Body Paragraph 1 - Topic Sentence",
       "Student_Written_Input_Chunk": "For example many people they like to use cars.",
       "Student_Articulated_Thought": "No articulated thought provided.",
-      "Student_Comfort_Level": "Conversational",
+      "Student_Comfort_Level": "Beginner",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The current sentence is too simplistic and lacks a clear connection to the upcoming example about pollution. A smoother transition is needed to link the general statement to the specific example.",
-      "Decision_to_Intervene": true,
-      "Intervention_Reasoning_if_Waiting": NaN,
-      "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "The sentence repeats the subject. Try removing 'they'. For example, 'For example, many people like to use cars.'",
-      "Original_Student_Text_if_Revision": "For example many people they like to use cars.",
-      "Suggested_AI_Revision_if_Any": "For example, many people like to use cars.",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"they like\", \"parameter_suggestions\": {\"suggestion_text\": \"like\", \"reason\": \"Redundant subject. Removing 'they' improves clarity and grammar.\"}}, {\"action_type_suggestion\": \"HIGHLIGHT_TEXT_RANGE\", \"target_student_text_segment\": \"they\", \"parameter_suggestions\": {\"style_class\": \"grammar_error\"}}, {\"action_type_suggestion\": \"SHOW_TOOLTIP\", \"target_student_text_segment\": \"they\", \"parameter_suggestions\": {\"tooltip_text\": \"The word 'they' is unnecessary here. 'People' is already the subject of the sentence.\"}}]",
-      "Rationale_for_Intervention_Style": "As The Structuralist, I focus on clarity and grammatical correctness. This intervention directly addresses the subject-verb agreement issue and removes redundancy, leading to a more concise and effective sentence. The suggestion is direct and provides a clear solution.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely accept the suggestion and revise the sentence, or ask for further clarification on subject-verb agreement."
-    },
-    {
-      "Persona": "The Pragmatic Strategist",
-      "Learning_Objective_Focus": "Ensuring subject-verb agreement.",
-      "Writing_Task_Context_Section": "Connecting Listening to Reading Point 1",
-      "Student_Written_Input_Chunk": "In conclusion it is clear that solution must be finded.",
-      "Student_Articulated_Thought": "No articulated thought provided.",
-      "Student_Comfort_Level": "Fluent",
-      "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The student made a grammatical error with the verb 'finded'. The correct form should be 'found'.",
+      "Immediate_Assessment_of_Input": "The sentence has a subject-verb agreement issue and unnecessary repetition of the subject. 'Many people' is already the subject; 'they' is redundant.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "CorrectGrammar",
-      "AI_Spoken_or_Suggested_Text": "The word 'finded' is not correct here. The correct past participle is 'found'. I suggest: 'In conclusion, it is clear that a solution must be found.'",
-      "Original_Student_Text_if_Revision": "solution must be finded",
-      "Suggested_AI_Revision_if_Any": "a solution must be found",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"solution must be finded\", \"parameter_suggestions\": {\"suggestion_text\": \"a solution must be found\", \"reason\": \"Grammatical correction: 'finded' should be 'found' and adding 'a' makes the sentence more natural.\"}}, {\"action_type_suggestion\": \"HIGHLIGHT_TEXT_RANGE\", \"target_student_text_segment\": \"finded\", \"parameter_suggestions\": {\"style_class\": \"grammar_error\"}}]",
-      "Rationale_for_Intervention_Style": "As The Pragmatic Strategist, I'm directly correcting the grammatical error to improve the student's score. This is a clear and efficient intervention, focusing on a specific error that impacts clarity and grammatical accuracy, crucial for TOEFL success.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely accept the suggested revision or ask for further clarification on the grammatical rule."
+      "AI_Spoken_or_Suggested_Text": "The sentence repeats the subject. Try removing 'they'.",
+      "Original_Student_Text_if_Revision": "many people they like",
+      "Suggested_AI_Revision_if_Any": "many people like",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"HIGHLIGHT_TEXT_RANGE\", \"target_student_text_segment\": \"they\", \"parameter_suggestions\": {\"style_class\": \"grammar_error\"}}, {\"action_type_suggestion\": \"SHOW_TOOLTIP\", \"target_student_text_segment\": \"they\", \"parameter_suggestions\": {\"tooltip_text\": \"The subject 'many people' is already present. 'They' is redundant and creates a subject-verb agreement issue.\"}}, {\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"many people they like\", \"parameter_suggestions\": {\"suggestion_text\": \"many people like\", \"reason\": \"Removes redundant subject and corrects subject-verb agreement.\"}}]",
+      "Rationale_for_Intervention_Style": "As 'The Structuralist,' I focus on clarity and grammatical correctness. The student is at a beginner level, so direct correction with a clear explanation is most appropriate. Addressing the subject-verb agreement issue directly aligns with the learning objective.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely remove 'they' from the sentence or ask for further clarification."
     },
     {
-      "Persona": "The Encouraging Nurturer",
-      "Learning_Objective_Focus": "General writing assistance",
-      "Writing_Task_Context_Section": "Body Paragraph 1 - Evidence",
-      "Student_Written_Input_Chunk": "In conclusion it is clear that solution must be finded.",
-      "Student_Articulated_Thought": "I need to give an example now to support my point about pollution.",
-      "Student_Comfort_Level": "Conversational",
+      "Persona": "The Structuralist",
+      "Learning_Objective_Focus": "Ensuring subject-verb agreement.",
+      "Writing_Task_Context_Section": "Connecting Listening to Reading Point 1",
+      "Student_Written_Input_Chunk": "For example many people they like to use cars.",
+      "Student_Articulated_Thought": "I'm not sure how to connect this idea to the previous paragraph.",
+      "Student_Comfort_Level": "Fluent",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The sentence has grammatical errors ('finded') and an awkward phrasing ('solution must be finded'). The student's articulated thought indicates they are moving to the evidence stage, which is good. The transition needs work.",
+      "Immediate_Assessment_of_Input": "The sentence contains a redundant subject ('people' and 'they') and lacks a clear connection to the previous paragraph.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "That's a great direction! To make it even stronger, how about we rephrase that sentence to something like: 'For example, [your example related to pollution]'? This will directly introduce your evidence and make the connection to your point clear.",
-      "Original_Student_Text_if_Revision": "In conclusion it is clear that solution must be finded.",
-      "Suggested_AI_Revision_if_Any": "For example,",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"In conclusion it is clear that solution must be finded.\", \"parameter_suggestions\": {\"suggestion_text\": \"For example,\", \"reason\": \"Provides a smoother transition to the example.\"}}]",
-      "Rationale_for_Intervention_Style": "The intervention focuses on encouraging the student's intention to provide an example while gently correcting the grammar and offering a more effective transition phrase. This aligns with the 'Encouraging Nurturer' persona by praising their effort and providing a supportive suggestion rather than directly pointing out errors. The focus is on clarity and flow, making the writing process less intimidating.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely provide the example related to pollution, starting the next sentence with 'For example,'."
+      "AI_Spoken_or_Suggested_Text": "The phrase 'many people they' is redundant. Try removing 'they' and then focusing on how this example connects to the previous point. For instance, you could say, 'For example, many people prefer using cars...' and then explain why this preference contradicts what was mentioned in the lecture.",
+      "Original_Student_Text_if_Revision": "For example many people they like to use cars.",
+      "Suggested_AI_Revision_if_Any": "For example, many people like to use cars.",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"many people they\", \"parameter_suggestions\": {\"suggestion_text\": \"many people\", \"reason\": \"Redundant pronoun. 'People' is already the subject.\"}}]",
+      "Rationale_for_Intervention_Style": "As The Structuralist, I'm directly addressing the grammatical error (subject redundancy) and prompting the student to consider the logical connection to the previous paragraph. This aligns with my focus on clarity and organization.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely revise the sentence to remove the redundant pronoun and then attempt to connect the idea to the previous paragraph, potentially asking for further guidance on making the connection more explicit."
     },
     {
-      "Persona": "The Interactive Explorer",
+      "Persona": "The Encouraging Nurturer",
       "Learning_Objective_Focus": "Crafting a clear and arguable thesis statement.",
+      "Writing_Task_Context_Section": "Connecting Listening to Reading Point 1",
+      "Student_Written_Input_Chunk": "The reading passage states that the new university policy will save money.",
+      "Student_Articulated_Thought": "No articulated thought provided.",
+      "Student_Comfort_Level": "Conversational",
+      "Student_Affective_State": "not specified",
+      "Immediate_Assessment_of_Input": "The student is summarizing the reading passage, which is a good start. However, it doesn't yet connect to the listening or present an argument.",
+      "Decision_to_Intervene": true,
+      "Intervention_Reasoning_if_Waiting": NaN,
+      "Intervention_Type": "AskSocraticQuestionAboutWriting",
+      "AI_Spoken_or_Suggested_Text": "That's a good start! To make this even stronger, can you think about how the listening passage responds to this point about saving money? Does it agree or disagree, and why is that important?",
+      "Original_Student_Text_if_Revision": NaN,
+      "Suggested_AI_Revision_if_Any": NaN,
+      "Associated_UI_Action_Hints_JSON": NaN,
+      "Rationale_for_Intervention_Style": "Using a Socratic question encourages the student to think critically about the relationship between the reading and listening passages and to start forming an argument, which aligns with the persona's focus on building confidence and guiding towards better phrasing by focusing on their ideas first.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely respond with how the listening passage relates to the reading passage's claim about saving money, hopefully leading to a thesis statement that presents an argument."
+    },
+    {
+      "Persona": "The Pragmatic Strategist",
+      "Learning_Objective_Focus": "Creating smooth transitions between sentences.",
       "Writing_Task_Context_Section": "Body Paragraph 1 - Topic Sentence",
+      "Student_Written_Input_Chunk": "In conclusion it is clear that solution must be finded.",
+      "Student_Articulated_Thought": "No articulated thought provided.",
+      "Student_Comfort_Level": "Proficient",
+      "Student_Affective_State": "not specified",
+      "Immediate_Assessment_of_Input": "The sentence has grammatical errors and is not appropriate for a body paragraph's topic sentence. It sounds more like a conclusion.",
+      "Decision_to_Intervene": true,
+      "Intervention_Reasoning_if_Waiting": NaN,
+      "Intervention_Type": "SuggestRephrasing",
+      "AI_Spoken_or_Suggested_Text": "That sentence sounds more like a conclusion than a topic sentence for a body paragraph. Also, there are some grammar issues. How about something like: 'One key advantage is that [your solution] directly addresses [the problem] by [how it works].'",
+      "Original_Student_Text_if_Revision": "In conclusion it is clear that solution must be finded.",
+      "Suggested_AI_Revision_if_Any": "One key advantage is that [your solution] directly addresses [the problem] by [how it works].",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"In conclusion it is clear that solution must be finded.\", \"parameter_suggestions\": {\"suggestion_text\": \"One key advantage is that [your solution] directly addresses [the problem] by [how it works].\", \"reason\": \"More appropriate for a topic sentence and grammatically correct.\"}}]",
+      "Rationale_for_Intervention_Style": "As 'The Pragmatic Strategist,' I'm directly addressing the grammatical errors and providing a more suitable sentence structure for a body paragraph's topic sentence. This is efficient and focuses on maximizing the score.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely either accept the suggestion, modify it, or ask for further clarification on how to fill in the bracketed information."
+    },
+    {
+      "Persona": "The Pragmatic Strategist",
+      "Learning_Objective_Focus": "Using varied and precise academic vocabulary.",
+      "Writing_Task_Context_Section": "Connecting Listening to Reading Point 1",
       "Student_Written_Input_Chunk": "I think recycling is good.",
       "Student_Articulated_Thought": "No articulated thought provided.",
       "Student_Comfort_Level": "Proficient",
       "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The statement is too simple and lacks a clear argument or direction for a thesis statement.",
+      "Immediate_Assessment_of_Input": "The sentence is grammatically correct but lacks the academic tone and precision needed for a TOEFL essay. It's too simplistic.",
       "Decision_to_Intervene": true,
       "Intervention_Reasoning_if_Waiting": NaN,
       "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "A thesis statement should present a clear argument. Could you rephrase this to express *why* recycling is good, and perhaps hint at the main points you'll discuss in your essay? For example: \"Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.\"",
+      "AI_Spoken_or_Suggested_Text": "To sound more academic and precise, try replacing \"I think recycling is good\" with a more sophisticated phrase that reflects the benefits mentioned in the reading or listening. For example, you could say, \"Recycling presents a significant advantage...\" or \"The recycling process offers a notable benefit...\"",
       "Original_Student_Text_if_Revision": "I think recycling is good.",
-      "Suggested_AI_Revision_if_Any": "Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"Recycling is an essential practice because it conserves natural resources, reduces landfill waste, and mitigates pollution.\", \"reason\": \"Provides a clear argument and outlines the essay's main points.\"}}]",
-      "Rationale_for_Intervention_Style": "As 'The Structuralist,' I'm focusing on the lack of a clear argument. The student needs to move beyond a simple statement to a thesis that outlines the essay's direction. The suggested revision provides a template for a stronger thesis.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will either accept the suggested revision, attempt their own revision based on the feedback, or ask for further clarification."
-    },
-    {
-      "Persona": "The Pragmatic Strategist",
-      "Learning_Objective_Focus": "Ensuring subject-verb agreement.",
-      "Writing_Task_Context_Section": "Summarizing Reading Point 1",
-      "Student_Written_Input_Chunk": "I think recycling is good.",
-      "Student_Articulated_Thought": "I'm trying to make my main argument here for the thesis.",
-      "Student_Comfort_Level": "Beginner",
-      "Student_Affective_State": "not specified",
-      "Immediate_Assessment_of_Input": "The sentence is grammatically correct but too simplistic and informal for a TOEFL essay. It doesn't directly summarize a reading point.",
-      "Decision_to_Intervene": true,
-      "Intervention_Reasoning_if_Waiting": NaN,
-      "Intervention_Type": "SuggestRephrasing",
-      "AI_Spoken_or_Suggested_Text": "Okay, I see you're aiming for your main argument. Remember, in the integrated essay, you need to summarize a specific point from the reading passage. Instead of a general statement, try to capture a key idea from the text. For example, you could say something like, 'The reading passage argues that recycling programs are effective because they reduce landfill waste.' Can you identify a specific argument from the reading to summarize?",
-      "Original_Student_Text_if_Revision": "I think recycling is good.",
-      "Suggested_AI_Revision_if_Any": "The reading passage argues that recycling programs are effective because they reduce landfill waste.",
-      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"The reading passage argues that recycling programs are effective because they reduce landfill waste.\", \"reason\": \"More specific and summarizes a potential reading point.\"}}]",
-      "Rationale_for_Intervention_Style": "As the Pragmatic Strategist, I'm directly addressing the student's need to create a thesis statement while emphasizing the importance of summarizing the reading passage for the integrated essay. The suggested revision provides a more appropriate and specific example.",
-      "Anticipated_Next_Student_Action_or_Reply": "The student will likely try to summarize a specific point from the reading passage, potentially asking for help identifying a suitable argument."
+      "Suggested_AI_Revision_if_Any": "Recycling presents a significant advantage...",
+      "Associated_UI_Action_Hints_JSON": "[{\"action_type_suggestion\": \"SHOW_INLINE_SUGGESTION\", \"target_student_text_segment\": \"I think recycling is good.\", \"parameter_suggestions\": {\"suggestion_text\": \"Recycling presents a significant advantage...\", \"reason\": \"More academic and precise vocabulary.\"}}]",
+      "Rationale_for_Intervention_Style": "As 'The Pragmatic Strategist,' I'm directly addressing the need for more sophisticated vocabulary to improve the student's score. This suggestion provides a concrete alternative that aligns with the TOEFL's expectations.",
+      "Anticipated_Next_Student_Action_or_Reply": "The student will likely either accept the suggested rephrasing or attempt to create their own version using more academic vocabulary."
     }
   ],
   "selected_cowriting_intervention": {
     "decision_to_intervene": true,
-    "intervention_type": "SuggestRephrasing",
-    "ai_spoken_or_suggested_text": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?",
-    "original_student_text_if_revision": "I think technology is very good and have many benefits for society.",
-    "suggested_ai_revision_if_any": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
-    "ui_action_hints": [
-      {
-        "action_type_suggestion": "SHOW_INLINE_SUGGESTION",
-        "target_student_text_segment": "I think technology is very good and have many benefits for society.",
-        "parameter_suggestions": {
-          "suggestion_text": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
-          "reason": "Provides a more specific and arguable thesis statement."
-        }
-      }
-    ],
-    "rationale_for_intervention_style": "The student is focused but needs guidance.  They've expressed uncertainty about their thesis statement's strength, which is vague and lacks specific arguments.  This intervention acknowledges their initial effort positively, then offers a concrete example of a stronger thesis statement while also prompting them to identify their own specific interests within the broad topic of technology. This encourages deeper thinking and ownership of the argument. The conversational comfort level suggests a direct and supportive approach is appropriate.",
-    "anticipated_next_student_action_or_reply": "The student will likely either choose to use the suggested revision as a starting point, or they will begin to articulate more specific benefits of technology, allowing for further refinement of the thesis statement."
+    "intervention_type": "AskClarifyingQuestion",
+    "ai_spoken_or_suggested_text": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples.",
+    "original_student_text_if_revision": null,
+    "suggested_ai_revision_if_any": null,
+    "ui_action_hints": [],
+    "rationale_for_intervention_style": "The student is focused but needs guidance.  They've expressed uncertainty about their thesis statement's strength, which is too broad and lacks specific examples.  Asking a clarifying question encourages them to elaborate on their ideas and identify concrete benefits, which will naturally lead to a more refined and arguable thesis. This approach aligns with the student's conversational comfort level and their need for guidance without being overly directive.",
+    "anticipated_next_student_action_or_reply": "The student will likely provide specific examples of technology's benefits, such as improved communication, access to information, or medical advancements. This will provide the foundation for crafting a stronger thesis statement."
   },
   "cowriting_output": {
-    "text_for_tts": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?",
+    "text_for_tts": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples.",
     "ui_components": [
       {
         "type": "text",
-        "content": "That's a great start! To make your thesis stronger, let's try to be more specific about the benefits of technology for society.  Instead of saying 'many benefits,' could you name a few key areas where technology has a positive impact? For example, you could say something like: 'Technology has revolutionized communication, improved access to information, and advanced healthcare.'  Or, if you want to focus on a specific area, you could narrow it down further. What specific benefits are you most interested in exploring?"
-      },
-      {
-        "type": "revision",
-        "original": "I think technology is very good and have many benefits for society.",
-        "suggestion": "Technology has revolutionized communication, improved access to information, and advanced healthcare.",
-        "action": "APPLY_REVISION"
+        "content": "That's a great starting point!  To make your thesis stronger and more arguable, could you tell me a bit more about what specific benefits technology offers society?  Think about concrete examples."
       },
       {
         "type": "button",

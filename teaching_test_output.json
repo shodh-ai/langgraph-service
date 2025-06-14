@@ -1,0 +1,72 @@
+{
+  "learning_objective_id": "W_Structure_Independent",
+  "retrieved_teaching_row": null,
+  "teaching_output_content": {
+    "text_for_tts": "Let's start building your confidence in speaking English fluently!  This lesson focuses on a crucial skill for the TOEFL: constructing independent sentences. I understand that speaking a new language can sometimes feel a bit challenging, and it's perfectly normal to hesitate or search for the right words.  We'll work together at a comfortable pace, focusing on building your skills gradually.  Remember, progress is key, not perfection. Independent clauses are complete sentences that stand alone. They have a subject and a verb and express a complete thought.  Mastering them is fundamental for clear and effective communication in English.  We'll practice forming these sentences correctly and confidently. For instance: \"The cat sat on the mat.\" This is an independent clause because it has a subject (cat), a verb (sat), and expresses a complete thought.\n\n\"Although it was raining,\" this is NOT an independent clause; it's a dependent clause because it doesn't express a complete thought on its own. It needs another clause to complete the meaning, for example: \"Although it was raining, the children played outside.\" A common point of confusion is: A common misconception is confusing independent and dependent clauses.  Remember, an independent clause can stand alone, while a dependent clause cannot. To check your understanding: Can you give me an example of an independent clause, and then explain why it's independent? In this step, we learned to identify and construct independent clauses, a building block for fluent English speech.  This is a crucial foundation for improving your overall TOEFL speaking skills.",
+    "ui_actions": [
+      {
+        "action_type": "DISPLAY_VISUAL_AID",
+        "visual_description": "{\"necessity\": \"Yes\", \"type_of_visual\": \"Dynamic On-Screen Writing\", \"detailed_visual_content_description\": \"The visual should show two sentences side-by-side. One sentence should be a simple independent clause (e.g., \\\"The sun is shining.\\\") highlighted in green. The other should be a dependent clause (e.g., \\\"Because it is a beautiful day,\\\") highlighted in red.  Then, the dependent clause should be dynamically combined with an independent clause to form a complete sentence, illustrating how they work together.\", \"rationale_for_visual\": \"The visual will help the student understand the difference between independent and dependent clauses in a clear and engaging way, reinforcing the core concept.\"}",
+        "details": {
+          "source": "teaching_generator_node_llm",
+          "suggestion_type": "llm_generated_visual_aid"
+        }
+      }
+    ]
+  },
+  "user_id": "test_user_123",
+  "transcript": "I need help understanding how to structure a TOEFL independent essay.",
+  "current_context": {
+    "user_id": "test_user_123",
+    "toefl_section": null,
+    "question_type": null,
+    "task_stage": "TEACHING",
+    "question_stage": null,
+    "student_name": null,
+    "current_prompt_id": null,
+    "ui_element_in_focus": null,
+    "timer_value_seconds": null,
+    "selected_tools_or_options": null,
+    "feedback_content": null,
+    "modelling_document_data": null,
+    "final_text_for_tts": null,
+    "final_ui_actions": null,
+    "final_next_task_info": null,
+    "final_navigation_instruction": null,
+    "raw_modelling_output": null,
+    "think_aloud_sequence": null,
+    "pre_modeling_setup_script": null,
+    "post_modeling_summary_and_key_takeaways": null,
+    "comprehension_check_or_reflection_prompt_for_student": null,
+    "adaptation_notes": null,
+    "example_prompt_text": null,
+    "student_goal_context": null,
+    "student_confidence_context": null,
+    "teacher_initial_impression": null,
+    "student_struggle_context": null,
+    "english_comfort_level": null,
+    "error_during_context_preparation": null,
+    "raw_frontend_event_data": null,
+    "speaking_strengths": null,
+    "fluency": null,
+    "grammar": null,
+    "vocabulary": null,
+    "question_one_answer": null,
+    "question_two_answer": null,
+    "question_three_answer": null,
+    "teacher_persona": "Nurturer",
+    "learning_objective_id": "W_Structure_Independent",
+    "student_proficiency_level": "Intermediate",
+    "current_student_affective_state": null,
+    "current_lesson_step_number": null
+  },
+  "user_data": {
+    "name": "Sofia",
+    "level": "Intermediate",
+    "goal": "Learn essay structure for TOEFL writing",
+    "learning_history": {
+      "completed_tasks": 4,
+      "recent_focus": "Essay planning"
+    }
+  }
+}

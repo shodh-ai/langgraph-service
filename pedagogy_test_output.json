@@ -1,0 +1,200 @@
+{
+  "user_id": "test_user_123",
+  "transcript": "I want to improve my English speaking skills for the TOEFL test.",
+  "current_context": {
+    "task_stage": "PEDAGOGY_GENERATION"
+  },
+  "task_suggestion_llm_output": {
+    "task_suggestion_tts": "Based on your current assessment, I've designed a comprehensive learning plan for you to prepare for the TOEFL. We'll start with building a strong foundation in grammar and vocabulary, then gradually move into developing your reading, listening, speaking, and writing skills, culminating in specific TOEFL test strategies. How does that sound as a starting point?",
+    "reasoning": "Given that the student's initial assessment shows all fields as 'None', this indicates a need for a comprehensive and foundational pedagogy. The plan assumes no prior specific strengths or weaknesses have been identified, thus necessitating a broad approach that builds from the ground up. The order prioritizes fundamental language skills (grammar, vocabulary) as they underpin all other proficiencies. It then progresses systematically through individual language skills (listening, reading, speaking, writing), starting with basic concepts and moving towards more complex and academic contexts. Finally, it integrates test-specific strategies and practice tasks to ensure the student is well-prepared for the TOEFL format and demands. Varied topics are included throughout to prevent comfort or discomfort zones, simulating the unpredictable nature of the actual TOEFL exam. The pedagogy utilizes a mix of teaching, scaffolding, modeling, cowriting, and testing to provide diverse learning experiences and continuous assessment.",
+    "steps": [
+      {
+        "type": "Teaching",
+        "task": "grammar",
+        "topic": "Basic Sentence Structure (subjects, verbs, objects)",
+        "level": "Basic"
+      },
+      {
+        "type": "Teaching",
+        "task": "vocabulary",
+        "topic": "High-frequency academic words (e.g., 'analyze,' 'establish,' 'factor')",
+        "level": "Basic"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "writing",
+        "topic": "Write simple sentences describing daily routines.",
+        "level": "Basic"
+      },
+      {
+        "type": "Teaching",
+        "task": "grammar",
+        "topic": "Common Verb Tenses (present simple, past simple, present continuous)",
+        "level": "Basic"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "speaking",
+        "topic": "Introduce yourself and talk about your family or hobbies.",
+        "level": "Basic"
+      },
+      {
+        "type": "Teaching",
+        "task": "listening",
+        "topic": "Identifying main ideas in short, clear conversations.",
+        "level": "Basic"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "listening",
+        "topic": "Listen to a short conversation about a campus event and identify the main topic.",
+        "level": "Basic"
+      },
+      {
+        "type": "Teaching",
+        "task": "reading",
+        "topic": "Understanding simple factual texts and identifying key information.",
+        "level": "Basic"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "reading",
+        "topic": "Read a short paragraph about a historical figure and answer factual questions.",
+        "level": "Basic"
+      },
+      {
+        "type": "Teaching",
+        "task": "grammar",
+        "topic": "Conjunctions and connecting ideas (and, but, so, because)",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Teaching",
+        "task": "vocabulary",
+        "topic": "Word families and prefixes/suffixes for academic vocabulary.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "writing",
+        "topic": "Write a short paragraph comparing two things, using transition words.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Teaching",
+        "task": "speaking",
+        "topic": "Developing ideas with supporting details for independent speaking tasks.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Modelling",
+        "task": "speaking",
+        "topic": "Describe a place you enjoy visiting and explain why.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Teaching",
+        "task": "listening",
+        "topic": "Understanding implied meanings and speaker attitude in campus conversations.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "note-taking",
+        "topic": "Practice taking notes on a short academic lecture about environmental science.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Teaching",
+        "task": "reading",
+        "topic": "Skimming and scanning for main ideas and specific details in academic passages.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "reading",
+        "topic": "Read an article about urban development and identify the author's main argument and supporting points.",
+        "level": "Intermediate"
+      },
+      {
+        "type": "Teaching",
+        "task": "grammar",
+        "topic": "Complex sentences using relative clauses and adverb clauses.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Teaching",
+        "task": "vocabulary",
+        "topic": "Academic collocations and idiomatic expressions common in academic discourse.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Cowriting",
+        "task": "writing",
+        "topic": "Develop an essay arguing for or against a controversial social issue.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Teaching",
+        "task": "speaking",
+        "topic": "Cohesion and coherence in responses, using transition words and phrases effectively.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Modelling",
+        "task": "speaking",
+        "topic": "Explain the advantages and disadvantages of online education.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Teaching",
+        "task": "general test strategies",
+        "topic": "Time management strategies for all TOEFL sections.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Teaching",
+        "task": "general test strategies",
+        "topic": "Summarization techniques for both reading and listening passages.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Scaffolding",
+        "task": "speaking",
+        "topic": "Summarize a short academic excerpt and present the main idea orally.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Teaching",
+        "task": "general test strategies",
+        "topic": "Synthesis skills: combining information from multiple sources for integrated tasks.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Test",
+        "task": "speaking",
+        "topic": "Integrated Speaking Task: Summarize a short reading and relate it to a conversation.",
+        "level": "Advanced"
+      },
+      {
+        "type": "Test",
+        "task": "writing",
+        "topic": "Integrated Writing Task: Write an essay based on a reading passage and a lecture.",
+        "level": "Advanced"
+      }
+    ]
+  },
+  "user_data": {
+    "name": "Maria",
+    "level": "Intermediate",
+    "goal": "Improve TOEFL speaking score",
+    "past_tasks": [
+      "Speaking Task 1",
+      "Listening Exercise 3"
+    ],
+    "learning_history": {
+      "completed_tasks": 5,
+      "recent_focus": "Speaking fluency"
+    }
+  }
+}
