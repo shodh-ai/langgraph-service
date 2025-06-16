@@ -21,6 +21,9 @@ class InteractionRequestContext(BaseModel):
         None  # CRITICAL: What the student is currently doing/what page/mode they are in.
     )
     student_name: Optional[str] = None  # Student's name, if available
+    goal: Optional[str] = None  # User's stated goal
+    feeling: Optional[str] = None  # User's feeling about their skills
+    confidence: Optional[str] = None  # User's confidence level
     current_prompt_id: Optional[str] = None
     ui_element_in_focus: Optional[str] = None
     timer_value_seconds: Optional[int] = None

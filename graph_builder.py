@@ -441,15 +441,13 @@ def build_graph():
     workflow.add_edge(NODE_HANDLE_WELCOME, NODE_STUDENT_DATA)
     workflow.add_edge(NODE_STUDENT_DATA, NODE_WELCOME_PROMPT)
     workflow.add_edge(NODE_WELCOME_PROMPT, NODE_FORMAT_FINAL_OUTPUT)
-    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
-    
+
     # Updated conversation flow with memory loading first
     workflow.add_edge(NODE_LOAD_STUDENT_DATA, NODE_CONVERSATION_HANDLER)
     workflow.add_edge(NODE_CONVERSATION_HANDLER, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_INACTIVITY_PROMPT, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_TECH_SUPPORT_ACKNOWLEDGER, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_PREPARE_NAVIGATION, NODE_FORMAT_FINAL_OUTPUT)
-    workflow.add_edge(NODE_SESSION_WRAP_UP, NODE_FORMAT_FINAL_OUTPUT)
     workflow.add_edge(NODE_PROGRESS_REPORTER, NODE_FORMAT_FINAL_OUTPUT)
 
     # Session Wrap Up Path
@@ -490,12 +488,9 @@ def build_graph():
         NODE_P1_CURRICULUM_NAVIGATOR, NODE_CONVERSATION_HANDLER
     )  # Or to another router/handler if needed
 
-    # Initial report generation flow
-    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
-
-    # Pedagogy generation flow
+    # Initial report and pedagogy generation flow
+    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_PEDAGOGY_MODULE)
     workflow.add_edge(NODE_PEDAGOGY_MODULE, NODE_FORMAT_FINAL_OUTPUT)
-    workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_FORMAT_FINAL_OUTPUT)
 
     # Modelling system flow
     workflow.add_edge(NODE_MODELLING_QUERY_DOCUMENT, NODE_MODELLING_RAG_DOCUMENT)

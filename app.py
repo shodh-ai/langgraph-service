@@ -1,4 +1,5 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 
 # Load environment variables only once at the beginning
@@ -21,6 +22,9 @@ import json
 import asyncio
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field # For UserRegistrationRequest
+from fastapi import UploadFile, File
+from deepgram import DeepgramClient
+from deepgram import PrerecordedOptions
 
 # Assuming mem0_memory is correctly located and imported for /user/register
 # If it's in a 'memory' directory/module at the same level as app.py:
@@ -52,6 +56,44 @@ app.add_middleware(
 
 # Initialize the graph when the application starts
 toefl_tutor_graph = build_graph()
+
+# --- Deepgram Transcription Proxy Endpoint ---
+@app.post("/transcribe_audio")
+async def transcribe_audio(file: UploadFile = File(...)):
+    logger.info("Received request for /transcribe_audio")
+    try:
+        deepgram_api_key = os.getenv("DEEPGRAM_API_KEY")
+        if not deepgram_api_key:
+            logger.error("DEEPGRAM_API_KEY not set in environment.")
+            raise HTTPException(status_code=500, detail="Server configuration error: Missing Deepgram API key.")
+
+        # Initialize Deepgram client
+        deepgram = DeepgramClient(deepgram_api_key)
+
+        audio_data = await file.read()
+        source = {'buffer': audio_data, 'mimetype': file.content_type}
+
+        # Set transcription options
+        options = PrerecordedOptions(
+            model='nova-2',
+            smart_format=True,
+            language='en-US'
+        )
+
+        # Call Deepgram API
+        logger.info("Sending audio to Deepgram for transcription...")
+        response = await deepgram.listen.asyncprerecorded.v("1").transcribe_file(source, options)
+        
+        # Extract transcript
+        transcript = response.results.channels[0].alternatives[0].transcript
+        logger.info(f"Successfully transcribed audio. Transcript: {transcript[:100]}...")
+        
+        return {"transcript": transcript}
+
+    except Exception as e:
+        logger.error(f"Error during transcription: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {str(e)}")
+
 
 # --- User Registration Endpoint (from origin/subgraphs) ---
 class UserRegistrationRequest(BaseModel):

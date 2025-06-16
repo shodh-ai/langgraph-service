@@ -1,19 +1,18 @@
 fastapi
-pydantic
 uvicorn[standard]
 gunicorn
+python-dotenv
+pydantic
+deepgram-sdk==3.3.2
 langchain
 langgraph>=0.0.50
 langsmith
 google-generativeai>=0.3.0
-python-dotenv
 google-cloud-aiplatform
+langchain-google-genai
 mem0ai
 pandas>=1.0.0
-langchain-google-genai
-
 pytest-asyncio
-
 langchain-community
 chromadb
 
