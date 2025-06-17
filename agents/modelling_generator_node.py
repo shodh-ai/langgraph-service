@@ -94,14 +94,23 @@ Based on the student's context and the expert examples, generate a comprehensive
 
 2.  `generated_modeling_and_think_aloud_sequence_json`: (JSON Array) The core of the modeling. Demonstrate how to tackle the student's task prompt ('{example_prompt_text}').
     - Focus on demonstrating the application of relevant principles (e.g., coherence, PREP structure, essay structure, etc., as appropriate for the task and student struggle).
-    - Interleave model text chunks (what the student would say/write) and your 'think-aloud' explanations.
-    - The sequence MUST be a JSON array of objects, each object having a `type` and `content`. 
-    - Valid types are: "essay_text_chunk", "think_aloud_text".
-    - Optionally, include `ui_action_instruction` objects with `action_type` (e.g., "HIGHLIGHT_TEXT_RANGES"), `target_element_id`, and `parameters` if you want to suggest UI interactions like highlighting text you 'wrote'.
-    Example for one step in the sequence:
-    `{{"type": "essay_text_chunk", "content": "Firstly, to ensure coherence..."}}`
-    `{{"type": "think_aloud_text", "content": "Okay, I'm starting with a strong topic sentence here..."}}`
-    `{{"type": "ui_action_instruction", "action_type": "HIGHLIGHT_TEXT_RANGES", "target_element_id": "p8ModelEssayDisplayArea", "parameters": {{"ranges": [{{"start": 0, "end": 50, "color": "yellow"}}] }} }}`
+    - The sequence MUST be a JSON array of objects. Each object must have a `type` field.
+    - Objects can be of three types:
+        1. `{{"type": "essay_text_chunk", "content": "Text the student would write/say..."}}`
+        2. `{{"type": "think_aloud_text", "content": "Your explanation of your thought process..."}}`
+        3. `{{"type": "ui_action_instruction", "action_type": "HIGHLIGHT_TEXT_RANGES", "parameters": {{"ranges": [{{"start": <integer>, "end": <integer>, "style_class": "ai_emphasis_point", "remark_id": "M_R<number>"}}]}}}}`
+    - Interleave these types logically. For example, an `essay_text_chunk` might be followed by a `think_aloud_text` explaining it, and then a `ui_action_instruction` to highlight a part of that `essay_text_chunk`.
+    - For `HIGHLIGHT_TEXT_RANGES`:
+        - `parameters.ranges`: An array containing one or more range objects.
+        - `range.start` and `range.end`: Character offsets for the highlight. These offsets MUST correspond to the text within the *most recent* `essay_text_chunk` you provided. Be precise.
+        - `range.style_class`: Must be `"ai_emphasis_point"`.
+        - `range.remark_id`: A unique ID (e.g., `"M_R1"`, `"M_R2"`) that you should also reference in the corresponding `think_aloud_text` that explains *why* this part is highlighted. This creates a link between the visual highlight and your explanation.
+    Example of a sequence fragment:
+    `[...,`
+    `  {{"type": "essay_text_chunk", "content": "Effective topic sentences are crucial for clarity."}},`
+    `  {{"type": "think_aloud_text", "content": "Notice the phrase 'crucial for clarity' (M_R1). This emphasizes the importance of this aspect."}},`
+    `  {{"type": "ui_action_instruction", "action_type": "HIGHLIGHT_TEXT_RANGES", "parameters": {{"ranges": [{{"start": 29, "end": 48, "style_class": "ai_emphasis_point", "remark_id": "M_R1"}}]}}}},`
+    `... ]`
 
 3.  `generated_post_modeling_summary_and_key_takeaways`: (String) After the modeling sequence, summarize what was demonstrated and highlight the key learning points for the student.
 

@@ -62,9 +62,9 @@ class InteractionRequestContext(BaseModel):
     fluency: Optional[str] = None  # Assessment of speech flow and naturalness
     grammar: Optional[str] = None  # Grammar issues and areas for improvement
     vocabulary: Optional[str] = None  # Assessment of vocabulary usage
-    question_one_answer: Optional[str] = None  # Student's response to first question
-    question_two_answer: Optional[str] = None  # Student's response to second question
-    question_three_answer: Optional[str] = None  # Student's response to third question
+    goal: Optional[str] = None  # Student's response to first question
+    feeling: Optional[str] = None  # Student's response to second question
+    confidence: Optional[str] = None  # Student's response to third question
 
     # Teaching System Context Fields (from origin/feedback-system)
     teacher_persona: Optional[str] = None

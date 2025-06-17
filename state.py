@@ -168,9 +168,9 @@ class AgentGraphState(TypedDict, total=False):
     fluency: Optional[str]
     grammar: Optional[str]
     vocabulary: Optional[str]
-    question_one_answer: Optional[str]
-    question_two_answer: Optional[str]
-    question_three_answer: Optional[str]
+    goal: Optional[str]
+    feeling: Optional[str]
+    confidence: Optional[str]
 
     prioritized_issue: Optional[str]
     chosen_pedagogical_strategy: Optional[str]
