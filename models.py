@@ -91,6 +91,14 @@ class InteractionRequest(BaseModel):
     usertoken: Optional[str] = None
 
 
+class InvokeTaskRequest(BaseModel):
+    """
+    A generic request to invoke a task in the LangGraph backend.
+    """
+    task_name: str
+    json_payload: str
+
+
 # --- Response Models (and UI Action sub-models) ---
 
 

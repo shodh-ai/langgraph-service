@@ -72,3 +72,4 @@ main/
 __pycache__
 
 data/pedagogy_chroma
+chroma_db

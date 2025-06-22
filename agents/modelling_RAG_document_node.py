@@ -1,127 +1,86 @@
 import logging
 import os
-import google.generativeai as genai
-import numpy as np
-import pandas as pd # Used for DataFrame conversion for easy embedding
+import chromadb
+from chromadb.utils import embedding_functions
 from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
-# Columns to be used for constructing the query and the searchable documents
-RAG_INPUT_COLUMNS = [
-    'Example_Prompt_Text', 
-    'Student_Goal_Context', 
-    'Student_Confidence_Context', 
-    'Teacher_Initial_Impression', 
-    'Student_Struggle_Context'
+# --- Configuration ---
+DB_DIRECTORY = "chroma_db"
+COLLECTION_NAME = "modeling_examples"
+EMBEDDING_MODEL = "all-MiniLM-L6-v2" # Must match the model used for ingestion
+TOP_K_RESULTS = 3 # Number of similar examples to retrieve
+
+# Columns from the state to construct the query for embedding
+QUERY_CONTEXT_COLUMNS = [
+    "example_prompt_text",
+    "student_goal_context",
+    "student_confidence_context",
+    "teacher_initial_impression",
+    "student_struggle_context"
 ]
+
+# --- ChromaDB Client Initialization ---
+# Initialize the client once and reuse it.
+# This assumes the DB is in the root of the `backend_ai_service_langgraph` directory.
+client = None
+try:
+    client = chromadb.PersistentClient(path=DB_DIRECTORY)
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL)
+    collection = client.get_collection(
+        name=COLLECTION_NAME,
+        embedding_function=sentence_transformer_ef
+    )
+    logger.info(f"Successfully connected to ChromaDB collection '{COLLECTION_NAME}'.")
+except Exception as e:
+    logger.error(f"Failed to connect to ChromaDB. Ensure the database has been created by running the ingestion script. Error: {e}", exc_info=True)
+    client = None # Ensure client is None if connection fails
 
 async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
     """
-    Performs RAG on the filtered modelling_document_data using student context as a query.
+    Queries the ChromaDB vector store to find relevant modeling examples based on student context.
     """
-    logger.info(
-        f"ModellingRAGDocumentNode: Entry point activated for user {state.get('user_id', 'unknown_user')}"
-    )
+    logger.info("---Executing RAG Node (Vector DB Version)---")
 
-    # For debugging state:
-    logger.info(f"ModellingRAGDocumentNode: State keys available: {list(state.keys())}")
-    raw_modelling_data = state.get("modelling_document_data") # Get without default first
-    logger.info(f"ModellingRAGDocumentNode: Raw value of 'modelling_document_data' from state.get (no default): {raw_modelling_data}")
-    logger.info(f"ModellingRAGDocumentNode: Type of raw 'modelling_document_data': {type(raw_modelling_data)}")
+    if not client or not collection:
+        error_msg = "ChromaDB client is not available. Cannot perform RAG."
+        logger.error(error_msg)
+        return {"modelling_document_data": [], "error": error_msg}
 
-    if raw_modelling_data is None:
-        if "modelling_document_data" not in state:
-            logger.warning("ModellingRAGDocumentNode: Key 'modelling_document_data' NOT FOUND in state keys. Skipping RAG.")
-        else:
-            # Key is present, but its value is None
-            logger.warning("ModellingRAGDocumentNode: Key 'modelling_document_data' IS PRESENT in state but its value is None. Skipping RAG.")
-        return {"modelling_document_data": [], "error": "No documents provided for RAG (key missing or None)"}
-    
-    document_data_list = raw_modelling_data 
-    
-    if not document_data_list: # This means raw_modelling_data was an empty list []
-        logger.info("ModellingRAGDocumentNode: Key 'modelling_document_data' found, but the list of documents is empty. Skipping RAG as no documents to process.")
-        # Return an empty list and an informational message. The generator node should handle empty RAG results.
-        return {"modelling_document_data": [], "info": "No documents after filtering, RAG skipped."}
-
-    # Retrieve student context fields from state to form the query
-    # These fields would be populated by an earlier node in the modelling flow (e.g., an input node)
-    query_example_prompt = state.get("example_prompt_text", "")
-    query_student_goal = state.get("student_goal_context", "")
-    query_student_confidence = state.get("student_confidence_context", "")
-    query_teacher_impression = state.get("teacher_initial_impression", "")
-    query_student_struggle = state.get("student_struggle_context", "")
-
-    # Construct the query string
-    query_parts = [
-        str(query_example_prompt),
-        str(query_student_goal),
-        str(query_student_confidence),
-        str(query_teacher_impression),
-        str(query_student_struggle)
-    ]
+    # 1. Construct the query string from the state
+    query_parts = [str(state.get(key, "")) for key in QUERY_CONTEXT_COLUMNS]
     query_string = " \n\n ".join(filter(None, query_parts)).strip()
 
     if not query_string:
-        logger.warning("ModellingRAGDocumentNode: Query string is empty. Skipping RAG.")
-        # Return all documents if query is empty, or handle as an error
-        return {"modelling_document_data": document_data_list, "warning": "Query for RAG was empty"}
+        logger.warning("RAG Node: Query string is empty. Skipping vector search.")
+        return {"modelling_document_data": [], "info": "Query for RAG was empty."}
 
-    logger.info(f"ModellingRAGDocumentNode: Constructed query for RAG: '{query_string[:200]}...'" )
-
-    # Configure Google Generative AI
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        logger.error("ModellingRAGDocumentNode: GOOGLE_API_KEY environment variable is not set.")
-        return {"modelling_document_data": [], "error": "GOOGLE_API_KEY not set"}
-    genai.configure(api_key=api_key)
+    logger.info(f"RAG Node: Constructed query for vector search: '{query_string[:200]}...'")
 
     try:
-        # Prepare texts for embedding from the document_data_list
-        texts_to_embed = []
-        for doc in document_data_list:
-            doc_parts = [str(doc.get(col, "")) for col in RAG_INPUT_COLUMNS]
-            texts_to_embed.append(" \n\n ".join(filter(None, doc_parts)).strip())
+        # 2. Query the ChromaDB collection
+        # The embedding function handles embedding the query_string automatically.
+        query_results = collection.query(
+            query_texts=[query_string],
+            n_results=TOP_K_RESULTS,
+            # include=['metadatas', 'documents', 'distances'] # For debugging
+        )
+
+        # 3. Extract and format the results
+        # The full original data is stored in the metadata.
+        retrieved_documents = query_results.get('metadatas', [[]])[0]
         
-        if not texts_to_embed:
-            logger.warning("ModellingRAGDocumentNode: No text content found in documents to embed.")
-            return {"modelling_document_data": [], "error": "No text content in documents for RAG"}
+        if not retrieved_documents:
+            logger.info("RAG Node: No documents found in ChromaDB for the given query.")
+        else:
+            logger.info(f"RAG Node: Retrieved {len(retrieved_documents)} documents from ChromaDB.")
 
-        # Generate embeddings for the documents and the query
-        # Using 'text-embedding-004' or a similar model suitable for retrieval
-        logger.info(f"ModellingRAGDocumentNode: Generating embeddings for {len(texts_to_embed)} documents and 1 query.")
-        result_query = genai.embed_content(model="models/text-embedding-004", content=query_string, task_type="RETRIEVAL_QUERY")
-        result_docs = genai.embed_content(model="models/text-embedding-004", content=texts_to_embed, task_type="RETRIEVAL_DOCUMENT")
-        
-        query_embedding = np.array(result_query['embedding'])
-        doc_embeddings = np.array(result_docs['embedding']) # result_docs['embedding'] is already the list of embedding vectors
-        logger.info(f"ModellingRAGDocumentNode: Embeddings generated. Query shape: {query_embedding.shape}, Docs shape: {doc_embeddings.shape}")
-
-        # Calculate cosine similarity
-        # Similarities: dot product of normalized vectors
-        query_norm = query_embedding / np.linalg.norm(query_embedding)
-        doc_norms = doc_embeddings / np.linalg.norm(doc_embeddings, axis=1, keepdims=True)
-        similarities = np.dot(doc_norms, query_norm)
-
-        # Get top N results (e.g., top 3)
-        top_n = min(3, len(document_data_list))
-        top_indices = np.argsort(similarities)[-top_n:][::-1] # Sort descending, get top N indices
-
-        ranked_documents = [document_data_list[i] for i in top_indices]
-        
-        # Log the similarity scores for the top documents for debugging/evaluation
-        for i, idx in enumerate(top_indices):
-            logger.info(f"ModellingRAGDocumentNode: Top {i+1} match (Index: {idx}) - Similarity: {similarities[idx]:.4f} - Prompt: {document_data_list[idx].get('Example_Prompt_Text', '')[:100]}...")
-
-        logger.info(f"ModellingRAGDocumentNode: RAG complete. Returning {len(ranked_documents)} documents.")
-        return {"modelling_document_data": ranked_documents}
+        return {"modelling_document_data": retrieved_documents}
 
     except Exception as e:
-        logger.error(f"ModellingRAGDocumentNode: Error during RAG processing: {e}", exc_info=True)
-        # Fallback to returning all documents or an empty list in case of error
-        return {"modelling_document_data": document_data_list, "error": f"Error in RAG: {str(e)}"}
-
+        logger.error(f"RAG Node: An error occurred during ChromaDB query: {e}", exc_info=True)
+        return {"modelling_document_data": [], "error": f"Failed to query vector database: {e}"}
 
 # Example usage (for local testing if needed)
 async def main_test():

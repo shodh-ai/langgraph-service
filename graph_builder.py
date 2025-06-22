@@ -46,7 +46,6 @@ from agents import (
     scaffolding_planner_node,
     scaffolding_generator_node,
     pedagogy_generator_node,
-    modelling_query_document_node,
     modelling_RAG_document_node,
     modelling_generator_node,
     modelling_output_formatter_node,
@@ -85,7 +84,6 @@ NODE_SCAFFOLDING_PLANNER = "scaffolding_planner"
 NODE_SCAFFOLDING_GENERATOR = "scaffolding_generator"
 NODE_INITIAL_REPORT_GENERATION = "initial_report_generation"
 NODE_PEDAGOGY_GENERATION = "pedagogy_generation"
-NODE_MODELLING_QUERY_DOCUMENT = "modelling_query_document"
 NODE_MODELLING_RAG_DOCUMENT = "modelling_rag_document"
 NODE_MODELLING_GENERATOR = "modelling_generator"
 NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
@@ -247,8 +245,9 @@ async def initial_router_logic(state: AgentGraphState) -> str:
             You are an NLU assistant for the Rox AI Tutor. The student said: '{transcript}'.
             Chat History: {chat_history}
             Categorize the intent from: 'CONFIRM_START_SUGGESTED_TASK', 'REJECT_SUGGESTED_TASK_REQUEST_ALTERNATIVE', 
-            'ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK', 'ASK_GENERAL_KNOWLEDGE_QUESTION', 'REQUEST_STATUS_DETAIL', 
+            'ASK_CLARIFYING_QUESTION_ABOUT_SUGGESTED_TASK', 'ASK_FOR_MODELLING', 'ASK_GENERAL_KNOWLEDGE_QUESTION', 'REQUEST_STATUS_DETAIL', 
             'GENERAL_CHITCHAT', 'REPORT_TECHNICAL_ISSUE', 'INTENT_TO_QUIT_SESSION', 'OTHER_OFF_TOPIC'.
+            - Use 'ASK_FOR_MODELLING' if the user is asking for an example, a demonstration, or for the AI to generate a piece of text based on a prompt (e.g., "show me how to write an introduction," "can you give me an example?", "Describe a memorable event from your life.").
             If 'ASK_GENERAL_KNOWLEDGE_QUESTION', extract 'extracted_topic'.
             If 'REPORT_TECHNICAL_ISSUE', extract 'issue_description' and 'reported_emotion'.
             Return JSON: {{"intent": "<INTENT>", "extracted_topic": "<topic>", "extracted_entities": {{"issue_description": "<desc>", "reported_emotion": "<emotion>"}}}}
@@ -276,7 +275,10 @@ async def initial_router_logic(state: AgentGraphState) -> str:
 
             route_destination = NODE_CONVERSATION_HANDLER  # Default route
 
-            if intent == "INTENT_TO_QUIT_SESSION":
+            if intent == "ASK_FOR_MODELLING":
+                logger.info(f"Routing to Modeling Module for user {user_id} based on NLU intent.")
+                return NODE_MODELING_MODULE
+            elif intent == "INTENT_TO_QUIT_SESSION":
                 logger.info(f"Routing to NODE_SESSION_WRAP_UP for user {user_id}.")
                 route_destination = NODE_SESSION_WRAP_UP
             elif intent == "REPORT_TECHNICAL_ISSUE":
@@ -369,7 +371,6 @@ def build_graph():
     workflow.add_node(NODE_PEDAGOGY_GENERATION, pedagogy_generator_node)
 
     # Modelling System Nodes
-    workflow.add_node(NODE_MODELLING_QUERY_DOCUMENT, modelling_query_document_node)
     workflow.add_node(NODE_MODELLING_RAG_DOCUMENT, modelling_RAG_document_node)
     workflow.add_node(NODE_MODELLING_GENERATOR, modelling_generator_node)
     workflow.add_node(NODE_MODELLING_OUTPUT_FORMATTER, modelling_output_formatter_node)
@@ -492,11 +493,8 @@ def build_graph():
     workflow.add_edge(NODE_INITIAL_REPORT_GENERATION, NODE_PEDAGOGY_MODULE)
     workflow.add_edge(NODE_PEDAGOGY_MODULE, NODE_FORMAT_FINAL_OUTPUT)
 
-    # Modelling system flow
-    workflow.add_edge(NODE_MODELLING_QUERY_DOCUMENT, NODE_MODELLING_RAG_DOCUMENT)
-    workflow.add_edge(NODE_MODELLING_RAG_DOCUMENT, NODE_MODELLING_GENERATOR)
-    workflow.add_edge(NODE_MODELLING_GENERATOR, NODE_MODELLING_OUTPUT_FORMATTER)
-    workflow.add_edge(NODE_MODELLING_OUTPUT_FORMATTER, NODE_FORMAT_FINAL_OUTPUT)
+    # Modelling system flow is now handled within the NODE_MODELING_MODULE subgraph.
+    # The main graph just routes to the subgraph and then to the output formatter.
 
     # Teaching System Edges (LLM-based flow)
     workflow.add_edge(

@@ -51,7 +51,6 @@ from .error_generator import error_generator_node
 from .pedagogy_generator import pedagogy_generator_node
 
 # Modelling System Nodes
-from .modelling_query_document_node import modelling_query_document_node
 from .modelling_RAG_document_node import modelling_RAG_document_node
 from .modelling_generator_node import modelling_generator_node
 from .modelling_output_formatter_node import modelling_output_formatter_node
@@ -126,7 +125,6 @@ __all__ = [
     "pedagogy_generator_node",
 
     # Modelling System Nodes
-    "modelling_query_document_node",
     "modelling_RAG_document_node",
     "modelling_generator_node",
     "modelling_output_formatter_node",

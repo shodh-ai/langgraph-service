@@ -95,11 +95,13 @@ Based on the student's context and the expert examples, generate a comprehensive
 2.  `generated_modeling_and_think_aloud_sequence_json`: (JSON Array) The core of the modeling. Demonstrate how to tackle the student's task prompt ('{example_prompt_text}').
     - Focus on demonstrating the application of relevant principles (e.g., coherence, PREP structure, essay structure, etc., as appropriate for the task and student struggle).
     - The sequence MUST be a JSON array of objects. Each object must have a `type` field.
-    - Objects can be of three types:
-        1. `{{"type": "essay_text_chunk", "content": "Text the student would write/say..."}}`
-        2. `{{"type": "think_aloud_text", "content": "Your explanation of your thought process..."}}`
+    - Objects for the modeling sequence MUST be one of the following three types. Adhere strictly to these types:
+        1. `{{"type": "essay_text_chunk", "content": "Actual text content the student would write or say as part of their response. This is the text that will be shown in an editor."}}`
+        2. `{{"type": "think_aloud_text", "content": "Your meta-commentary, explanations, or thought process about the task or content. This is NOT the student's response text."}}`
         3. `{{"type": "ui_action_instruction", "action_type": "HIGHLIGHT_TEXT_RANGES", "parameters": {{"ranges": [{{"start": <integer>, "end": <integer>, "style_class": "ai_emphasis_point", "remark_id": "M_R<number>"}}]}}}}`
-    - Interleave these types logically. For example, an `essay_text_chunk` might be followed by a `think_aloud_text` explaining it, and then a `ui_action_instruction` to highlight a part of that `essay_text_chunk`.
+    - **CRITICAL INSTRUCTION**: For any segment of the modeled response that represents the student's actual answer, essay content, or any text that should be progressively revealed or typed out in an editor, you MUST use `type: "essay_text_chunk"`.
+    - Do NOT use any other type (e.g., "MODEL_TEXT", "SPOKEN_TEXT", etc.) for the primary content of the student's response. The type "MODEL_TEXT" is NOT valid for this `generated_modeling_and_think_aloud_sequence_json` array. Only `essay_text_chunk`, `think_aloud_text`, and `ui_action_instruction` are permitted.
+    - Interleave these types logically. For example, an `essay_text_chunk` (the student's writing/speaking) might be followed by a `think_aloud_text` (your explanation of it), and then a `ui_action_instruction` to highlight a part of that `essay_text_chunk`.
     - For `HIGHLIGHT_TEXT_RANGES`:
         - `parameters.ranges`: An array containing one or more range objects.
         - `range.start` and `range.end`: Character offsets for the highlight. These offsets MUST correspond to the text within the *most recent* `essay_text_chunk` you provided. Be precise.
@@ -187,12 +189,8 @@ Ensure the value for `generated_modeling_and_think_aloud_sequence_json` is a val
         # Specific validation for generated_modeling_and_think_aloud_sequence_json
         think_aloud_seq = output_payload.get("generated_modeling_and_think_aloud_sequence_json")
         if not isinstance(think_aloud_seq, list):
-            logger.warning(f"ModellingGeneratorNode: 'generated_modeling_and_think_aloud_sequence_json' is not a list as expected. Type: {type(think_aloud_seq)}")
-            output_payload["generated_modeling_and_think_aloud_sequence_json"] = [] # Default to empty list
-            if "warning" not in output_payload:
-                 output_payload["warning"] = "'generated_modeling_and_think_aloud_sequence_json' was not a list."
-            else:
-                 output_payload["warning"] += " 'generated_modeling_and_think_aloud_sequence_json' was not a list."
+            logger.warning(f"ModellingGeneratorNode: 'generated_modeling_and_think_aloud_sequence_json' in output_payload is not a list as expected. Actual type: {type(think_aloud_seq)}.")
+            output_payload["generated_modeling_and_think_aloud_sequence_json"] = [] # Default to empty list on error
 
         logger.info(f"ModellingGeneratorNode: Successfully processed LLM output. First output key content (pre_setup): {str(output_payload.get(OUTPUT_KEYS[0]))[:100]}...")
         return {"intermediate_modelling_payload": output_payload}

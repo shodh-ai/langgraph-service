@@ -32,6 +32,13 @@ from memory import mem0_memory # Import the shared instance for user registratio
 
 from graph_builder import build_graph
 from state import AgentGraphState
+import uuid
+
+# +++ DEFINE THE NEW REQUEST MODEL +++
+# This matches the payload that livekit-service is sending.
+class InvokeTaskRequest(BaseModel):
+    task_name: str
+    json_payload: str
 from models import (
     InteractionRequest,
     InteractionResponse,
@@ -102,6 +109,55 @@ class UserRegistrationRequest(BaseModel):
     goal: str
     feeling: str
     confidence: str
+@app.post("/invoke_task_streaming")
+async def invoke_task_streaming_route(request_data: InvokeTaskRequest):
+    """
+    Receives a generic task, unpacks the payload, and starts the graph stream.
+    This is the new, preferred entry point.
+    """
+    logger.info(f"Received universal task '{request_data.task_name}'.")
+    try:
+        # Convert the JSON payload string from the request back into a Python dict
+        payload = json.loads(request_data.json_payload)
+
+        # Build the initial state for the LangGraph using data from the payload
+        initial_graph_state: AgentGraphState = {
+            "user_id": payload.get("user_id", "unknown_user"),
+            "session_id": payload.get("session_id", str(uuid.uuid4())),
+            "transcript": payload.get("message"),
+            "current_context": {
+                "task_stage": payload.get("task_stage", request_data.task_name), # Use task_name as fallback
+                "user_id": payload.get("user_id"),
+            },
+            "chat_history": payload.get("chat_history", []),
+            "task_name": request_data.task_name,
+            "example_prompt_text": payload.get("message"),
+            
+            # Initialize all other state fields to None or default values
+            "full_submitted_transcript": None, "question_stage": None, "student_memory_context": None,
+            "next_task_details": None, "diagnosis_result": None, "output_content": None,
+            "feedback_content": None, "modelling_output_content": None, "teaching_output_content": None,
+            "task_suggestion_llm_output": None, "inactivity_prompt_response": None,
+            "motivational_support_response": None, "tech_support_response": None,
+            "navigation_instruction_target": None, "data_for_target_page": None,
+            "conversational_tts": None, "cowriting_output_content": None, 
+            "scaffolding_output_content": None, "session_summary_text": None,
+            "progress_report_text": None, "student_model_summary": None,
+            "system_prompt_config": None, "llm_json_validation_map": None,
+            "error_count": 0, "last_error_message": None, "current_node_name": None,
+        }
+
+        # Call the SSE streamer with the prepared state
+        return StreamingResponse(
+            stream_graph_responses_sse(initial_graph_state), 
+            media_type="text/event-stream"
+        )
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode json_payload: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid JSON in payload: {e}")
+    except Exception as e:
+        logger.error(f"Error in invoke_task_streaming: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error.")
 
 @app.post("/user/register")
 async def register_user(registration_data: UserRegistrationRequest):
@@ -121,15 +177,82 @@ async def register_user(registration_data: UserRegistrationRequest):
         raise HTTPException(status_code=500, detail="Failed to store user profile.")
 
 # --- Streaming Endpoint --- 
-async def stream_graph_responses_sse(request_data: InteractionRequest):
+# In app.py
+
+async def stream_graph_responses_sse(initial_graph_state: AgentGraphState):
     """
-    Asynchronously streams graph execution events as Server-Sent Events (SSE).
-    Handles 'streaming_text_chunk' for live text updates and the final
-    consolidated response from the output formatter node.
+    This function now correctly streams intermediate text chunks and then sends the
+    final, consolidated UI actions at the very end.
     """
+    session_id = initial_graph_state.get("session_id")
+    user_id = initial_graph_state.get("user_id")
+
+    config = {"configurable": {"thread_id": session_id, "user_id": user_id}}
+    logger.info(f"SSE Streamer: Initializing graph for session {session_id}, user {user_id}")
+
+    final_state = {} # Variable to hold the final state of the graph
+
+    try:
+        yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
+        
+        # Use astream_events to get all events, including intermediate outputs
+        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
+            event_name = event.get("event")
+            
+            # --- Stream Intermediate TTS Chunks ---
+            if event_name == "on_chain_stream":
+                if isinstance(chunk := event.get("data", {}).get("chunk"), dict):
+                    if streaming_text := chunk.get("streaming_text_chunk"):
+                        logger.info(f"SSE Streamer: Yielding intermediate text chunk...")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': streaming_text})}\n\n"
+            
+            # --- Capture the Final State ---
+            # The last event in the stream for the whole graph will contain the final state.
+            final_state = event.get("data", {}).get("output")
+
+
+        # --- AFTER THE LOOP: Process the final state ---
+        if isinstance(final_state, dict):
+            logger.info("SSE Streamer: Graph finished. Processing final state for UI actions.")
+            
+            # Extract final TTS and UI actions from the final state object
+            final_tts = final_state.get("final_text_for_tts")
+            final_actions = final_state.get("final_ui_actions")
+
+            # Send the final TTS as a chunk (can be the full text)
+            if final_tts:
+                logger.info(f"SSE Streamer: Yielding final consolidated TTS text.")
+                yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': final_tts})}\n\n"
+
+            # Send the complete list of UI actions in one go
+            if final_actions:
+                logger.info(f"SSE Streamer: Yielding batch of {len(final_actions)} UI actions.")
+                yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': final_actions})}\n\n"
+        else:
+            logger.warning("Could not determine final state from graph stream.")
+
+    except Exception as e:
+        logger.error(f"Error during graph execution stream: {e}", exc_info=True)
+        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+    finally:
+        logger.info(f"SSE Streamer: Closing stream for session {session_id}")
+        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream completed'})}\n\n"
+        
+@app.post("/process_interaction_streaming")
+async def process_interaction_streaming_route(request_data: InteractionRequest):
+    """
+    Process an interaction and stream back responses as SSE.
+    This old endpoint can now be simplified to be a wrapper around the new logic.
+    """
+    logger.warning("DEPRECATED: /process_interaction_streaming called. Please migrate to /invoke_task_streaming.")
+    
+    # Convert the old request model into the new format.
+    # This acts as an "adapter" so you don't break old clients.
+    task_name = "unknown_legacy_task" # You might parse this from the request if possible
+    
+    # Create the initial state just like the old endpoint did.
     default_user_id = "default_user_for_streaming_test"
     default_session_id = str(uuid.uuid4())
-
     user_id = default_user_id
     if request_data.current_context and request_data.current_context.user_id:
         user_id = request_data.current_context.user_id
@@ -148,56 +271,40 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
     
     # Method 1: Direct attribute access
     if hasattr(request_data, 'next_task_details'):
-        logger.info(f"next_task_details attribute exists: {hasattr(request_data, 'next_task_details')}")
         if request_data.next_task_details is not None:
             next_task_details = request_data.next_task_details
-            logger.info(f"Method 1: Found next_task_details in request: {next_task_details}")
     
     # Method 2: Dictionary extraction
     request_dict = request_data.model_dump()
-    logger.info(f"Request dict keys: {list(request_dict.keys())}")
     if 'next_task_details' in request_dict:
         dict_task_details = request_dict.get('next_task_details')
-        logger.info(f"Method 2: Extracted next_task_details from dict: {dict_task_details}")
         if next_task_details is None and dict_task_details is not None:
             next_task_details = dict_task_details
     
-    # Override from top-level fields for testing
-    if next_task_details is None or not isinstance(next_task_details, dict) or 'page_target' not in next_task_details:
-        # Create a valid next_task_details for testing
-        next_task_details = {
-            "title": "Reading Comprehension: Academic Passages",
-            "type": "practice",
-            "page_target": "reading_exercise",
-            "prompt_id": "read_comprehension_001"
-        }
-        logger.info(f"Created test next_task_details: {next_task_details}")
-    
-    # Prepare initial state similar to the non-streaming endpoint
     initial_graph_state: AgentGraphState = {
         "user_id": user_id,
-        "user_token": request_data.usertoken,
+        "user_token": getattr(request_data, "usertoken", None),
         "session_id": session_id,
         "transcript": transcript,
         "full_submitted_transcript": full_submitted_transcript,
-        "current_context": context,
-        "chat_history": chat_history,
-        "question_stage": context.question_stage,
-        # Initialize other fields as in the non-streaming endpoint
+        "current_context": context.model_dump() if context else {},
+        "chat_history": [msg.model_dump() for msg in chat_history] if chat_history else [],
+        "task_name": task_name,
+        "question_stage": getattr(context, "question_stage", None),
         "student_memory_context": None,
         "next_task_details": next_task_details,
         "diagnosis_result": None,
-        "output_content": None, # Will be populated by output_formatter
+        "output_content": None, 
         "feedback_content": None,
-        "estimated_overall_english_comfort_level": context.english_comfort_level,
-        "initial_impression": context.teacher_initial_impression,
-        "fluency": context.fluency,
-        "grammar": context.grammar,
-        "vocabulary": context.vocabulary,
-        "goal": context.goal,
-        "feeling": context.feeling,
-        "confidence": context.confidence,
-        "example_prompt_text": context.example_prompt_text,
+        "estimated_overall_english_comfort_level": getattr(context, "english_comfort_level", None),
+        "initial_impression": getattr(context, "teacher_initial_impression", None),
+        "fluency": getattr(context, "fluency", None),
+        "grammar": getattr(context, "grammar", None),
+        "vocabulary": getattr(context, "vocabulary", None),
+        "goal": getattr(context, "goal", None),
+        "feeling": getattr(context, "feeling", None),
+        "confidence": getattr(context, "confidence", None),
+        "example_prompt_text": getattr(context, "example_prompt_text", None),
         "modelling_output_content": None,
         "teaching_output_content": None,
         "task_suggestion_llm_output": None,
@@ -206,7 +313,7 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
         "tech_support_response": None,
         "navigation_instruction_target": None,
         "data_for_target_page": None,
-        "conversational_tts": None, # This will be superseded by streaming_text_chunk
+        "conversational_tts": None,
         "cowriting_output_content": None, 
         "scaffolding_output_content": None,
         "session_summary_text": None,
@@ -216,185 +323,14 @@ async def stream_graph_responses_sse(request_data: InteractionRequest):
         "llm_json_validation_map": None,
         "error_count": 0,
         "last_error_message": None,
-        "current_node_name": None
+        "current_node_name": None,
     }
-
-    config = {"configurable": {"thread_id": session_id, "user_id": user_id}}
-    logger.info(f"Streaming endpoint: Initializing graph stream for session {session_id}, user {user_id}")
-
-    try:
-        # Track streamed messages to avoid duplicates
-        streamed_messages = set()
-        
-        # Send a start event to help client initialize
-        yield f"event: stream_start\ndata: {{\"session_id\": \"{session_id}\", \"message\": \"Stream started\"}}\n\n"
-        
-        # Use astream_events_v2 to get detailed events
-        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values", output_keys=["output_content"]):
-            event_name = event.get("event")
-            node_name = event.get("name") # Name of the node that produced the event
-            data = event.get("data", {})
-            tags = event.get("tags", [])
-
-            logger.info(f"SSE Stream: Event - {event_name} from {node_name}")
-            logger.debug(f"SSE Stream: Full data for event: {data if isinstance(data, (str, int, bool, type(None))) else list(data.keys()) if isinstance(data, dict) else 'Non-dict/primitive'}")
-
-            if event_name == "on_chain_stream" and data:
-                chunk_content = data.get("chunk") # LangGraph's default key for streaming output from .stream()
-                if isinstance(chunk_content, dict):
-                    # Check for intermediate streaming text chunks. This is the correct place for this.
-                    streaming_text = chunk_content.get("streaming_text_chunk")
-                    if streaming_text:
-                        logger.debug(f"SSE Stream: Yielding intermediate 'streaming_text_chunk' from node '{node_name}': {streaming_text[:100]}...")
-                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': streaming_text})}\n\n"
-                        await asyncio.sleep(0.01)
-
-            # This is the merged and preferred logic from HEAD for handling on_chain_end events
-            elif event_name == "on_chain_end":
-                node_output = data.get("output")
-                # tags = event.get("tags", []) # Kept for context, if needed later
-
-                if node_name == "format_final_output_for_client_node" and isinstance(node_output, dict):
-                    final_text_for_tts = node_output.get("final_text_for_tts")
-                    final_ui_actions = node_output.get("final_ui_actions")
-
-                    if final_text_for_tts:
-                        text_fingerprint = f"final_tts:{request_data.user_id}:{request_data.session_id}:{str(final_text_for_tts)[:50]}"
-                        if text_fingerprint not in streamed_messages:
-                            streamed_messages.add(text_fingerprint)
-                            logger.info(f"SSE Stream: Yielding final_text_for_tts as streaming_text_chunk (user: {request_data.user_id}, session: {request_data.session_id})")
-                            yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': final_text_for_tts})}\n\n"
-                            await asyncio.sleep(0.01)
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate final_text_for_tts (user: {request_data.user_id}, session: {request_data.session_id})")
-                    
-                    if final_ui_actions is not None:
-                        try:
-                            ui_actions_str = json.dumps(final_ui_actions, sort_keys=True)
-                            actions_fingerprint = f"final_ui_actions:{request_data.user_id}:{request_data.session_id}:{ui_actions_str[:50]}"
-                        except TypeError:
-                            actions_fingerprint = f"final_ui_actions:{request_data.user_id}:{request_data.session_id}:{str(final_ui_actions)[:50]}"
-
-                        if actions_fingerprint not in streamed_messages:
-                            streamed_messages.add(actions_fingerprint)
-                            logger.info(f"SSE Stream: Yielding final_ui_actions (user: {request_data.user_id}, session: {request_data.session_id})")
-                            yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': final_ui_actions})}\n\n"
-                            await asyncio.sleep(0.01)
-                        else:
-                            logger.info(f"SSE Stream: Skipping duplicate final_ui_actions (user: {request_data.user_id}, session: {request_data.session_id})")
-
-                elif node_name == "initial_report_generation_node" and isinstance(node_output, dict):
-                    content_to_send = node_output
-                    if "initial_report_content" in node_output and isinstance(node_output["initial_report_content"], dict):
-                         content_to_send = node_output["initial_report_content"]
-                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
-                        content_to_send = node_output["output_content"]
-
-                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
-                    if not final_text_for_fingerprint:
-                         final_text_for_fingerprint = content_to_send.get("report_text", str(content_to_send))
-
-                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
-                    if msg_fingerprint not in streamed_messages:
-                        streamed_messages.add(msg_fingerprint)
-                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
-                    else:
-                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-                
-                elif node_name == "inactivity_prompt_node" and isinstance(node_output, dict):
-                    content_to_send = node_output
-                    if "output_content" in node_output and isinstance(node_output["output_content"], dict):
-                        content_to_send = node_output["output_content"]
-
-                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
-                    if not final_text_for_fingerprint:
-                         final_text_for_fingerprint = content_to_send.get("text_for_tts", str(content_to_send))
-
-                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
-                    if msg_fingerprint not in streamed_messages:
-                        streamed_messages.add(msg_fingerprint)
-                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
-                    else:
-                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-
-                elif node_name == "pedagogy_generation_node" and isinstance(node_output, dict):
-                    content_to_send = node_output
-                    if "task_suggestion_llm_output" in node_output and isinstance(node_output["task_suggestion_llm_output"], dict):
-                        content_to_send = node_output["task_suggestion_llm_output"]
-                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
-                        content_to_send = node_output["output_content"]
-                    
-                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
-                    if not final_text_for_fingerprint:
-                         final_text_for_fingerprint = content_to_send.get("task_suggestion_tts", str(content_to_send))
-
-                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
-                    if msg_fingerprint not in streamed_messages:
-                        streamed_messages.add(msg_fingerprint)
-                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
-                    else:
-                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-
-                elif node_name == "PEDAGOGY_MODULE" and isinstance(node_output, dict):
-                    content_to_send = node_output
-                    if "task_suggestion_llm_output" in node_output and isinstance(node_output["task_suggestion_llm_output"], dict):
-                        content_to_send = node_output["task_suggestion_llm_output"]
-                    elif "output_content" in node_output and isinstance(node_output["output_content"], dict):
-                        content_to_send = node_output["output_content"]
-
-                    final_text_for_fingerprint = content_to_send.get("final_text_for_tts", "")
-                    if not final_text_for_fingerprint:
-                         final_text_for_fingerprint = content_to_send.get("task_suggestion_tts", str(content_to_send))
-
-                    msg_fingerprint = f"{node_name}:{request_data.user_id}:{request_data.session_id}:{final_text_for_fingerprint[:50]}"
-                    if msg_fingerprint not in streamed_messages:
-                        streamed_messages.add(msg_fingerprint)
-                        logger.info(f"SSE Stream: Yielding final_response from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-                        yield f"event: final_response\ndata: {json.dumps(content_to_send)}\n\n"
-                    else:
-                        logger.info(f"SSE Stream: Skipping duplicate output from {node_name} (user: {request_data.user_id}, session: {request_data.session_id})")
-
-                        logger.info(f"SSE Stream: Received output from {node_name} but couldn't find expected fields. Output keys: {list(node_output.keys()) if isinstance(node_output, dict) else 'Not a dict'}")
-            
-            elif event_name == "on_chain_end" and node_name == "error_generator_node":
-                # 'data' directly contains the output of the node when stream_mode="values".
-                error_output = data 
-                if isinstance(error_output, dict) and error_output.get("output_content"):
-                    error_response_data = error_output.get("output_content")
-                    logger.error(f"SSE Stream: Yielding error_response: {json.dumps(error_response_data)}")
-                    yield f"event: error_response\ndata: {json.dumps(error_response_data)}\n\n"
-        
-        # ---- AFTER THE ASYNC FOR LOOP ----
-        # Check for any final outputs that might have been missed in the main loop (e.g., if they are set in the state but not directly output by a node event that's caught above)
-        # This section is from HEAD and provides a fallback.
-        logger.info(f"SSE Stream: Stream completed event loop, checking for any missed outputs in final graph state (variable 'initial_graph_state' holds the evolving state)")
-        # current_graph_state_snapshot = {} # This line might be part of a more complex state tracking not fully implemented here.
-                                        # The 'initial_graph_state' variable in this scope is the *initial* state passed to astream_events.
-                                        # For astream_events, the final state isn't directly available here unless collected from events.
-                                        # The logic below using 'initial_graph_state' might be misleading if it's not updated.
-                                        # However, the primary mechanism is to catch outputs from 'format_final_output_for_client_node'.
-
-        # This fallback logic might be less reliable with astream_events if the state isn't explicitly updated here.
-        # The most reliable way is to ensure format_final_output_for_client_node emits the complete final response.
-
-        logger.info(f"SSE Stream: Graph stream completed for session {session_id}")
-        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream completed', 'session_id': session_id})}\n\n"
-    finally:
-        logger.info(f"SSE Stream: Closing stream for session {session_id}")
-        # Ensure stream_end is always sent, even if errors occurred within the try block
-        # but before this finally block was reached (e.g., unhandled exception in an earlier yield)
-        # However, if an exception occurs *during* a yield, the generator might be closed already.
-        # Consider adding a try/except around the yield f"event: stream_end..." if issues persist.
-        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream ended'})}\n\n"
-
-@app.post("/process_interaction_streaming")
-async def process_interaction_streaming_route(request_data: InteractionRequest):
-    logger.info(f"Received request for /process_interaction_streaming: user_id={request_data.current_context.user_id if request_data.current_context else 'N/A'}, session_id={request_data.session_id}")
-    return StreamingResponse(stream_graph_responses_sse(request_data), media_type="text/event-stream")
-
+    
+    # Call the *same* reusable SSE function.
+    return StreamingResponse(
+        stream_graph_responses_sse(initial_graph_state), 
+        media_type="text/event-stream"
+    )
 
 @app.post("/process_interaction", response_model=InteractionResponse)
 async def process_interaction_route(request_data: InteractionRequest):
