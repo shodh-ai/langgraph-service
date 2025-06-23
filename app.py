@@ -181,63 +181,43 @@ async def register_user(registration_data: UserRegistrationRequest):
 
 async def stream_graph_responses_sse(initial_graph_state: AgentGraphState):
     """
-    This function now correctly streams intermediate text chunks and then sends the
-    final, consolidated UI actions at the very end.
+    This version processes events as they happen, enabling simultaneous
     """
-    session_id = initial_graph_state.get("session_id")
-    user_id = initial_graph_state.get("user_id")
-
-    config = {"configurable": {"thread_id": session_id, "user_id": user_id}}
-    logger.info(f"SSE Streamer: Initializing graph for session {session_id}, user {user_id}")
-
-    final_state = {} # Variable to hold the final state of the graph
+    config = {"recursion_limit": 100}
 
     try:
         yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
         
-        # Use astream_events to get all events, including intermediate outputs
-        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
+        # We now use astream_events to get intermediate node outputs
+        async for event in toefl_tutor_graph.astream_events(
+            initial_graph_state, config=config, stream_mode="values"
+        ):
             event_name = event.get("event")
+            node_name = event.get("name")
             
-            # --- Stream Intermediate TTS Chunks ---
-            if event_name == "on_chain_stream":
-                if isinstance(chunk := event.get("data", {}).get("chunk"), dict):
-                    if streaming_text := chunk.get("streaming_text_chunk"):
-                        logger.info(f"SSE Streamer: Yielding intermediate text chunk...")
-                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': streaming_text})}\n\n"
-            
-            # --- Capture the Final State ---
-            # The last event in the stream for the whole graph will contain the final state.
-            final_state = event.get("data", {}).get("output")
-
-
-        # --- AFTER THE LOOP: Process the final state ---
-        if isinstance(final_state, dict):
-            logger.info("SSE Streamer: Graph finished. Processing final state for UI actions.")
-            
-            # Extract final TTS and UI actions from the final state object
-            final_tts = final_state.get("final_text_for_tts")
-            final_actions = final_state.get("final_ui_actions")
-
-            # Send the final TTS as a chunk (can be the full text)
-            if final_tts:
-                logger.info(f"SSE Streamer: Yielding final consolidated TTS text.")
-                yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': final_tts})}\n\n"
-
-            # Send the complete list of UI actions in one go
-            if final_actions:
-                logger.info(f"SSE Streamer: Yielding batch of {len(final_actions)} UI actions.")
-                yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': final_actions})}\n\n"
-        else:
-            logger.warning("Could not determine final state from graph stream.")
+            # --- THIS IS THE NEW LOGIC ---
+            # We are now listening for the stream from our specific formatter node
+            if event_name == "on_chain_stream" and node_name == "modelling_output_formatter":
+                # The 'chunk' is whatever our node `yield`ed
+                if chunk := event.get("data", {}).get("chunk"):
+                    if text_chunk := chunk.get("streaming_text_chunk"):
+                        logger.info("SSE Streamer: Yielding text chunk from formatter.")
+                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': text_chunk})}\n\n"
+                    
+                    if ui_action := chunk.get("ui_action"):
+                        logger.info(f"SSE Streamer: Yielding UI action from formatter: {ui_action.get('action_type')}")
+                        # Wrap it in the expected 'final_ui_actions' format for the consumer
+                        yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': [ui_action]})}\n\n"
 
     except Exception as e:
-        logger.error(f"Error during graph execution stream: {e}", exc_info=True)
-        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        logger.error(f"Error streaming graph responses: {e}", exc_info=True)
+        error_message = json.dumps({"error": str(e)})
+        yield f"event: error\ndata: {error_message}\n\n"
     finally:
-        logger.info(f"SSE Streamer: Closing stream for session {session_id}")
-        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream completed'})}\n\n"
-        
+        logger.info("SSE stream finished.")
+        final_message = json.dumps({"message": "Stream complete"})
+        yield f"event: end\ndata: {final_message}\n\n"
+
 @app.post("/process_interaction_streaming")
 async def process_interaction_streaming_route(request_data: InteractionRequest):
     """
