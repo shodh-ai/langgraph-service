@@ -3,6 +3,7 @@ uvicorn[standard]
 gunicorn
 python-dotenv
 pydantic
+python-multipart
 deepgram-sdk==3.3.2
 langchain
 langgraph>=0.0.50
