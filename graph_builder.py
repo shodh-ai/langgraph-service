@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 
 from langgraph.graph import StateGraph, END
@@ -232,8 +233,10 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     # NLU-based routing using Gemini
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        logger.error("GOOGLE_API_KEY environment variable is not set. Cannot perform NLU routing.") # Using more descriptive error from HEAD
-        return NODE_DEFAULT_FALLBACK # Fallback from origin/subgraphs
+        logger.error(
+            "GOOGLE_API_KEY environment variable is not set. Cannot perform NLU routing."
+        )  # Using more descriptive error from HEAD
+        return NODE_DEFAULT_FALLBACK  # Fallback from origin/subgraphs
 
     try:
         genai.configure(api_key=api_key)
@@ -253,7 +256,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
             Return JSON: {{"intent": "<INTENT>", "extracted_topic": "<topic>", "extracted_entities": {{"issue_description": "<desc>", "reported_emotion": "<emotion>"}}}}
             """
         response = model.generate_content(prompt)
-        user_id = state.get("user_id", "unknown_user") # Get user_id for logging
+        user_id = state.get("user_id", "unknown_user")  # Get user_id for logging
         logger.debug(f"NLU Response Text for user {user_id}: {response.text}")
 
         # Keyword-based checks for progress/motivation are now done *before* this try block.
@@ -261,56 +264,91 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         try:
             response_json = json.loads(response.text)
             intent = response_json.get("intent", "GENERAL_CHITCHAT")
-            extracted_topic = response_json.get("extracted_topic", "") 
+            extracted_topic = response_json.get("extracted_topic", "")
             extracted_entities_from_nlu = response_json.get("extracted_entities", {})
-            state['nlu_intent'] = intent
+            state["nlu_intent"] = intent
 
-            if extracted_entities_from_nlu and isinstance(extracted_entities_from_nlu, dict) and (extracted_entities_from_nlu.get('issue_description') or extracted_entities_from_nlu.get('reported_emotion')):
-                state['extracted_entities'] = extracted_entities_from_nlu
-                logger.info(f"NLU extracted entities for technical issue for user {user_id}: {extracted_entities_from_nlu}")
+            if (
+                extracted_entities_from_nlu
+                and isinstance(extracted_entities_from_nlu, dict)
+                and (
+                    extracted_entities_from_nlu.get("issue_description")
+                    or extracted_entities_from_nlu.get("reported_emotion")
+                )
+            ):
+                state["extracted_entities"] = extracted_entities_from_nlu
+                logger.info(
+                    f"NLU extracted entities for technical issue for user {user_id}: {extracted_entities_from_nlu}"
+                )
             else:
-                state['extracted_entities'] = {}
+                state["extracted_entities"] = {}
 
-            logger.info(f"NLU Intent for user {user_id}: {intent}, Extracted Topic: {extracted_topic}, Extracted Entities: {state.get('extracted_entities')}")
+            logger.info(
+                f"NLU Intent for user {user_id}: {intent}, Extracted Topic: {extracted_topic}, Extracted Entities: {state.get('extracted_entities')}"
+            )
 
             route_destination = NODE_CONVERSATION_HANDLER  # Default route
 
             if intent == "ASK_FOR_MODELLING":
-                logger.info(f"Routing to Modeling Module for user {user_id} based on NLU intent.")
+                logger.info(
+                    f"Routing to Modeling Module for user {user_id} based on NLU intent."
+                )
                 return NODE_MODELING_MODULE
             elif intent == "INTENT_TO_QUIT_SESSION":
                 logger.info(f"Routing to NODE_SESSION_WRAP_UP for user {user_id}.")
                 route_destination = NODE_SESSION_WRAP_UP
             elif intent == "REPORT_TECHNICAL_ISSUE":
-                logger.info(f"Routing to NODE_TECH_SUPPORT_ACKNOWLEDGER for user {user_id}.")
+                logger.info(
+                    f"Routing to NODE_TECH_SUPPORT_ACKNOWLEDGER for user {user_id}."
+                )
                 route_destination = NODE_TECH_SUPPORT_ACKNOWLEDGER
             elif intent == "CONFIRM_START_SUGGESTED_TASK":
                 next_task_details = state.get("next_task_details")
-                if next_task_details and isinstance(next_task_details, dict) and next_task_details.get("page_target"):
-                    logger.info(f"Routing to NODE_PREPARE_NAVIGATION for user {user_id}.")
+                if (
+                    next_task_details
+                    and isinstance(next_task_details, dict)
+                    and next_task_details.get("page_target")
+                ):
+                    logger.info(
+                        f"Routing to NODE_PREPARE_NAVIGATION for user {user_id}."
+                    )
                     route_destination = NODE_PREPARE_NAVIGATION
                 else:
-                    logger.warning(f"Intent is CONFIRM_START_SUGGESTED_TASK for user {user_id}, but 'next_task_details' are missing/invalid. Routing to NODE_CONVERSATION_HANDLER.")
-                    state['missing_next_task_for_confirmation'] = True
-                    route_destination = NODE_CONVERSATION_HANDLER # Explicitly fall back here
-            
-            logger.info(f"Final NLU routing decision for user {user_id}: '{route_destination}' based on intent: {intent}")
+                    logger.warning(
+                        f"Intent is CONFIRM_START_SUGGESTED_TASK for user {user_id}, but 'next_task_details' are missing/invalid. Routing to NODE_CONVERSATION_HANDLER."
+                    )
+                    state["missing_next_task_for_confirmation"] = True
+                    route_destination = (
+                        NODE_CONVERSATION_HANDLER  # Explicitly fall back here
+                    )
+
+            logger.info(
+                f"Final NLU routing decision for user {user_id}: '{route_destination}' based on intent: {intent}"
+            )
             return route_destination
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSONDecodeError in Gemini NLU response parsing for user {user_id}: {e}. Response text: {response.text if 'response' in locals() else 'Response object not available'}")
-            return NODE_CONVERSATION_HANDLER 
+            logger.error(
+                f"JSONDecodeError in Gemini NLU response parsing for user {user_id}: {e}. Response text: {response.text if 'response' in locals() else 'Response object not available'}"
+            )
+            return NODE_CONVERSATION_HANDLER
         except Exception as e:
-            logger.error(f"Error processing Gemini NLU intent logic for user {user_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error processing Gemini NLU intent logic for user {user_id}: {e}",
+                exc_info=True,
+            )
             return NODE_DEFAULT_FALLBACK
 
     except json.JSONDecodeError as e:
-        logger.error(f"JSONDecodeError in initial_router_logic for user {user_id}: {e}. Response text: {response.text if 'response' in locals() else 'Response object not available'}")
-        return NODE_CONVERSATION_HANDLER # Fallback on JSON parsing error
+        logger.error(
+            f"JSONDecodeError in initial_router_logic for user {user_id}: {e}. Response text: {response.text if 'response' in locals() else 'Response object not available'}"
+        )
+        return NODE_CONVERSATION_HANDLER  # Fallback on JSON parsing error
     except Exception as e:
-        logger.error(f"Error in initial_router_logic NLU processing for user {user_id}: {e}")
-        return NODE_CONVERSATION_HANDLER # Fallback for any other NLU error
-
+        logger.error(
+            f"Error in initial_router_logic NLU processing for user {user_id}: {e}"
+        )
+        return NODE_CONVERSATION_HANDLER  # Fallback for any other NLU error
 
 
 def build_graph():
@@ -414,28 +452,26 @@ def build_graph():
         NODE_PEDAGOGY_MODULE: NODE_PEDAGOGY_MODULE,
         NODE_INITIAL_REPORT_GENERATION: NODE_INITIAL_REPORT_GENERATION,
         NODE_INACTIVITY_PROMPT: NODE_INACTIVITY_PROMPT,
-        NODE_CONVERSATION_HANDLER: NODE_LOAD_STUDENT_DATA, # Now routes to load memory first
+        NODE_CONVERSATION_HANDLER: NODE_LOAD_STUDENT_DATA,  # Now routes to load memory first
         NODE_MOTIVATIONAL_SUPPORT: NODE_MOTIVATIONAL_SUPPORT,
         NODE_PROGRESS_REPORTER: NODE_PROGRESS_REPORTER,
         NODE_TECH_SUPPORT_ACKNOWLEDGER: NODE_TECH_SUPPORT_ACKNOWLEDGER,
         NODE_PREPARE_NAVIGATION: NODE_PREPARE_NAVIGATION,
         NODE_SESSION_WRAP_UP: NODE_SESSION_WRAP_UP,
-        "DEFAULT_FALLBACK": NODE_LOAD_STUDENT_DATA # Now the fallback routes to load memory first
+        "DEFAULT_FALLBACK": NODE_LOAD_STUDENT_DATA,  # Now the fallback routes to load memory first
     }
     workflow.add_conditional_edges(NODE_ROUTER, initial_router_logic, path_map)
 
     # Conditional Edges from Motivational Support Node
     motivational_support_path_map = {
-        NODE_CONVERSATION_HANDLER: NODE_LOAD_STUDENT_DATA, # Now routes to load memory first
+        NODE_CONVERSATION_HANDLER: NODE_LOAD_STUDENT_DATA,  # Now routes to load memory first
         NODE_WELCOME_PROMPT: NODE_WELCOME_PROMPT,
         NODE_STUDENT_DATA: NODE_STUDENT_DATA,
         NODE_HANDLE_WELCOME: NODE_HANDLE_WELCOME,
-        "DEFAULT_FALLBACK_AFTER_MOTIVATION": NODE_CONVERSATION_HANDLER  # As per route_after_motivation logic
+        "DEFAULT_FALLBACK_AFTER_MOTIVATION": NODE_CONVERSATION_HANDLER,  # As per route_after_motivation logic
     }
     workflow.add_conditional_edges(
-        NODE_MOTIVATIONAL_SUPPORT,
-        route_after_motivation,
-        motivational_support_path_map
+        NODE_MOTIVATIONAL_SUPPORT, route_after_motivation, motivational_support_path_map
     )
 
     # Edges for flows that are NOT subgraphs

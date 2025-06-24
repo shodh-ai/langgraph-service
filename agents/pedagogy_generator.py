@@ -2,7 +2,7 @@ import logging
 import json
 import httpx
 
-pedagogy_logger = logging.getLogger(__name__) # Changed to __name__ for consistency
+pedagogy_logger = logging.getLogger(__name__)  # Changed to __name__ for consistency
 from state import AgentGraphState
 import logging
 import os
@@ -26,7 +26,8 @@ query_columns = [
 ]
 
 vectorstore = None
-embedding_model = None # Will be initialized by get_pedagogy_vectorstore
+embedding_model = None  # Will be initialized by get_pedagogy_vectorstore
+
 
 def get_pedagogy_vectorstore():
     global vectorstore, embedding_model
@@ -36,50 +37,79 @@ def get_pedagogy_vectorstore():
         base_dir = os.path.dirname(script_dir)  # This should be the project root
         persist_directory = os.path.join(base_dir, "data", "pedagogy_chroma")
 
-        pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Initializing GoogleGenerativeAIEmbeddings...")
+        pedagogy_logger.info(
+            "PEDAGOGY_GENERATOR.PY: Initializing GoogleGenerativeAIEmbeddings..."
+        )
         embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Initialized GoogleGenerativeAIEmbeddings.")
+        pedagogy_logger.info(
+            "PEDAGOGY_GENERATOR.PY: Initialized GoogleGenerativeAIEmbeddings."
+        )
 
         if os.path.exists(persist_directory):
-            pedagogy_logger.info(f"PEDAGOGY_GENERATOR.PY: Loading existing vectorstore from {persist_directory}...")
-            vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embedding_model)
+            pedagogy_logger.info(
+                f"PEDAGOGY_GENERATOR.PY: Loading existing vectorstore from {persist_directory}..."
+            )
+            vectorstore = Chroma(
+                persist_directory=persist_directory, embedding_function=embedding_model
+            )
             pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Finished loading vectorstore.")
         else:
-            pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: No existing vectorstore found. Building from scratch...")
+            pedagogy_logger.info(
+                "PEDAGOGY_GENERATOR.PY: No existing vectorstore found. Building from scratch..."
+            )
             script_dir = os.path.dirname(__file__)
-            file_path = os.path.join(script_dir, '..', 'data', 'pedagogy_data.csv')
-            
-            pedagogy_logger.info(f"PEDAGOGY_GENERATOR.PY: Reading CSV from {file_path}...")
+            file_path = os.path.join(script_dir, "..", "data", "pedagogy_data.csv")
+
+            pedagogy_logger.info(
+                f"PEDAGOGY_GENERATOR.PY: Reading CSV from {file_path}..."
+            )
             df = pd.read_csv(file_path)
             pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Finished reading CSV.")
 
-            df.rename(columns={
-                "Answer One": "Goal",
-                "Answer Two": "Feeling",
-                "Answer Three": "Confidence"
-            }, inplace=True)
+            df.rename(
+                columns={
+                    "Answer One": "Goal",
+                    "Answer Two": "Feeling",
+                    "Answer Three": "Confidence",
+                },
+                inplace=True,
+            )
 
-            df["combined_text_for_embedding"] = df[query_columns].astype(str).agg(" ".join, axis=1)
+            df["combined_text_for_embedding"] = (
+                df[query_columns].astype(str).agg(" ".join, axis=1)
+            )
             langchain_documents = []
-            pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Preparing documents for Chroma...")
+            pedagogy_logger.info(
+                "PEDAGOGY_GENERATOR.PY: Preparing documents for Chroma..."
+            )
             for index, row in df.iterrows():
                 page_content = row["combined_text_for_embedding"]
                 metadata = row.drop("combined_text_for_embedding").to_dict()
-                langchain_documents.append(Document(page_content=page_content, metadata=metadata))
+                langchain_documents.append(
+                    Document(page_content=page_content, metadata=metadata)
+                )
             pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Finished preparing documents.")
 
-            pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Calling Chroma.from_documents() to build and persist vectorstore...")
+            pedagogy_logger.info(
+                "PEDAGOGY_GENERATOR.PY: Calling Chroma.from_documents() to build and persist vectorstore..."
+            )
             try:
                 vectorstore = Chroma.from_documents(
                     documents=langchain_documents,
                     embedding=embedding_model,
                     persist_directory=persist_directory,
                 )
-                pedagogy_logger.info("PEDAGOGY_GENERATOR.PY: Finished building and persisting vectorstore.")
+                pedagogy_logger.info(
+                    "PEDAGOGY_GENERATOR.PY: Finished building and persisting vectorstore."
+                )
             except Exception as e:
-                pedagogy_logger.error(f"PEDAGOGY_GENERATOR.PY: An error occurred during Chroma.from_documents: {e}", exc_info=True)
+                pedagogy_logger.error(
+                    f"PEDAGOGY_GENERATOR.PY: An error occurred during Chroma.from_documents: {e}",
+                    exc_info=True,
+                )
                 raise
     return vectorstore
+
 
 def query_similar_documents(query_values):
     print(query_values)
