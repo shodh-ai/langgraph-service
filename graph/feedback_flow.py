@@ -1,71 +1,44 @@
 # graph/feedback_flow.py
 from langgraph.graph import StateGraph, END
-try:
-    from state import AgentGraphState
-except ImportError:
-    print("Warning: Could not import AgentGraphState from ..state. Using a placeholder.")
-    class AgentGraphState(dict): pass
+from state import AgentGraphState
 
-# Import the actual agent node functions
-try:
-    from agents import (
-        feedback_student_data_node,
-        error_generator_node,
-        query_document_node,
-        RAG_document_node,
-        feedback_planner_node,
-        feedback_generator_node,
-    )
-except ImportError as e:
-    print(f"Warning: Could not import agent nodes from ..agents: {e}. Using placeholders.")
-    def placeholder_node_factory(node_name):
-        def placeholder_node(state: AgentGraphState) -> dict:
-            print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
-            return {f"{node_name}_status": "completed"}
-        return placeholder_node
+# 1. Import the agent node functions
+from agents import (
+    feedback_RAG_document_node,
+    feedback_generator_node,
+    feedback_output_formatter_node,
+    format_final_output_for_client_node, # +++ IMPORT THE FINAL FORMATTER HERE +++
+)
 
-    feedback_student_data_node = placeholder_node_factory("feedback_student_data_node")
-    error_generator_node = placeholder_node_factory("error_generator_node")
-    query_document_node = placeholder_node_factory("query_document_node")
-    RAG_document_node = placeholder_node_factory("RAG_document_node")
-    feedback_planner_node = placeholder_node_factory("feedback_planner_node")
-    feedback_generator_node = placeholder_node_factory("feedback_generator_node")
-
-
-# Define node names for clarity within this subgraph
-NODE_FEEDBACK_STUDENT_DATA = "feedback_student_data"
-NODE_ERROR_GENERATION = "error_generation"
-NODE_QUERY_DOCUMENT = "query_document"
-NODE_RAG_DOCUMENT = "RAG_document"
-NODE_FEEDBACK_PLANNER = "feedback_planner"
+# 2. Define standardized node names
+NODE_FEEDBACK_RAG = "feedback_rag"
 NODE_FEEDBACK_GENERATOR = "feedback_generator"
+NODE_FEEDBACK_OUTPUT_FORMATTER = "feedback_output_formatter"
+NODE_FINAL_OUTPUT_FORMATTER = "final_output_formatter" # +++ GIVE THE FINAL FORMATTER A NAME FOR THIS SUBGRAPH +++
+
 
 def create_feedback_subgraph():
+    """
+    Creates a LangGraph subgraph for the feedback flow.
+    This flow follows the standard RAG -> Generator -> Formatter architecture.
+    """
     workflow = StateGraph(AgentGraphState)
 
-    workflow.add_node(NODE_FEEDBACK_STUDENT_DATA, feedback_student_data_node)
-    workflow.add_node(NODE_ERROR_GENERATION, error_generator_node)
-    workflow.add_node(NODE_QUERY_DOCUMENT, query_document_node)
-    workflow.add_node(NODE_RAG_DOCUMENT, RAG_document_node)
-    workflow.add_node(NODE_FEEDBACK_PLANNER, feedback_planner_node)
+    # 3. Add the nodes to the subgraph
+    workflow.add_node(NODE_FEEDBACK_RAG, feedback_RAG_document_node)
     workflow.add_node(NODE_FEEDBACK_GENERATOR, feedback_generator_node)
+    workflow.add_node(NODE_FEEDBACK_OUTPUT_FORMATTER, feedback_output_formatter_node)
+    workflow.add_node(NODE_FINAL_OUTPUT_FORMATTER, format_final_output_for_client_node) # +++ ADD THE FINAL FORMATTER NODE TO THE SUBGRAPH +++
 
-    workflow.set_entry_point(NODE_FEEDBACK_STUDENT_DATA)
+    # 4. Define the entry point and the sequential flow
+    workflow.set_entry_point(NODE_FEEDBACK_RAG)
+    workflow.add_edge(NODE_FEEDBACK_RAG, NODE_FEEDBACK_GENERATOR)
+    workflow.add_edge(NODE_FEEDBACK_GENERATOR, NODE_FEEDBACK_OUTPUT_FORMATTER)
+    # The flow-specific formatter now connects to the final, universal formatter
+    workflow.add_edge(NODE_FEEDBACK_OUTPUT_FORMATTER, NODE_FINAL_OUTPUT_FORMATTER)
+    
+    # The final step inside this subgraph is the universal formatter
+    workflow.add_edge(NODE_FINAL_OUTPUT_FORMATTER, END)
 
-    workflow.add_edge(NODE_FEEDBACK_STUDENT_DATA, NODE_ERROR_GENERATION)
-    workflow.add_edge(NODE_ERROR_GENERATION, NODE_QUERY_DOCUMENT)
-    workflow.add_edge(NODE_QUERY_DOCUMENT, NODE_RAG_DOCUMENT)
-    workflow.add_edge(NODE_RAG_DOCUMENT, NODE_FEEDBACK_PLANNER)
-    workflow.add_edge(NODE_FEEDBACK_PLANNER, NODE_FEEDBACK_GENERATOR)
-    workflow.add_edge(NODE_FEEDBACK_GENERATOR, END) # End of the feedback subgraph
-
+    # 5. Compile and return the subgraph
     return workflow.compile()
-
-if __name__ == "__main__":
-    print("Attempting to compile the feedback subgraph...")
-    feedback_graph_compiled = create_feedback_subgraph()
-    print("Feedback subgraph compiled successfully.")
-    # You could add a stream test here if AgentGraphState and nodes were fully defined
-    # initial_state_example = AgentGraphState(user_id="test_user_feedback", current_context={"task_stage": "FEEDBACK_GENERATION"})
-    # for event in feedback_graph_compiled.stream(initial_state_example, {"recursion_limit": 5}):
-    #     print(event)

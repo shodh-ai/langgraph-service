@@ -18,6 +18,8 @@ class AgentGraphState(TypedDict, total=False):
     user_id: str
     user_token: str
     session_id: str
+    final_flow_output: Optional[Dict[str, Any]]
+
 
     # Input data from the current interaction
     transcript: Optional[str]  # The most recent transcript from the user

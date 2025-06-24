@@ -1,61 +1,44 @@
 # graph/scaffolding_flow.py
 from langgraph.graph import StateGraph, END
-try:
-    from state import AgentGraphState
-except ImportError:
-    print("Warning: Could not import AgentGraphState from '..state'. Using a placeholder.")
-    class AgentGraphState(dict): pass
+from state import AgentGraphState
 
-# Import the actual agent node functions
-try:
-    from agents import (
-        scaffolding_student_data_node,
-        struggle_analyzer_node,
-        scaffolding_retriever_node,
-        scaffolding_planner_node,
-        scaffolding_generator_node,
-    )
-except ImportError as e:
-    print(f"Warning: Could not import agent nodes from ..agents: {e}. Using placeholders.")
-    def placeholder_node_factory(node_name):
-        def placeholder_node(state: AgentGraphState) -> dict:
-            print(f"Placeholder Node: {node_name} executed. State: {state.get('user_id', 'unknown')}")
-            return {f"{node_name}_status": "completed"}
-        return placeholder_node
+# 1. Import the agent node functions
+from agents import (
+    scaffolding_RAG_document_node,
+    scaffolding_generator_node,
+    scaffolding_output_formatter_node,
+    format_final_output_for_client_node, # +++ IMPORT THE FINAL FORMATTER HERE +++
+)
 
-    scaffolding_student_data_node = placeholder_node_factory("scaffolding_student_data_node")
-    struggle_analyzer_node = placeholder_node_factory("struggle_analyzer_node")
-    scaffolding_retriever_node = placeholder_node_factory("scaffolding_retriever_node")
-    scaffolding_planner_node = placeholder_node_factory("scaffolding_planner_node")
-    scaffolding_generator_node = placeholder_node_factory("scaffolding_generator_node")
-
-# Define node names for clarity
-NODE_SCAFFOLDING_STUDENT_DATA = "scaffolding_student_data"
-NODE_STRUGGLE_ANALYZER = "struggle_analyzer"
-NODE_SCAFFOLDING_RETRIEVER = "scaffolding_retriever"
-NODE_SCAFFOLDING_PLANNER = "scaffolding_planner"
+# 2. Define standardized node names
+NODE_SCAFFOLDING_RAG = "scaffolding_rag"
 NODE_SCAFFOLDING_GENERATOR = "scaffolding_generator"
+NODE_SCAFFOLDING_OUTPUT_FORMATTER = "scaffolding_output_formatter"
+NODE_FINAL_OUTPUT_FORMATTER = "final_output_formatter" # +++ GIVE THE FINAL FORMATTER A NAME FOR THIS SUBGRAPH +++
+
 
 def create_scaffolding_subgraph():
+    """
+    Creates a LangGraph subgraph for the scaffolding flow.
+    This flow follows the standard RAG -> Generator -> Formatter architecture.
+    """
     workflow = StateGraph(AgentGraphState)
 
-    workflow.add_node(NODE_SCAFFOLDING_STUDENT_DATA, scaffolding_student_data_node)
-    workflow.add_node(NODE_STRUGGLE_ANALYZER, struggle_analyzer_node)
-    workflow.add_node(NODE_SCAFFOLDING_RETRIEVER, scaffolding_retriever_node)
-    workflow.add_node(NODE_SCAFFOLDING_PLANNER, scaffolding_planner_node)
+    # 3. Add the nodes to the subgraph
+    workflow.add_node(NODE_SCAFFOLDING_RAG, scaffolding_RAG_document_node)
     workflow.add_node(NODE_SCAFFOLDING_GENERATOR, scaffolding_generator_node)
+    workflow.add_node(NODE_SCAFFOLDING_OUTPUT_FORMATTER, scaffolding_output_formatter_node)
+    workflow.add_node(NODE_FINAL_OUTPUT_FORMATTER, format_final_output_for_client_node) # +++ ADD THE FINAL FORMATTER NODE TO THE SUBGRAPH +++
 
-    workflow.set_entry_point(NODE_SCAFFOLDING_STUDENT_DATA)
+    # 4. Define the entry point and the sequential flow
+    workflow.set_entry_point(NODE_SCAFFOLDING_RAG)
+    workflow.add_edge(NODE_SCAFFOLDING_RAG, NODE_SCAFFOLDING_GENERATOR)
+    workflow.add_edge(NODE_SCAFFOLDING_GENERATOR, NODE_SCAFFOLDING_OUTPUT_FORMATTER)
+    # The flow-specific formatter now connects to the final, universal formatter
+    workflow.add_edge(NODE_SCAFFOLDING_OUTPUT_FORMATTER, NODE_FINAL_OUTPUT_FORMATTER)
+    
+    # The final step inside this subgraph is the universal formatter
+    workflow.add_edge(NODE_FINAL_OUTPUT_FORMATTER, END)
 
-    workflow.add_edge(NODE_SCAFFOLDING_STUDENT_DATA, NODE_STRUGGLE_ANALYZER)
-    workflow.add_edge(NODE_STRUGGLE_ANALYZER, NODE_SCAFFOLDING_RETRIEVER)
-    workflow.add_edge(NODE_SCAFFOLDING_RETRIEVER, NODE_SCAFFOLDING_PLANNER)
-    workflow.add_edge(NODE_SCAFFOLDING_PLANNER, NODE_SCAFFOLDING_GENERATOR)
-    workflow.add_edge(NODE_SCAFFOLDING_GENERATOR, END)
-
+    # 5. Compile and return the subgraph
     return workflow.compile()
-
-if __name__ == "__main__":
-    print("Attempting to compile the scaffolding subgraph...")
-    scaffolding_graph_compiled = create_scaffolding_subgraph()
-    print("Scaffolding subgraph compiled successfully.")
