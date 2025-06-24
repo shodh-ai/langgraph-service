@@ -147,9 +147,12 @@ async def invoke_task_streaming_route(request_data: InvokeTaskRequest):
             "error_count": 0, "last_error_message": None, "current_node_name": None,
         }
 
-        # Call the SSE streamer with the prepared state
+        # Create the config for the graph invocation, which is essential for memory
+        config = {"configurable": {"thread_id": initial_graph_state.get("session_id")}}
+
+        # Call the SSE streamer with the prepared state and config
         return StreamingResponse(
-            stream_graph_responses_sse(initial_graph_state), 
+            stream_graph_responses_sse(initial_graph_state, config), 
             media_type="text/event-stream"
         )
     except json.JSONDecodeError as e:
@@ -179,44 +182,65 @@ async def register_user(registration_data: UserRegistrationRequest):
 # --- Streaming Endpoint --- 
 # In app.py
 
-async def stream_graph_responses_sse(initial_graph_state: AgentGraphState):
-    """
-    This version processes events as they happen, enabling simultaneous
-    """
-    config = {"recursion_limit": 100}
+# FINAL, PERFECTED app.py
 
+async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, config: dict):
+    """
+    This final version listens for the specific nodes that produce client-ready
+    output and streams their data the moment they finish.
+    """
     try:
         yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
         
-        # We now use astream_events to get intermediate node outputs
-        async for event in toefl_tutor_graph.astream_events(
-            initial_graph_state, config=config, stream_mode="values"
-        ):
+        # This is the list of ALL nodes that are responsible for creating the final output.
+        # It includes your simple nodes and all the formatter nodes from your subgraphs.
+        FINALIZING_NODES = [
+            "conversation_handler", 
+            "handle_welcome", 
+            "modelling_output_formatter",
+            "teaching_output_formatter",
+            "scaffolding_output_formatter",
+            "feedback_output_formatter",
+            "cowriting_output_formatter",
+            "pedagogy_output_formatter",
+        ]
+
+        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
             event_name = event.get("event")
             node_name = event.get("name")
             
-            # --- THIS IS THE NEW LOGIC ---
-            # We are now listening for the stream from our specific formatter node
-            if event_name == "on_chain_stream" and node_name == "modelling_output_formatter":
-                # The 'chunk' is whatever our node `yield`ed
-                if chunk := event.get("data", {}).get("chunk"):
-                    if text_chunk := chunk.get("streaming_text_chunk"):
-                        logger.info("SSE Streamer: Yielding text chunk from formatter.")
-                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': text_chunk})}\n\n"
-                    
-                    if ui_action := chunk.get("ui_action"):
-                        logger.info(f"SSE Streamer: Yielding UI action from formatter: {ui_action.get('action_type')}")
-                        # Wrap it in the expected 'final_ui_actions' format for the consumer
-                        yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': [ui_action]})}\n\n"
+            # We are listening for the moment any of our designated "finalizing" nodes finish.
+            if event_name == "on_chain_end" and node_name in FINALIZING_NODES:
+                logger.info(f"SSE Streamer: Captured final output from node '{node_name}'.")
+                
+                # The complete output of that node is in the event data.
+                output_data = event.get("data", {}).get("output", {})
+                
+                if not output_data:
+                    logger.warning(f"Node '{node_name}' finished but produced no output data.")
+                    continue
+
+                # Extract the final, client-ready data
+                text_for_tts = output_data.get("final_text_for_tts")
+                ui_actions = output_data.get("final_ui_actions")
+
+                # Yield the final text as a single chunk
+                if text_for_tts:
+                    sse_event = {"streaming_text_chunk": text_for_tts}
+                    logger.info(f"SSE Streamer: Yielding text_for_tts: '{text_for_tts[:50]}...'")
+                    yield f"event: streaming_text_chunk\ndata: {json.dumps(sse_event)}\n\n"
+                
+                # Yield any final UI actions
+                if ui_actions:
+                    logger.info(f"SSE Streamer: Yielding {len(ui_actions)} ui_actions.")
+                    yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': ui_actions})}\n\n"
 
     except Exception as e:
         logger.error(f"Error streaming graph responses: {e}", exc_info=True)
-        error_message = json.dumps({"error": str(e)})
-        yield f"event: error\ndata: {error_message}\n\n"
+        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
     finally:
         logger.info("SSE stream finished.")
-        final_message = json.dumps({"message": "Stream complete"})
-        yield f"event: end\ndata: {final_message}\n\n"
+        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream complete'})}\n\n"
 
 @app.post("/process_interaction_streaming")
 async def process_interaction_streaming_route(request_data: InteractionRequest):
