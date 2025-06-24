@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 DB_DIRECTORY = "chroma_db"
-COLLECTION_NAME = "modeling_examples"
+COLLECTION_NAME = "tutor_knowledge_base"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2" # Must match the model used for ingestion
 TOP_K_RESULTS = 3 # Number of similar examples to retrieve
 

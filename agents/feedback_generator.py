@@ -1,59 +1,37 @@
-import json
-from state import AgentGraphState
+# graph/feedback_generator_node.py
 import logging
-import os
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+from state import AgentGraphState
+# ... other imports
 
 logger = logging.getLogger(__name__)
 
-
 async def feedback_generator_node(state: AgentGraphState) -> dict:
-    logger.info(
-        f"FeedbackGeneratorNode: Entry point activated for user {state.get('user_id', 'unknown_user')}"
-    )
-    diagnosis = state.get("explanation", "")
-    user_data = state.get("user_data", {})
-    data = state.get("document_data", [])
-    pedagogical_strategy = state.get("chosen_pedagogical_strategy", "")
-    prioritize = state.get("prioritized_issue", "")
+    logger.info("---Executing Feedback Generator Node---")
+    
+    rag_data = state.get("rag_document_data", [])
+    # Get other state info like the student's error, etc.
+    
+    # --- PROMPT ENGINEERING ---
+    # This prompt is highly specialized for giving feedback.
+    llm_prompt = f"""
+You are 'The Structuralist', an expert teacher giving feedback.
+A student made this error: {state.get('diagnosed_error_type')}
+Based on these expert examples of giving feedback: {rag_data}
 
-    if data == []:
-        raise ValueError("No data provided")
-
-    explain_strategy = [entry.get("Explain Strategy", "") for entry in data]
-    example_feedback = [entry.get("Provide Example Feedback", "") for entry in data]
-
-    prompt = f"""
-    You are 'The Structuralist' AI TOEFL Tutor.
-    Student Diagnosis: {diagnosis}
-    We are prioritizing {prioritize}
-    Student Profile: {user_data}
-    Here's how 'The Structuralist' typically explains the current strategy ('{pedagogical_strategy}'):
-    {explain_strategy}
-    Here are examples of how 'The Structuralist' gives feedback for this kind of issue to a frustrated beginner:
-    {example_feedback}
-    Based on all this, generate the specific feedback text for the student regarding their diagnosed issue. Ensure your tone is patient and encouraging. Include UI actions for highlighting.
-    Format as JSON: {{\"text_for_tts\": \"...\"}}
-    """
-
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is not set.")
-
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            "gemini-2.0-flash",
-            generation_config=GenerationConfig(response_mime_type="application/json"),
-        )
-        response = model.generate_content(prompt)
-        response_json = json.loads(response.text)
-        text_for_tts = response_json.get("text_for_tts", "")
-        logger.info(f"Text for TTS: {text_for_tts}")
-        return {"greeting_data": {"greeting_tts": text_for_tts}}
-    except Exception as e:
-        logger.error(f"Error processing with GenerativeModel: {e}")
-        return {
-            "greeting_data": {"greeting_tts": "Error processing with GenerativeModel"}
-        }
+Generate a response that:
+1.  Acknowledges the student's effort.
+2.  Clearly explains the error without being discouraging.
+3.  Provides a corrected example.
+4.  Gives a short, actionable follow-up task.
+Return this as a JSON object with keys: "acknowledgement", "explanation", "corrected_example", "follow_up_task".
+"""
+    
+    # ... (LLM call logic) ...
+    
+    # On success, return with the standardized key
+    # response_json = json.loads(llm_response.text)
+    # return {"intermediate_feedback_payload": response_json}
+    
+    # On failure, return an error
+    # return {"error_message": "...", "route_to_error_handler": True}
+    return {} # Placeholder

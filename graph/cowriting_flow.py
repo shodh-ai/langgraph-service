@@ -1,54 +1,44 @@
 # graph/cowriting_flow.py
 from langgraph.graph import StateGraph, END
-try:
-    from state import AgentGraphState
-except ImportError:
-    print("Warning: Could not import AgentGraphState from 'state'. Using a placeholder.")
-    class AgentGraphState(dict): pass
+from state import AgentGraphState
 
-# Import the actual agent node functions
+# 1. Import the agent node functions
 from agents import (
-    cowriting_student_data_node,
-    cowriting_analyzer_node,
-    cowriting_retriever_node,
-    cowriting_planner_node,
+    cowriting_RAG_document_node,
     cowriting_generator_node,
+    cowriting_output_formatter_node,
+    format_final_output_for_client_node, # +++ IMPORT THE FINAL FORMATTER HERE +++
 )
 
-# Define node names for clarity
-NODE_COWRITING_STUDENT_DATA = "cowriting_student_data"
-NODE_COWRITING_ANALYZER = "cowriting_analyzer"
-NODE_COWRITING_RETRIEVER = "cowriting_retriever"
-NODE_COWRITING_PLANNER = "cowriting_planner"
+# 2. Define standardized node names
+NODE_COWRITING_RAG = "cowriting_rag"
 NODE_COWRITING_GENERATOR = "cowriting_generator"
+NODE_COWRITING_OUTPUT_FORMATTER = "cowriting_output_formatter"
+NODE_FINAL_OUTPUT_FORMATTER = "final_output_formatter" # +++ GIVE THE FINAL FORMATTER A NAME FOR THIS SUBGRAPH +++
+
 
 def create_cowriting_subgraph():
     """
-    Creates a LangGraph subgraph for the cowriting flow.
-    This flow assists the student with their writing task through a series of analytical and generative steps.
+    Creates a LangGraph subgraph for the co-writing flow.
+    This flow follows the standard RAG -> Generator -> Formatter architecture.
     """
     workflow = StateGraph(AgentGraphState)
 
-    # Add nodes to the subgraph
-    workflow.add_node(NODE_COWRITING_STUDENT_DATA, cowriting_student_data_node)
-    workflow.add_node(NODE_COWRITING_ANALYZER, cowriting_analyzer_node)
-    workflow.add_node(NODE_COWRITING_RETRIEVER, cowriting_retriever_node)
-    workflow.add_node(NODE_COWRITING_PLANNER, cowriting_planner_node)
+    # 3. Add the nodes to the subgraph
+    workflow.add_node(NODE_COWRITING_RAG, cowriting_RAG_document_node)
     workflow.add_node(NODE_COWRITING_GENERATOR, cowriting_generator_node)
+    workflow.add_node(NODE_COWRITING_OUTPUT_FORMATTER, cowriting_output_formatter_node)
+    workflow.add_node(NODE_FINAL_OUTPUT_FORMATTER, format_final_output_for_client_node) # +++ ADD THE FINAL FORMATTER NODE TO THE SUBGRAPH +++
 
-    # Set the entry point for the subgraph
-    workflow.set_entry_point(NODE_COWRITING_STUDENT_DATA)
+    # 4. Define the entry point and the sequential flow
+    workflow.set_entry_point(NODE_COWRITING_RAG)
+    workflow.add_edge(NODE_COWRITING_RAG, NODE_COWRITING_GENERATOR)
+    workflow.add_edge(NODE_COWRITING_GENERATOR, NODE_COWRITING_OUTPUT_FORMATTER)
+    # The flow-specific formatter now connects to the final, universal formatter
+    workflow.add_edge(NODE_COWRITING_OUTPUT_FORMATTER, NODE_FINAL_OUTPUT_FORMATTER)
+    
+    # The final step inside this subgraph is the universal formatter
+    workflow.add_edge(NODE_FINAL_OUTPUT_FORMATTER, END)
 
-    # Define the sequential flow
-    workflow.add_edge(NODE_COWRITING_STUDENT_DATA, NODE_COWRITING_ANALYZER)
-    workflow.add_edge(NODE_COWRITING_ANALYZER, NODE_COWRITING_RETRIEVER)
-    workflow.add_edge(NODE_COWRITING_RETRIEVER, NODE_COWRITING_PLANNER)
-    workflow.add_edge(NODE_COWRITING_PLANNER, NODE_COWRITING_GENERATOR)
-    workflow.add_edge(NODE_COWRITING_GENERATOR, END) # End of the cowriting subgraph
-
+    # 5. Compile and return the subgraph
     return workflow.compile()
-
-if __name__ == "__main__":
-    print("Attempting to compile the cowriting subgraph...")
-    cowriting_graph_compiled = create_cowriting_subgraph()
-    print("Cowriting subgraph compiled successfully.")
