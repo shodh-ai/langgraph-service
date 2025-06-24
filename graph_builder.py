@@ -238,7 +238,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         prompt = f"""

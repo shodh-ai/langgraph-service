@@ -28,7 +28,7 @@ async def conversation_handler_node(state: AgentGraphState) -> AsyncIterator[Dic
             f"Attempting to initialize GenerativeModel: gemini-1.5-flash-latest"
         )
         # Corrected model name and removed restrictive JSON mime type from original code
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         logger.debug("GenerativeModel initialized successfully.")
 
         llm_instruction = state.get("llm_instruction", "")
