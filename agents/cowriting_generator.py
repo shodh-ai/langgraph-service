@@ -13,16 +13,21 @@ async def cowriting_generator_node(state: AgentGraphState) -> dict:
     Acts as a creative co-writer, providing students with suggestions to continue their writing.
     """
     logger.info("---Executing Co-Writing Generator Node---")
-    
-    try:
-        # 1. Get student's current writing from state
-        student_writing = state.get("Student_Written_Input_Chunk", "")
-        if not student_writing:
-            # If there's no input, we can't co-write. Route to a different state or handle error.
-            logger.warning("CoWritingNode: No student writing provided.")
-            return {"error_message": "No student writing was provided to the co-writer.", "route_to_feedback": True}
 
-        # 2. PROMPT ENGINEERING: A prompt for a co-writing partner
+    # --- Defensive checks for required inputs ---
+    student_writing = state.get("Student_Written_Input_Chunk")
+    if not student_writing:
+        logger.warning("CoWritingNode: 'Student_Written_Input_Chunk' not found in state.")
+        return {
+            "intermediate_cowriting_payload": {
+                "error": "Missing student input",
+                "error_message": "It looks like there's nothing to work with yet. Try writing a sentence or two first!"
+            }
+        }
+    # --- End defensive checks ---
+
+    try:
+        # PROMPT ENGINEERING: A prompt for a co-writing partner
         llm_prompt = f"""
 You are 'The Creative Collaborator', an AI partner helping a student write.
 The student has written this so far:
@@ -40,20 +45,25 @@ Return a SINGLE JSON object with the following keys:
 - "suggestion_2_explanation": (String) The rationale for the second suggestion (e.g., "This could be a good transition to your next idea.").
 """
         
-        # 3. LLM Call (Placeholder for your actual API call logic)
-        # model = genai.GenerativeModel('gemini-pro')
-        # response = await model.generate_content_async(llm_prompt, generation_config=GenerationConfig(response_mime_type="application/json"))
-        # response_json = json.loads(response.text)
+        # LLM Call (Placeholder)
+        # response_json = ...
         
-        # 4. Return using a STANDARDIZED intermediate payload key
-        # return {"intermediate_cowriting_payload": response_json}
-        
-        # Placeholder return for now
-        return {}
+        # Placeholder JSON for development
+        response_json = {
+            "suggestion_1_text": "To further strengthen your argument, you could add a specific example here.",
+            "suggestion_1_explanation": "Adding a concrete example will make your point more convincing and easier for the reader to understand.",
+            "suggestion_2_text": "Another option is to introduce a counter-argument and then refute it.",
+            "suggestion_2_explanation": "This shows that you have considered different perspectives and strengthens your own position."
+        }
+
+        # Return using a STANDARDIZED intermediate payload key
+        return {"intermediate_cowriting_payload": response_json}
 
     except Exception as e:
         logger.error(f"CoWritingGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
         return {
-            "error_message": f"Failed to generate co-writing suggestions: {e}",
-            "route_to_error_handler": True
+            "intermediate_cowriting_payload": {
+                "error": "Generator failure",
+                "error_message": f"I encountered an unexpected issue while preparing co-writing suggestions. The error was: {e}"
+            }
         }
