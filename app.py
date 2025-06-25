@@ -237,54 +237,42 @@ async def register_user(registration_data: UserRegistrationRequest):
 
 async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, config: dict):
     """
-    This final version listens for the specific nodes that produce client-ready
-    output and streams their data the moment they finish.
+    This final version listens for the single, final output from a flow
+    and streams it as a single, comprehensive event.
     """
     try:
         yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
         
-        # This is the list of ALL nodes that are responsible for creating the final output.
-        # It includes your simple nodes and all the formatter nodes from your subgraphs.
+        # This is the list of all nodes that are responsible for creating the final output.
         FINALIZING_NODES = [
-            "conversation_handler", 
-            "handle_welcome", 
-            "modelling_output_formatter",
-            "teaching_output_formatter",
-            "scaffolding_output_formatter",
-            "feedback_output_formatter",
-            "cowriting_output_formatter",
-            "pedagogy_output_formatter",
+            "conversation_handler", "handle_welcome", "modelling_output_formatter",
+            "teaching_output_formatter", "scaffolding_output_formatter",
+            "feedback_output_formatter", "cowriting_output_formatter", "pedagogy_output_formatter"
         ]
 
         async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
             event_name = event.get("event")
             node_name = event.get("name")
             
-            # We are listening for the moment any of our designated "finalizing" nodes finish.
             if event_name == "on_chain_end" and node_name in FINALIZING_NODES:
                 logger.info(f"SSE Streamer: Captured final output from node '{node_name}'.")
                 
-                # The complete output of that node is in the event data.
                 output_data = event.get("data", {}).get("output", {})
                 
                 if not output_data:
                     logger.warning(f"Node '{node_name}' finished but produced no output data.")
                     continue
 
-                # Extract the final, client-ready data
-                text_for_tts = output_data.get("final_text_for_tts")
-                ui_actions = output_data.get("final_ui_actions")
+                # --- THIS IS THE FIX ---
+                # We no longer send separate events. We send ONE "final_response" event
+                # that contains BOTH the TTS text AND the UI actions.
+                final_response_payload = {
+                    "final_text_for_tts": output_data.get("final_text_for_tts"),
+                    "final_ui_actions": output_data.get("final_ui_actions", [])
+                }
 
-                # Yield the final text as a single chunk
-                if text_for_tts:
-                    sse_event = {"streaming_text_chunk": text_for_tts}
-                    logger.info(f"SSE Streamer: Yielding text_for_tts: '{text_for_tts[:50]}...'")
-                    yield f"event: streaming_text_chunk\ndata: {json.dumps(sse_event)}\n\n"
-                
-                # Yield any final UI actions
-                if ui_actions:
-                    logger.info(f"SSE Streamer: Yielding {len(ui_actions)} ui_actions.")
-                    yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': ui_actions})}\n\n"
+                logger.info(f"SSE Streamer: Yielding single 'final_response' event.")
+                yield f"event: final_response\ndata: {json.dumps(final_response_payload)}\n\n"
 
     except Exception as e:
         logger.error(f"Error streaming graph responses: {e}", exc_info=True)

@@ -4,68 +4,69 @@ from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
+import copy
+
 async def modelling_output_formatter_node(state: AgentGraphState) -> dict:
     """
-    Formats the output from the modelling generator into a final, user-facing response.
-    This node is responsible for creating the final `final_text_for_tts` and
-    `final_ui_actions` keys that the SSE streamer will yield to the client.
+    Takes the layered output from the modelling generator, formats the interactive
+    sequence for the client, and saves the rich content (explanations, clarifications)
+    into the state for future contextual use.
     """
-    logger.info("---Executing Modelling Output Formatter---")
-    
+    logger.info("---Executing Modelling Output Formatter (Layered Content Version)---")
+
     payload = state.get("intermediate_modelling_payload")
-
-    # --- Graceful Handling of Missing or Empty Payload ---
-    if not payload:
-        logger.warning("Modelling Formatter: Received an empty or missing payload.")
-        return {
-            "final_text_for_tts": "I seem to have had a problem preparing that example. Let's try something else.",
-            "final_ui_actions": []
-        }
-
-    # --- Handling Structured Errors from the Generator ---
-    if 'error' in payload:
-        error_message = payload.get('error_message', 'An unknown error occurred.')
-        logger.error(f"Modelling Formatter: Received error from generator: {error_message}")
+    if not payload or 'error' in payload:
+        error_message = payload.get('error_message', 'I seem to have had a problem preparing that example. Let\'s try something else.')
+        logger.warning(f"Modelling formatter received no/bad payload: {error_message}")
         return {
             "final_text_for_tts": error_message,
             "final_ui_actions": []
         }
 
-    # --- Formatting the Successful Payload ---
     try:
-        title = payload.get("model_title", "Here's an example")
-        summary = payload.get("model_summary", "")
-        steps = payload.get("model_steps", [])
+        # --- 1. Process the interactive sequence for the client ---
+        sequence = payload.get("sequence", [])
+        final_ui_actions = []
+        interruption_context = {}
 
-        # 1. Format the text for text-to-speech
-        tts_parts = [
-            f"Let's walk through an example: {title}.",
-            "I'll break it down step-by-step.",
-            *steps,  # Unpack the list of steps into the tts parts
-            f"The key takeaway is: {summary}"
-        ]
-        text_for_tts = " ".join(filter(None, tts_parts))
+        tts_parts = [item.get("content", "") for item in sequence if item.get("type") == "tts"]
+        final_text_for_tts = " ".join(tts_parts).strip()
 
-        # 2. Create UI actions to display the model clearly
-        ui_actions = [
-            {
-                "action_type": "SHOW_MODEL_EXAMPLE",
-                "parameters": {
-                    "title": title,
-                    "steps": steps,  # Pass the list of steps directly
-                    "summary": summary
-                }
+        # Find the last 'listen' step to set the final UI prompt and interruption context
+        last_listen_step = next((item for item in reversed(sequence) if item.get("type") == "listen"), None)
+
+        if last_listen_step:
+            final_ui_actions.append({
+                "action_type": "PROMPT_FOR_USER_INPUT",
+                "parameters": {"prompt_text": last_listen_step.get("prompt_if_silent", "Listening...")}
+            })
+            interruption_context = {
+                "expected_intent": last_listen_step.get("expected_intent"),
+                "source_node": "modelling_module" # Identify where the interruption might happen
             }
-        ]
 
-        # 3. Return the final, client-ready keys directly
-        return {
-            "final_text_for_tts": text_for_tts,
-            "final_ui_actions": ui_actions
+        # --- 2. Save the rich, non-sequence content for future context ---
+        new_context = copy.deepcopy(state.get("current_context", {}))
+        
+        new_context['last_modelled_concept'] = {
+            "main_explanation": payload.get("main_explanation"),
+            "simplified_explanation": payload.get("simplified_explanation"),
+            "clarifications": payload.get("clarifications", {})
         }
-    except Exception as e:
-        logger.error(f"Modelling Formatter: Failed to format payload. Error: {e}", exc_info=True)
+        
+        logger.info(f"Formatted TTS: '{final_text_for_tts[:100]}...' and {len(final_ui_actions)} UI actions.")
+        logger.info(f"Updated context with clarifications for: {list(new_context.get('last_modelled_concept', {}).get('clarifications', {}).keys())}")
+
         return {
-            "final_text_for_tts": "I had trouble formatting the example content. My apologies.",
+            "final_text_for_tts": final_text_for_tts,
+            "final_ui_actions": final_ui_actions,
+            "current_context": new_context,
+            "interruption_context": interruption_context
+        }
+
+    except Exception as e:
+        logger.error(f"ModellingOutputFormatter: CRITICAL FAILURE: {e}", exc_info=True)
+        return {
+            "final_text_for_tts": "I ran into a technical problem while preparing that example.",
             "final_ui_actions": []
         }

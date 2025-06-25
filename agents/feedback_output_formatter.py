@@ -5,39 +5,65 @@ from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
+import copy
+
 async def feedback_output_formatter_node(state: AgentGraphState) -> dict:
-    logger.info("---Executing Feedback Output Formatter---")
-    
-    payload = state.get("intermediate_feedback_payload", {})
+    """
+    Takes the layered output from the feedback generator, formats the interactive
+    sequence for the client, and saves the rich content into the state for future use.
+    """
+    logger.info("---Executing Feedback Output Formatter (Layered Content Version)---")
+
+    payload = state.get("intermediate_feedback_payload")
     if not payload:
-        # Handle error case
+        logger.warning("Feedback formatter received no intermediate payload.")
         return {
-            "final_text_for_tts": "Error generating feedback.",
+            "final_text_for_tts": "I seem to have lost my train of thought. Could we try that again?",
             "final_ui_actions": []
         }
-    
-    # --- LOGIC TO FORMAT THE OUTPUT ---
-    # Combine the parts into a single speech string
-    tts_parts = [
-        payload.get("acknowledgement"),
-        payload.get("explanation"),
-        "Here is a corrected example:",
-        payload.get("corrected_example"),
-        payload.get("follow_up_task")
-    ]
-    text_for_tts = " ".join(filter(None, tts_parts))
-    
-    # Create any UI actions needed, e.g., show the corrected example in a special UI box
-    ui_actions = [{
-        "action_type": "SHOW_EXAMPLE_BOX",
-        "parameters": {
-            "title": "Corrected Example",
-            "text": payload.get("corrected_example")
+
+    try:
+        # --- 1. Process the interactive sequence for the client ---
+        sequence = payload.get("sequence", [])
+        final_ui_actions = []
+        interruption_context = {}
+
+        tts_parts = [item.get("content", "") for item in sequence if item.get("type") == "tts"]
+        final_text_for_tts = " ".join(tts_parts).strip()
+
+        last_listen_step = next((item for item in reversed(sequence) if item.get("type") == "listen"), None)
+
+        if last_listen_step:
+            final_ui_actions.append({
+                "action_type": "PROMPT_FOR_USER_INPUT",
+                "parameters": {"prompt_text": last_listen_step.get("prompt_if_silent", "Listening...")}
+            })
+            interruption_context = {
+                "expected_intent": last_listen_step.get("expected_intent"),
+                "source_node": "feedback_module"
+            }
+
+        # --- 2. Save the rich, non-sequence content for future context ---
+        new_context = copy.deepcopy(state.get("current_context", {}))
+        
+        new_context['last_feedback_context'] = {
+            "main_explanation": payload.get("main_explanation"),
+            "simplified_explanation": payload.get("simplified_explanation"),
+            "clarifications": payload.get("clarifications", {})
         }
-    }]
-    
-    # Return the final, client-ready keys directly
-    return {
-        "final_text_for_tts": text_for_tts,
-        "final_ui_actions": ui_actions
-    }
+        
+        logger.info(f"Formatted TTS: '{final_text_for_tts[:100]}...' and {len(final_ui_actions)} UI actions.")
+
+        return {
+            "final_text_for_tts": final_text_for_tts,
+            "final_ui_actions": final_ui_actions,
+            "current_context": new_context,
+            "interruption_context": interruption_context
+        }
+
+    except Exception as e:
+        logger.error(f"FeedbackOutputFormatter: CRITICAL FAILURE: {e}", exc_info=True)
+        return {
+            "final_text_for_tts": "I ran into a technical problem while preparing my response.",
+            "final_ui_actions": []
+        }

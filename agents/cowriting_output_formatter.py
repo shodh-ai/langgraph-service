@@ -4,56 +4,65 @@ from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
+import copy
+
 async def cowriting_output_formatter_node(state: AgentGraphState) -> dict:
     """
-    Formats the output from the co-writing generator into a final, user-facing response.
+    Takes the layered output from the cowriting generator, formats the interactive
+    sequence for the client, and saves the rich content into the state for future use.
     """
-    logger.info("---Executing Co-Writing Output Formatter---")
-    
-    payload = state.get("intermediate_cowriting_payload", {})
+    logger.info("---Executing Co-Writing Output Formatter (Layered Content Version)---")
+
+    payload = state.get("intermediate_cowriting_payload")
     if not payload:
+        logger.warning("Co-writing formatter received no intermediate payload.")
         return {
-            "final_text_for_tts": "I had a problem coming up with suggestions.",
+            "final_text_for_tts": "I seem to have lost my train of thought. Could we try that again?",
             "final_ui_actions": []
         }
 
-    # 1. Format the text for text-to-speech
-    suggestion1_text = payload.get("suggestion_1_text", "")
-    suggestion1_exp = payload.get("suggestion_1_explanation", "")
-    suggestion2_text = payload.get("suggestion_2_text", "")
-    suggestion2_exp = payload.get("suggestion_2_explanation", "")
+    try:
+        # --- 1. Process the interactive sequence for the client ---
+        sequence = payload.get("sequence", [])
+        final_ui_actions = []
+        interruption_context = {}
 
-    tts_parts = [
-        "Here are a couple of ideas to keep you going.",
-        f"First, you could try this: {suggestion1_text}.",
-        f"{suggestion1_exp}",
-        "Or, how about this?",
-        f"{suggestion2_text}. {suggestion2_exp}"
-    ]
-    text_for_tts = " ".join(filter(None, tts_parts))
+        tts_parts = [item.get("content", "") for item in sequence if item.get("type") == "tts"]
+        final_text_for_tts = " ".join(tts_parts).strip()
 
-    # 2. Create UI actions to show the suggestions as clickable buttons or cards
-    ui_actions = [
-        {
-            "action_type": "SHOW_SUGGESTION_CARD",
-            "parameters": {
-                "title": "Suggestion 1",
-                "text": suggestion1_text,
-                "explanation": suggestion1_exp
+        last_listen_step = next((item for item in reversed(sequence) if item.get("type") == "listen"), None)
+
+        if last_listen_step:
+            final_ui_actions.append({
+                "action_type": "PROMPT_FOR_USER_INPUT",
+                "parameters": {"prompt_text": last_listen_step.get("prompt_if_silent", "Listening...")}
+            })
+            interruption_context = {
+                "expected_intent": last_listen_step.get("expected_intent"),
+                "source_node": "cowriting_module"
             }
-        },
-        {
-            "action_type": "SHOW_SUGGESTION_CARD",
-            "parameters": {
-                "title": "Suggestion 2",
-                "text": suggestion2_text,
-                "explanation": suggestion2_exp
-            }
+
+        # --- 2. Save the rich, non-sequence content for future context ---
+        new_context = copy.deepcopy(state.get("current_context", {}))
+        
+        new_context['last_cowriting_context'] = {
+            "main_explanation": payload.get("main_explanation"),
+            "simplified_explanation": payload.get("simplified_explanation"),
+            "clarifications": payload.get("clarifications", {})
         }
-    ]
+        
+        logger.info(f"Formatted TTS: '{final_text_for_tts[:100]}...' and {len(final_ui_actions)} UI actions.")
 
-    # 3. Return the final, client-ready keys directly
-    return {
-        "final_text_for_tts": text_for_tts,
-        "final_ui_actions": ui_actions
-    }
+        return {
+            "final_text_for_tts": final_text_for_tts,
+            "final_ui_actions": final_ui_actions,
+            "current_context": new_context,
+            "interruption_context": interruption_context
+        }
+
+    except Exception as e:
+        logger.error(f"CowritingOutputFormatter: CRITICAL FAILURE: {e}", exc_info=True)
+        return {
+            "final_text_for_tts": "I ran into a technical problem while preparing my response.",
+            "final_ui_actions": []
+        }

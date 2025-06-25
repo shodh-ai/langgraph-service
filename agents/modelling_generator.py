@@ -23,10 +23,10 @@ def format_rag_for_prompt(rag_data: list) -> str:
 
 async def modelling_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates the full modelling script and associated content by using context
-    from the state to create a detailed prompt for the LLM.
+    Generates a layered modeling payload including a main explanation, simplified version,
+    pre-written clarifications, and an interactive TTS/listen sequence.
     """
-    logger.info("---Executing Modelling Generator Node---")
+    logger.info("---Executing Modelling Generator Node (Layered Content Refactor)---")
 
     # --- Defensive checks for required inputs ---
     prompt_to_model = state.get("example_prompt_text")
@@ -51,37 +51,46 @@ async def modelling_generator_node(state: AgentGraphState) -> dict:
     # --- End defensive checks ---
 
     try:
-        # Now we can safely get the rest of the context
         student_struggle = state.get("student_struggle_context", "general difficulties")
-        english_comfort = state.get("english_comfort_level", "not specified")
-        student_goal = state.get("student_goal_context", "not specified")
-        student_confidence = state.get("student_confidence_context", "not specified")
-
         expert_examples = format_rag_for_prompt(rag_document_data)
 
-        # --- Prompt Engineering ---
-        # This prompt is now rich with context from the state.
+        json_output_example = """
+{
+  "main_explanation": "The core task of this prompt is to analyze the provided text and identify the author's main argument and the evidence they use to support it. We'll break this down into finding the thesis, locating supporting details, and summarizing the overall point.",
+  "simplified_explanation": "Imagine you're a detective. The prompt gives you a story, and your job is to find the big idea the author wants you to believe and the clues they left to convince you.",
+  "clarifications": {
+    "what_is_a_thesis": "The thesis is the main point or central argument of a piece of writing. It's the one sentence that sums up what the author is trying to prove.",
+    "what_counts_as_evidence": "Evidence can be facts, statistics, quotes from experts, or specific examples from the text that back up the main argument. It's the 'how we know' part of the argument."
+  },
+  "sequence": [
+    {"type": "tts", "content": "Great, let's break down how to approach this prompt together."},
+    {"type": "tts", "content": "First, let's read the prompt carefully..."},
+    {"type": "listen", "expected_intent": "CONFIRMATION", "timeout_ms": 3000},
+    {"type": "tts", "content": "The very first step is to identify the key task. Here, it's asking us to analyze an argument."},
+    {"type": "listen", "expected_intent": "UNDERSTOOD_STEP", "prompt_if_silent": "Does that first step make sense?", "timeout_ms": 4000}
+  ]
+}
+"""
+
         llm_prompt = f"""
-_You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to MODEL how to approach a TOEFL task._
+_You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to MODEL how to approach a TOEFL task by generating a 'Layered Content' payload._
 
-**Student Context:**
-- Task Prompt for Student: "{prompt_to_model}"
+**Student & Task Context:**
+- Task Prompt to Model: "{prompt_to_model}"
 - Student's Primary Struggle: "{student_struggle}"
-- Student's Stated Goal: "{student_goal}"
-- Student's Confidence Level: "{student_confidence}"
-- Student's English Comfort Level: "{english_comfort}"
 
-**Expert Examples from Knowledge Base:**
+**Expert Examples from Knowledge Base (for inspiration on structure and tone):**
 {expert_examples}
 
 **Your Task:**
-_Generate a response that breaks down the process into logical steps. 
-Include a title for the model, a summary of the key takeaway, and the steps themselves._
+Generate a single JSON object containing four keys:
+1.  `main_explanation`: A clear, concise explanation of how to approach the specific `Task Prompt to Model`.
+2.  `simplified_explanation`: A very simple analogy for the approach.
+3.  `clarifications`: A JSON object with pre-written answers to 2-3 common questions a student might have about this type of task.
+4.  `sequence`: A JSON array for an interactive, step-by-step walkthrough of the process. Use 'tts' and 'listen' types.
 
-_Return a SINGLE JSON object with the following keys:_
-- _"model_title": (String) A clear, concise title for the example (e.g., 'How to Structure a Paragraph')._
-- _"model_steps": (Array of Strings) A list where each string is a distinct step in the process (e.g., ["Step 1: Write a topic sentence.", "Step 2: Provide supporting evidence.", "Step 3: Add a concluding sentence."])_
-- _"model_summary": (String) A brief summary of the main lesson from the model._
+Return a SINGLE JSON object with the exact structure shown in this example:
+{json_output_example}
 """
         logger.debug(f"Modelling Generator Prompt:\n{llm_prompt}")
         
@@ -97,7 +106,7 @@ _Return a SINGLE JSON object with the following keys:_
         )
         response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
-        logger.info(f"LLM Response for modelling: {response_json}")
+        logger.info(f"LLM Response for layered modelling content: {response_json}")
 
         # This node's output is an intermediate payload for the formatter.
         return {"intermediate_modelling_payload": response_json}
