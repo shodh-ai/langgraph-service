@@ -73,3 +73,5 @@ langgraph-service/data/unified/unified_knowledge_base.jsonl
 __pycache__
 
 data/pedagogy_chroma
+# ChromaDB
+chroma_db/
