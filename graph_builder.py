@@ -16,9 +16,8 @@ from graph.pedagogy_flow import create_pedagogy_subgraph
 
 
 # --- Node Imports ---
-from agents import (
-    save_interaction_node
-)
+from agents import save_interaction_node
+from agents.acknowledge_interrupt_node import acknowledge_interrupt_node
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,7 @@ NODE_ROUTER_ENTRY = "router_entry_point"
 NODE_HANDLE_WELCOME = "handle_welcome"
 NODE_CONVERSATION_HANDLER = "conversation_handler"
 NODE_SAVE_INTERACTION = "save_interaction"
+NODE_ACKNOWLEDGE_INTERRUPT = "acknowledge_interrupt"
 
 
 # This is the actual NODE. It must return a dictionary.
@@ -67,7 +67,9 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     logger.info(f"INITIAL ROUTER: Evaluating route. Final determined Task Name: '{task_name}'")
 
     # The rest of your routing map is perfect.
-    if task_name == "handle_page_load":
+    if task_name == "user_wants_to_interrupt":
+        route_destination = NODE_ACKNOWLEDGE_INTERRUPT
+    elif task_name == "handle_page_load":
         route_destination = NODE_HANDLE_WELCOME
     elif task_name == "start_modelling_activity":
         route_destination = NODE_MODELING_MODULE
@@ -117,6 +119,7 @@ def build_graph():
 
     workflow.add_node(NODE_ROUTER_ENTRY, router_entry_node)
     workflow.add_node(NODE_SAVE_INTERACTION, save_interaction_node)
+    workflow.add_node(NODE_ACKNOWLEDGE_INTERRUPT, acknowledge_interrupt_node)
 
     # --- 5. Define the Graph's Flow ---
     workflow.set_entry_point(NODE_ROUTER_ENTRY)
@@ -127,6 +130,7 @@ def build_graph():
         initial_router_logic,
         {
             # Map the router's output string to the actual node name
+            NODE_ACKNOWLEDGE_INTERRUPT: NODE_ACKNOWLEDGE_INTERRUPT,
             NODE_MODELING_MODULE: NODE_MODELING_MODULE,
             NODE_TEACHING_MODULE: NODE_TEACHING_MODULE,
             NODE_SCAFFOLDING_MODULE: NODE_SCAFFOLDING_MODULE,
@@ -149,6 +153,7 @@ def build_graph():
     workflow.add_edge(NODE_PEDAGOGY_MODULE, NODE_SAVE_INTERACTION)
     workflow.add_edge(NODE_CONVERSATION_HANDLER, NODE_SAVE_INTERACTION)
     workflow.add_edge(NODE_HANDLE_WELCOME, NODE_SAVE_INTERACTION)
+    workflow.add_edge(NODE_ACKNOWLEDGE_INTERRUPT, NODE_SAVE_INTERACTION)
 
     # After saving, the graph ends.
     workflow.add_edge(NODE_SAVE_INTERACTION, END)
