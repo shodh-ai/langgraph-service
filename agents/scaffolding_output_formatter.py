@@ -4,26 +4,65 @@ from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
+import copy
+
 async def scaffolding_output_formatter_node(state: AgentGraphState) -> dict:
     """
-    Standardizes the output from the scaffolding generator node.
+    Takes the layered output from the scaffolding generator, formats the interactive
+    sequence for the client, and saves the rich content into the state for future use.
     """
-    logger.info("---Executing Scaffolding Output Formatter---")
-    
-    # Defensively get the payload from the generator
-    payload = state.get("intermediate_scaffolding_payload", {})
+    logger.info("---Executing Scaffolding Output Formatter (Layered Content Version)---")
+
+    payload = state.get("intermediate_scaffolding_payload")
     if not payload:
+        logger.warning("Scaffolding formatter received no intermediate payload.")
         return {
-            "final_text_for_tts": "Error in scaffolding.",
+            "final_text_for_tts": "I seem to have lost my train of thought. Could we try that again?",
             "final_ui_actions": []
         }
-    
-    # The generator already created the correct structure, so we just pass it on
-    text_for_tts = payload.get("text_for_tts", "Here is some help.")
-    ui_actions = payload.get("ui_actions", [])
-    
-    # Return the final, client-ready keys directly
-    return {
-        "final_text_for_tts": text_for_tts,
-        "final_ui_actions": ui_actions
-    }
+
+    try:
+        # --- 1. Process the interactive sequence for the client ---
+        sequence = payload.get("sequence", [])
+        final_ui_actions = []
+        interruption_context = {}
+
+        tts_parts = [item.get("content", "") for item in sequence if item.get("type") == "tts"]
+        final_text_for_tts = " ".join(tts_parts).strip()
+
+        last_listen_step = next((item for item in reversed(sequence) if item.get("type") == "listen"), None)
+
+        if last_listen_step:
+            final_ui_actions.append({
+                "action_type": "PROMPT_FOR_USER_INPUT",
+                "parameters": {"prompt_text": last_listen_step.get("prompt_if_silent", "Listening...")}
+            })
+            interruption_context = {
+                "expected_intent": last_listen_step.get("expected_intent"),
+                "source_node": "scaffolding_module"
+            }
+
+        # --- 2. Save the rich, non-sequence content for future context ---
+        new_context = copy.deepcopy(state.get("current_context", {}))
+        
+        new_context['last_scaffolding_context'] = {
+            "main_explanation": payload.get("main_explanation"),
+            "simplified_explanation": payload.get("simplified_explanation"),
+            "clarifications": payload.get("clarifications", {})
+        }
+        
+        logger.info(f"Formatted TTS: '{final_text_for_tts[:100]}...' and {len(final_ui_actions)} UI actions.")
+
+        return {
+            "final_text_for_tts": final_text_for_tts,
+            "final_ui_actions": final_ui_actions,
+            "current_context": new_context,
+            "interruption_context": interruption_context
+        }
+
+    except Exception as e:
+        logger.error(f"ScaffoldingOutputFormatter: CRITICAL FAILURE: {e}", exc_info=True)
+        return {
+            "final_text_for_tts": "I ran into a technical problem while preparing my response.",
+            "final_ui_actions": []
+        }

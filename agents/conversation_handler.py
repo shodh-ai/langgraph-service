@@ -4,22 +4,71 @@ import logging
 import os
 import google.generativeai as genai
 from typing import Dict
+from google.generativeai.types import GenerationConfig
 
 logger = logging.getLogger(__name__)
 
 async def conversation_handler_node(state: AgentGraphState) -> dict:
-    logger.info("ConversationHandlerNode: Entry point activated.")
+    logger.info("---Executing Conversation Handler Node (NLU Intent Classification)---")
     
-    # This is a placeholder for your actual LLM call logic.
-    # Based on your logs, the output was:
-    full_response_text = "Okay, I'm ready to be Rox! Since there's no current query, I'll just be here, waiting to help. I'm excited to get started and learn all about you and your TOEFL goals! Let's make this preparation journey a success! Just let me know what you'd like to work on first. 😊"
-    
-    logger.info("ConversationHandlerNode: Finished streaming. Preparing FINAL client-ready output.")
+    try:
+        transcript = state.get("transcript")
+        if not transcript or not transcript.strip():
+            logger.warning("ConversationHandlerNode: Transcript is empty. Nothing to process.")
+            return {"classified_intent": "NO_INPUT"}
 
-    # --- THIS IS THE FINAL FIX ---
-    # This node no longer produces an intermediate payload. It produces the
-    # final, official output keys for the entire graph run.
-    return {
-        "final_text_for_tts": full_response_text.strip(),
-        "final_ui_actions": [] # This flow has no UI actions.
-    }
+        # Check for the contextual micro-intent from the listen step
+        interruption_context = state.get("interruption_context", {})
+        expected_intent = interruption_context.get("expected_intent")
+
+        if expected_intent:
+            # Focused prompt using the micro-intent
+            llm_prompt = f"""
+As an NLU engine, your task is to classify the user's intent.
+The system was expecting the user to provide a response with the intent: '{expected_intent}'.
+The user said: "{transcript}"
+
+Analyze the user's response.
+- If the user's intent matches the expected intent, respond with a JSON object: {{"intent": "{expected_intent}"}}
+- If the user's intent is different, classify the new intent and respond with a JSON object: {{"intent": "NEW_INTENT_CLASSIFICATION"}}
+- Possible intents include: CONFIRMATION, REQUEST_CLARIFICATION, DISAGREEMENT, QUESTION, PROVIDE_EXAMPLE, OFF_TOPIC.
+"""
+        else:
+            # General-purpose intent classification
+            llm_prompt = f"""
+As an NLU engine, your task is to classify the user's intent based on their statement.
+The user said: "{transcript}"
+
+Classify the user's intent from the following list:
+- REQUEST_TEACHING_LESSON
+- START_MODELLING_ACTIVITY
+- ASK_QUESTION
+- PROVIDE_FEEDBACK
+- GENERAL_CONVERSATION
+
+Respond with a SINGLE JSON object with one key, "intent", and the classified intent as the value.
+Example: {{"intent": "ASK_QUESTION"}}
+"""
+
+        logger.debug(f"NLU Prompt:\n{llm_prompt}")
+
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            "gemini-2.0-flash",
+            generation_config=GenerationConfig(response_mime_type="application/json"),
+        )
+        response = await model.generate_content_async(llm_prompt)
+        response_json = json.loads(response.text)
+        classified_intent = response_json.get("intent")
+        
+        logger.info(f"NLU classified intent as: {classified_intent}")
+
+        return {"classified_intent": classified_intent}
+
+    except Exception as e:
+        logger.error(f"ConversationHandlerNode: CRITICAL FAILURE: {e}", exc_info=True)
+        return {"error_message": str(e), "route_to_error_handler": True}

@@ -9,7 +9,7 @@
 from .student_model_node import load_student_data_node, save_interaction_node
 from .conversational_manager_node import handle_home_greeting_node as handle_welcome_node
 from .curriculum_navigator_node import determine_next_pedagogical_step_stub_node
-from .output_formatter_node import format_final_output_for_client_node
+
 from .conversation_handler import conversation_handler_node
 
 # ===================================
@@ -62,7 +62,7 @@ __all__ = [
     "save_interaction_node",
     "handle_welcome_node",
     "determine_next_pedagogical_step_stub_node",
-    "format_final_output_for_client_node",
+
 
     # General Conversation
     "conversation_handler_node",
