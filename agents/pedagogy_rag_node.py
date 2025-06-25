@@ -34,4 +34,4 @@ async def pedagogy_rag_node(state: AgentGraphState) -> dict:
 
     logger.info(f"Retrieved {len(retrieved_documents)} documents from pedagogy knowledge base.")
 
-    return {"pedagogy_rag_results": retrieved_documents}
+    return {"rag_document_data": retrieved_documents}

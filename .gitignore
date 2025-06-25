@@ -67,6 +67,7 @@ main/
 *.njsproj
 *.sln
 *.sw?
+langgraph-service/data/unified/unified_knowledge_base.jsonl
 
 .venv
 __pycache__
