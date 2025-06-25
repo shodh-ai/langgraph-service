@@ -52,19 +52,30 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     This is the master switchboard. It inspects the state and decides
     which specialized subgraph (or standalone node) to route to.
     """
-    task_name = state.get("task_name", "handle_conversation")
+    # Prioritize the explicit task_name from the InvokeAgentTask request
+    task_name = state.get("task_name")
     
-    logger.info(f"INITIAL ROUTER: Evaluating route. Task Name: '{task_name}'")
+    # As a fallback, check the task_stage from the context dictionary
+    if not task_name:
+        context = state.get("current_context", {})
+        task_name = context.get("task_stage")
 
+    # If still nothing, default to conversation
+    if not task_name:
+        task_name = "handle_conversation"
+
+    logger.info(f"INITIAL ROUTER: Evaluating route. Final determined Task Name: '{task_name}'")
+
+    # The rest of your routing map is perfect.
     if task_name == "handle_page_load":
         route_destination = NODE_HANDLE_WELCOME
     elif task_name == "start_modelling_activity":
         route_destination = NODE_MODELING_MODULE
     elif task_name == "request_teaching_lesson":
         route_destination = NODE_TEACHING_MODULE
-    elif task_name == "scaffolding_needed": 
+    elif task_name == "scaffolding_needed":
         route_destination = NODE_SCAFFOLDING_MODULE
-    elif task_name == "feedback_needed": 
+    elif task_name == "feedback_needed":
         route_destination = NODE_FEEDBACK_MODULE
     elif task_name == "initiate_cowriting":
         route_destination = NODE_COWRITING_MODULE
