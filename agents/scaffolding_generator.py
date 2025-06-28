@@ -1,86 +1,86 @@
-# In agents/scaffolding_generator.py
-import json
+# agents/scaffolding_generator.py
 import logging
 import os
+import json
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
-async def scaffolding_generator_node(state: AgentGraphState) -> dict:
-    logger.info("---Executing Scaffolding Generator Node (Layered Content Version)---")
+def format_rag_for_prompt(rag_data: list) -> str:
+    """Helper to format RAG results for the prompt."""
+    if not rag_data:
+        return "No specific expert examples were retrieved. Rely on general pedagogical principles for scaffolding."
+    # Use the top 1-2 examples to guide the LLM
     try:
-        scaffolding_strategies = state.get("rag_document_data")
-        if not scaffolding_strategies:
-            raise ValueError("Scaffolding generator received no RAG documents.")
+        examples_str = "\n---\n".join([json.dumps(item, indent=2) for item in rag_data[:2]])
+        return f"Follow the patterns in these expert examples:\n{examples_str}"
+    except Exception as e:
+        logger.warning(f"Could not format RAG example for prompt: {e}")
+        return "No valid expert examples were retrieved."
 
-        primary_struggle = state.get("specific_struggle_point", "Not specified")
-        learning_objective_id = state.get("learning_objective_task", "Not specified")
-        user_transcript = state.get("transcript", "")
+async def scaffolding_generator_node(state: AgentGraphState) -> dict:
+    """
+    Designs a scaffolding activity, including instructional text and editor content.
+    """
+    logger.info("---Executing Scaffolding Generator Node---")
+    
+    try:
+        # Get context from the state
+        rag_data = state.get("rag_document_data", [])
+        expert_examples_str = format_rag_for_prompt(rag_data)
         
-        user_data = {
-            "proficiency": state.get("student_proficiency", "N/A"),
-            "affective_state": state.get("student_affective_state", "N/A")
-        }
+        learning_task = state.get("Learning_Objective_Task", "the current writing task")
+        struggle_point = state.get("Specific_Struggle_Point", "general difficulty")
 
-        json_output_example = """
-{
-    "main_explanation": "A clear, technically accurate explanation of the concept needed to overcome the struggle.",
-    "simplified_explanation": "A very simple analogy or rephrasing of the main explanation for students who are still confused.",
-    "clarifications": {
-        "Why did we do X?": "A pre-written answer to a common, simple clarification question.",
-        "What does Y mean?": "Another pre-written answer."
-    },
-    "sequence": [
-        {"type": "tts", "content": "First, let's try a hint to get you started."},
-        {"type": "tts", "content": "Think about the first step we took in the last example. How might that apply here?"},
-        {"type": "listen", "expected_intent": "student_attempts_scaffolded_task", "prompt_if_silent": "Feel free to ask for another hint!"}
-    ]
-}
-"""
-        prompt = f"""
-You are 'The Encouraging Nurturer' AI Tutor, an expert in providing helpful hints and scaffolding.
+        if not learning_task or not struggle_point:
+             raise ValueError("Missing 'Learning_Objective_Task' or 'Specific_Struggle_Point' in state.")
+
+        # This prompt asks the LLM to act as an instructional designer.
+        llm_prompt = f"""
+You are 'The Structuralist', an expert AI TOEFL Tutor who provides clear, structured support. Your task is to design a scaffolding activity for a student.
 
 **Student Context:**
-- User Profile: {user_data}
-- Learning Objective ID: {learning_objective_id}
-- Their specific struggle: {primary_struggle}
-- What they just said: "{user_transcript}"
-- Expert Scaffolding Strategies (for inspiration): {json.dumps(scaffolding_strategies, indent=2)}
+- Learning Task: "{learning_task}"
+- Specific Struggle Point: "{struggle_point}"
+
+**Expert Examples of Scaffolding for Similar Situations:**
+{expert_examples_str}
 
 **Your Task:**
-Generate a "Layered Content" payload to provide a helpful scaffold for the student. This is NOT a full lesson, but a targeted hint or tool to help them overcome their specific struggle.
+Generate a JSON object that defines the complete scaffolding experience. The object must have the following keys:
 
-The payload must be a single JSON object with exactly these four keys:
-1.  `main_explanation`: A clear, concise explanation of the underlying concept they are missing. (Max 1-2 sentences)
-2.  `simplified_explanation`: A simple analogy or rephrasing of the main explanation.
-3.  `clarifications`: A JSON object containing 2-3 pre-written answers to likely, simple clarification questions about your explanation.
-4.  `sequence`: An interactive sequence of `tts` and `listen` steps. Start with a gentle hint, then prompt the user to try again. The final step MUST be a `listen` step.
+1.  `"prompt_display_text"`: (String) The full essay prompt or task instruction that should be displayed to the student.
+2.  `"initial_editor_content"`: (String) The initial HTML content to set in the student's writing editor. This could be a template, a pre-written topic sentence, or an outline for them to fill in. Use `<p>` tags for paragraphs and placeholders like `[Your turn to write here]`.
+3.  `"ai_guidance_script"`: (Array of Strings) A list of short, spoken instructions or feedback. The first string will be the main instruction. Subsequent strings can be used for follow-up feedback.
 
 **Example JSON Output:**
-{json_output_example}
+{{
+  "prompt_display_text": "Some people prefer to work for a large company. Others prefer to work for a small company. Which would you prefer? Use specific reasons and details to support your choice.",
+  "initial_editor_content": "<p>When considering my future career, I would prefer to work for a [large/small] company for several reasons.</p><p>Firstly, [Your first reason here].</p><p>Secondly, [Your second reason here].</p>",
+  "ai_guidance_script": [
+    "Okay, let's work on structuring your essay. I've set up a template for you in the editor with topic sentences. Your task is to fill in the supporting details for each reason.",
+    "That's a good start on your first reason! Now, can you add a specific example to make it stronger?",
+    "Excellent, you've completed the first paragraph. Let's move on to the second reason."
+  ]
+}}
 
-**Instructions:**
-- Be encouraging and supportive.
-- The `sequence` should guide the user, not give them the direct answer.
-- The `expected_intent` in the `listen` step should be specific to the action you want the user to take.
-
-Generate the JSON payload now.
+Generate the JSON object for the student's context now.
 """
         api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+        if not api_key: raise ValueError("GOOGLE_API_KEY is not set.")
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
-        response = await model.generate_content_async(prompt)
+        response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
-        logger.info(f"LLM Response for scaffolding: {response_json}")
-
+        
+        logger.info("Scaffolding generator successfully created the activity plan.")
+        
         return {"intermediate_scaffolding_payload": response_json}
 
     except Exception as e:
