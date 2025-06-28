@@ -127,12 +127,12 @@ def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
         "user_id": user_id,
         "session_id": session_id,
         "task_name": request_data.task_name,
-        
+        "transcript": payload.get("transcript"), 
         # --- Unpack all known context fields from the payload ---
         
         # Cowriting Flow Fields
         "Learning_Objective_Focus": payload.get("Learning_Objective_Focus"),
-        "Student_Written_Input_Chunk": payload.get("Student_Written_Input_Chunk"),
+        "Student_Written_Input_Chunk": payload.get("transcript"),
         "Immediate_Assessment_of_Input": payload.get("Immediate_Assessment_of_Input"),
         "Student_Articulated_Thought": payload.get("Student_Articulated_Thought"), # Added this for completeness
         
@@ -168,7 +168,7 @@ def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
         "Speaking Strengths": payload.get("Speaking Strengths"),
 
         # --- Default initializations for all other state keys ---
-        "transcript": payload.get("message"), 
+        "transcript": payload.get("transcript"), 
         "current_context": {"user_id": user_id, "task_stage": request_data.task_name},
         "chat_history": payload.get("chat_history", []),
         "rag_document_data": [],
@@ -187,6 +187,8 @@ def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
     
     logger.info(f"Created initial state with populated context for task: '{request_data.task_name}'")
     logger.debug(f"Initial state includes Student_Written_Input_Chunk: '{initial_state.get('Student_Written_Input_Chunk')}'")
+    logger.info(f"Created initial state. Transcript found: {bool(initial_state.get('transcript'))}")
+
     return initial_state
 
 @app.post("/invoke_task_streaming")
@@ -237,17 +239,17 @@ async def register_user(registration_data: UserRegistrationRequest):
 
 async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, config: dict):
     """
-    This final version listens for the single, final output from a flow
-    and streams it as a single, comprehensive event.
+    This final version listens for the output of a finalizing node and
+    streams it back as a single, comprehensive "final_response" event.
     """
     try:
         yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
         
-        # This is the list of all nodes that are responsible for creating the final output.
         FINALIZING_NODES = [
-            "conversation_handler", "handle_welcome", "modelling_output_formatter",
-            "teaching_output_formatter", "scaffolding_output_formatter",
-            "feedback_output_formatter", "cowriting_output_formatter", "pedagogy_output_formatter"
+            "conversation_handler", "handle_welcome", "acknowledge_interrupt",
+            "modelling_output_formatter", "teaching_output_formatter",
+            "scaffolding_output_formatter", "feedback_output_formatter",
+            "cowriting_output_formatter", "pedagogy_output_formatter",
         ]
 
         async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
@@ -256,7 +258,6 @@ async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, confi
             
             if event_name == "on_chain_end" and node_name in FINALIZING_NODES:
                 logger.info(f"SSE Streamer: Captured final output from node '{node_name}'.")
-                
                 output_data = event.get("data", {}).get("output", {})
                 
                 if not output_data:
@@ -264,14 +265,13 @@ async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, confi
                     continue
 
                 # --- THIS IS THE FIX ---
-                # We no longer send separate events. We send ONE "final_response" event
-                # that contains BOTH the TTS text AND the UI actions.
+                # We package everything into ONE event.
                 final_response_payload = {
                     "final_text_for_tts": output_data.get("final_text_for_tts"),
                     "final_ui_actions": output_data.get("final_ui_actions", [])
                 }
 
-                logger.info(f"SSE Streamer: Yielding single 'final_response' event.")
+                logger.info("SSE Streamer: Yielding single 'final_response' event.")
                 yield f"event: final_response\ndata: {json.dumps(final_response_payload)}\n\n"
 
     except Exception as e:
@@ -374,6 +374,28 @@ async def process_interaction_streaming_route(request_data: InteractionRequest):
         stream_graph_responses_sse(initial_graph_state), 
         media_type="text/event-stream"
     )
+
+@app.post("/invoke_task", response_model=Dict[str, Any])
+async def invoke_task_route(request_data: InvokeTaskRequest):
+    """
+    Handles non-streaming requests for fast, simple nodes.
+    """
+    logger.info(f"Received non-streaming task '{request_data.task_name}'.")
+    try:
+        initial_state = create_initial_state(request_data)
+        config = {"configurable": {"thread_id": initial_state["session_id"]}}
+        
+        # Use ainvoke for a single, final result.
+        final_state = await toefl_tutor_graph.ainvoke(initial_state, config=config)
+        
+        # Return the final output keys directly.
+        return {
+            "final_text_for_tts": final_state.get("final_text_for_tts"),
+            "final_ui_actions": final_state.get("final_ui_actions", [])
+        }
+    except Exception as e:
+        logger.error(f"Error in non-streaming invoke_task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/process_interaction", response_model=InteractionResponse)
 async def process_interaction_route(request_data: InteractionRequest):
