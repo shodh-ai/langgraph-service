@@ -3,6 +3,7 @@
 import logging
 from langgraph.graph import StateGraph, END
 from state import AgentGraphState
+from memory import Mem0Checkpointer
 
 # --- 1. Import all your subgraph creation functions ---
 from graph.modeling_flow import create_modeling_subgraph
@@ -58,7 +59,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     # As a fallback, check the task_stage from the context dictionary
     if not task_name:
         context = state.get("current_context", {})
-        task_name = context.get("task_stage")
+        task_name = context.task_stage
 
     # If still nothing, default to conversation
     if not task_name:
@@ -79,7 +80,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         route_destination = NODE_FEEDBACK_MODULE
     elif task_name == "initiate_cowriting":
         route_destination = NODE_COWRITING_MODULE
-    elif task_name == "initiate_pedagogy":
+    elif task_name in ["initiate_pedagogy", "INITIAL_REPORT_GENERATION"]:
         route_destination = NODE_PEDAGOGY_MODULE
     else:
         route_destination = NODE_CONVERSATION_HANDLER
@@ -155,8 +156,8 @@ def build_graph():
 
     # --- 7. Compile the Final Graph ---
     logger.info("--- Main Graph Compilation ---")
-    # compiled_graph = workflow.compile(checkpointer=checkpointer)
-    compiled_graph = workflow.compile() # Compile without checkpointer for now
+    checkpointer = Mem0Checkpointer()
+    compiled_graph = workflow.compile(checkpointer=checkpointer)
     logger.info("--- Main Graph Compiled Successfully ---")
     
     return compiled_graph

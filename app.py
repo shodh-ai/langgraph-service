@@ -26,19 +26,22 @@ from fastapi import UploadFile, File
 from deepgram import DeepgramClient
 from deepgram import PrerecordedOptions
 
-# Assuming mem0_memory is correctly located and imported for /user/register
-# If it's in a 'memory' directory/module at the same level as app.py:
-from memory import mem0_memory # Import the shared instance for user registration
-
+from memory import initialize_memory
+import memory
+ 
 from graph_builder import build_graph
 from state import AgentGraphState
 import uuid
+
+# Define the directory for uploads
+UPLOAD_DIR = "uploads"
 
 # +++ DEFINE THE NEW REQUEST MODEL +++
 # This matches the payload that livekit-service is sending.
 class InvokeTaskRequest(BaseModel):
     task_name: str
     json_payload: str
+from contextlib import asynccontextmanager
 from models import (
     InteractionRequest,
     InteractionResponse,
@@ -46,10 +49,24 @@ from models import (
     ReactUIAction,
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handles application startup and shutdown events.
+    Initializes the global memory instance.
+    """
+    logger.info("--- Application startup: Initializing memory ---")
+    initialize_memory()
+    logger.info("--- Application startup: Memory initialized ---")
+    yield
+    logger.info("--- Application shutdown ---")
+
+
 app = FastAPI(
     title="ShodhAI Langgraph",
     version="0.1.0",
-    description="A LangGraph-based AI service for academic tutoring."
+    description="A LangGraph-based AI service for academic tutoring.",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -219,7 +236,7 @@ async def register_user(registration_data: UserRegistrationRequest):
     try:
         profile_data = registration_data.model_dump(exclude={"user_id"})
         
-        mem0_memory.update_student_profile(
+        memory.memory_stub.update_student_profile(
             user_id=registration_data.user_id,
             profile_data=profile_data
         )
@@ -338,7 +355,7 @@ async def process_interaction_streaming_route(request_data: InteractionRequest):
     
     initial_graph_state: AgentGraphState = {
         "user_id": user_id,
-        "user_token": getattr(request_data, "usertoken", None),
+        "user_token": getattr(request_data, "user_token", None),
         "session_id": session_id,
         "transcript": transcript,
         "full_submitted_transcript": full_submitted_transcript,
@@ -391,6 +408,12 @@ async def process_interaction_streaming_route(request_data: InteractionRequest):
 async def process_interaction_route(request_data: InteractionRequest):
     # Debugging: Log the entire request payload to see what we're getting
     logger.info(f"Received request payload: {json.dumps(request_data.model_dump(), default=str)[:500]}...")
+
+    # --- ADDED FOR TOKEN DEBUGGING ---
+    user_token = request_data.user_token
+    logger.info(f"--- TOKEN RECEIVED IN /process_interaction ---")
+    logger.info(f"USER_TOKEN: {user_token}")
+    logger.info(f"----------------------------------------------")
     default_user_id = "default_user_for_testing"
     default_session_id = str(uuid.uuid4())
 
@@ -439,7 +462,7 @@ async def process_interaction_route(request_data: InteractionRequest):
     
     initial_graph_state: AgentGraphState = {
         "user_id": user_id,
-        "user_token": request_data.usertoken,
+        "user_token": request_data.user_token,
         "session_id": session_id,
         "transcript": transcript,
         "full_submitted_transcript": full_submitted_transcript,
@@ -447,6 +470,7 @@ async def process_interaction_route(request_data: InteractionRequest):
         "chat_history": chat_history,
         "question_stage": context.question_stage,
         "student_memory_context": None,
+        "task_stage": request_data.current_context.task_stage,
         "next_task_details": next_task_details,
         "diagnosis_result": None,
         "output_content": None,
@@ -558,7 +582,7 @@ async def process_interaction_non_streaming_route(request_data: InteractionReque
             transcript=request_data.transcript,
             current_context=request_data.current_context,
             chat_history=request_data.chat_history,
-            user_token=request_data.usertoken,
+            user_token=request_data.user_token,
             full_submitted_transcript=request_data.transcript if request_data.current_context.task_stage == "speaking_task_submitted" else None,
             question_stage=request_data.current_context.question_stage,
             student_memory_context=None,
@@ -721,8 +745,13 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    import os
-    # Use PORT from env, default to 8000 (common for dev, original used 5005)
+
+
+    # Ensure the upload directory exists
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+    
+    # Run the FastAPI app with uvicorn
     port = int(os.getenv("PORT", "8080")) 
     logger.info(f"Starting Uvicorn server on host 0.0.0.0:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
