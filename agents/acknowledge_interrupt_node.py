@@ -5,22 +5,34 @@ logger = logging.getLogger(__name__)
 
 async def acknowledge_interrupt_node(state: AgentGraphState) -> dict:
     """
-    Generates a brief acknowledgment to a user's interruption and prompts
-    them to ask their question.
+    Creates a full conversational sequence for handling an interruption.
+    It first speaks an acknowledgment, then issues a command to listen.
     """
     user_id = state.get("user_id", "unknown_user")
-    logger.info(f"Acknowledge Interrupt Node: Generating response for user {user_id}.")
+    logger.info(f"Acknowledge Interrupt Node: Generating sequence for user {user_id}.")
 
-    response_text = "I see you have a question. Of course, what's on your mind?"
+    # --- 1. Create the sequence ---
+    sequence = [
+        {
+            "type": "tts",
+            "content": "Of course, I can help with that. What's on your mind?"
+        },
+        {
+            "type": "listen",
+            "expected_intent": "INTERRUPTION_QUESTION",
+            "timeout_ms": 10000 
+        }
+    ]
     
-    # This UI action tells the frontend to activate the mic or show a listening indicator.
+    # --- 2. Package the sequence into a standard UI action ---
     ui_actions = [{
-        "action_type": "PROMPT_FOR_USER_INPUT",
-        "parameters": {"prompt_text": "Listening..."}
+        "action_type": "EXECUTE_CONVERSATIONAL_SEQUENCE",
+        "parameters": { "sequence": sequence }
     }]
-
-    # This node returns the final, client-ready output directly.
+    
+    # --- 3. THIS IS THE FIX: Return the final, client-ready output ---
+    # This node is a "finalizing node," so it must produce the final keys.
     return {
-        "final_text_for_tts": response_text,
+        "final_text_for_tts": "", # The TTS is now handled by the sequence.
         "final_ui_actions": ui_actions
     }
