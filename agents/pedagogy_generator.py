@@ -30,10 +30,10 @@ async def pedagogy_generator_node(state: AgentGraphState) -> dict:
     """
     logger.info("---Executing Pedagogy Generator Node (Fully Refactored)---")
     try:
-        # 1. Get RAG data from state (consistent with other generators)
-        rag_data = state.get("rag_document_data")
-        if not rag_data:
-            raise ValueError("Pedagogy generator received no RAG documents from state.")
+        # 1. Get initial report content from state
+        initial_report = state.get("initial_report_content", "")
+        if not initial_report:
+            raise ValueError("No initial report content found in state.")
 
         # 2. Get student context from state for the prompt
         student_context = {col: state.get(col, 'Not specified') for col in query_columns}
@@ -60,8 +60,8 @@ async def pedagogy_generator_node(state: AgentGraphState) -> dict:
         **Student Context:**
         {json.dumps(student_context, indent=2)}
 
-        **Examples from Similar Cases (for inspiration on structure and tone):**
-        {json.dumps(rag_data, indent=2)}
+        **Initial Assessment Report:**
+        {initial_report}
 
         **Your Task:**
         Design a personalized pedagogy for this student. Return a SINGLE JSON object with the exact structure below:
