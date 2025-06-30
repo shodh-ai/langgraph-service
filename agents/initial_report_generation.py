@@ -81,13 +81,10 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
             "I've reviewed your submission. Let's look at the details." # Fallback TTS
         )
         
-        final_output = {
-            "text_for_tts": conversational_text,
-            "ui_actions": []
-        }
+        # This is what updates the state for downstream nodes
         return {
-            "final_flow_output": final_output,
-            "initial_report_content": final_report_json
+            "conversational_tts": conversational_text,
+            "initial_report_content": final_report_json # Store the full report
         }
 
     except Exception as e:
@@ -102,11 +99,7 @@ async def initial_report_generation_node(state: AgentGraphState) -> dict:
             "grammar": "N/A",
             "vocabulary": "N/A",
         }
-        error_output = {
-            "text_for_tts": error_tts,
-            "ui_actions": []
-        }
         return {
-            "final_flow_output": error_output,
+            "conversational_tts": error_tts,
             "initial_report_content": error_report_content
         }

@@ -1,7 +1,7 @@
 import os
 import threading
 from typing import Optional, List, Dict, Any
-from mem0 import MemoryClient
+from mem0 import Memory
 from dotenv import load_dotenv
 import logging
 
@@ -33,132 +33,106 @@ class Mem0Client:
                 return
             
             logger.info("Initializing Mem0Client singleton...")
-            
-            self.api_key = os.getenv("MEM0_API_KEY")
-            self.org_id = os.getenv("MEM0_ORG_ID")
-            self.project_id = os.getenv("MEM0_PROJECT_ID")
-
-            if not self.api_key:
-                logger.error("MEM0_API_KEY not found in environment variables.")
-                raise ValueError("MEM0_API_KEY not found in environment variables.")
-            if not self.org_id:
-                logger.error("MEM0_ORG_ID not found in environment variables.")
-                raise ValueError("MEM0_ORG_ID not found in environment variables.")
-            if not self.project_id:
-                logger.error("MEM0_PROJECT_ID not found in environment variables.")
-                raise ValueError("MEM0_PROJECT_ID not found in environment variables.")
-
-            try:
-                self.mem0_instance = MemoryClient(
-                    api_key=self.api_key,
-                    org_id=self.org_id,
-                    project_id=self.project_id
-                )
-                logger.info("Mem0Client initialized successfully using MemoryClient with org_id and project_id.")
-            except Exception as e:
-                logger.error(f"Failed to initialize Mem0 client with MemoryClient: {e}", exc_info=True)
-                raise
-            
+            self._initialize()
             self.is_initialized = True
+
+    def _initialize(self):
+        """Initializes the Mem0 instance using Google AI."""
+        logger.info("--- [Mem0Client._initialize] START ---")
+        
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not google_api_key:
+            logger.error("GOOGLE_API_KEY not found in environment variables.")
+            raise ValueError("GOOGLE_API_KEY is required for Google AI provider.")
+
+        config = {
+            "llm": {
+                "provider": "gemini",
+                "config": {
+                    "model": "gemini-1.5-flash",
+                    "api_key": google_api_key,
+                    "temperature": 0.7,
+                }
+            },
+            "embedding": {
+                "provider": "gemini",
+                "config": {
+                    "model": "text-embedding-004",
+                    "api_key": google_api_key,
+                }
+            }
+        }
+        
+        try:
+            self.mem0_instance = Memory.from_config(config)
+            logger.info("--- [Mem0Client._initialize] Initialized mem0_instance with Google AI config. ---")
+        except Exception as e:
+            logger.error(f"Failed to initialize Mem0 with Google AI config: {e}", exc_info=True)
+            raise
+        
+        logger.info("--- [Mem0Client._initialize] END ---")
 
     def add(self, messages: List[Dict[str, str]], user_id: str, metadata: Optional[Dict[str, Any]] = None) -> Any:
         logger.debug(f"Mem0Client: Calling add for user_id: {user_id} with messages: {messages} and metadata: {metadata}")
         try:
+            # The `Memory` class expects the `data` argument.
             return self.mem0_instance.add(messages=messages, user_id=user_id, metadata=metadata)
         except Exception as e:
             logger.error(f"Mem0Client: Error in add method: {e}", exc_info=True)
             raise
 
-    def get_all(self, user_id: str, page: int = 1, page_size: int = 100, output_format: str = 'v1.1') -> Dict[str, Any]:
-        """Get all memories for a user with pagination support.
-        
-        Args:
-            user_id (str): The user ID to get memories for
-            page (int, optional): Page number for pagination. Defaults to 1.
-            page_size (int, optional): Number of items per page. Defaults to 100.
-            output_format (str, optional): Format version for the output. Defaults to 'v1.1'.
-            
-        Returns:
-            Dict[str, Any]: Paginated memories or list of memories depending on the output format
+    def get_all(self, user_id: str, **kwargs) -> Dict[str, Any]:
         """
-        logger.debug(f"Mem0Client: Calling get_all for user_id: {user_id}, page: {page}, page_size: {page_size}")
+        Get all memories for a user.
+        The `Memory` class returns a list, but the rest of our app expects a dict.
+        """
+        logger.debug(f"Mem0Client: Calling get_all for user_id: {user_id}")
         try:
-            # The latest Mem0 API supports pagination and output format
-            raw_memories = self.mem0_instance.get_all(
-                user_id=user_id, 
-                page=page, 
-                page_size=page_size, 
-                output_format=output_format
-            )
-            
-            # Handle different return formats for backward compatibility
-            if isinstance(raw_memories, dict):
-                if 'results' in raw_memories:
-                    return raw_memories  # v1.1 format with pagination already included
-                elif 'memories' in raw_memories:
-                    # Newer format with different structure
-                    return {'results': raw_memories['memories']}
-            elif isinstance(raw_memories, list):
-                # v1.0 format returns a list directly, wrap it
-                return {'results': raw_memories}
-                
-            logger.warning(f"Mem0Client: get_all returned unexpected format: {type(raw_memories)}. Returning as is.")
-            return raw_memories  # Return whatever we got
-
+            raw_memories = self.mem0_instance.get_all(user_id=user_id)
+            return {'results': raw_memories}
         except Exception as e:
             logger.error(f"Mem0Client: Error in get_all method: {e}", exc_info=True)
             raise
 
-    def search(self, query: str, user_id: str = None, agent_id: str = None, limit: Optional[int] = None, 
-              metadata: Optional[Dict[str, Any]] = None, categories: Optional[List[str]] = None,
-              version: str = None, filters: Optional[Dict[str, Any]] = None,
-              threshold: float = 0.1, output_format: str = 'v1.1') -> Dict[str, Any]:
-        """Search memories using semantic search with enhanced filter options.
-        
-        Args:
-            query (str): The search query
-            user_id (str, optional): User ID to search memories for
-            agent_id (str, optional): Agent ID to search memories for
-            limit (int, optional): Max number of results to return
-            metadata (Dict, optional): Metadata filter
-            categories (List[str], optional): Categories filter
-            version (str, optional): API version to use ('v1' or 'v2')
-            filters (Dict, optional): Advanced filters for v2 search
-            threshold (float, optional): Similarity threshold
-            output_format (str, optional): Format version for output
-            
-        Returns:
-            Dict[str, Any]: Search results
+    def search(self, query: str, user_id: str, limit: Optional[int] = None, **kwargs) -> Dict[str, Any]:
         """
-        logger.debug(f"Mem0Client: Calling search with query: '{query}', user_id: '{user_id}', "
-                   f"agent_id: '{agent_id}', filters: {filters}")
+        Search memories using semantic search.
+        The `Memory` class returns a list, but the rest of our app expects a dict.
+        """
+        logger.debug(f"Mem0Client: Calling search with query: '{query}', user_id: '{user_id}'")
         try:
-            # Build search parameters based on what's provided
-            search_params = {
-                'query': query,
-                'threshold': threshold,
-                'output_format': output_format
-            }
-            
-            # Add optional parameters if provided
-            if user_id:
-                search_params['user_id'] = user_id
-            if agent_id:
-                search_params['agent_id'] = agent_id
-            if limit:
-                search_params['limit'] = limit
-            if metadata:
-                search_params['metadata'] = metadata
-            if categories:
-                search_params['categories'] = categories
-            if version:
-                search_params['version'] = version
-            if filters:
-                search_params['filters'] = filters
-                
-            return self.mem0_instance.search(**search_params)
+            results = self.mem0_instance.search(query=query, user_id=user_id, limit=limit)
+            return {'results': results}
         except Exception as e:
             logger.error(f"Mem0Client: Error in search method: {e}", exc_info=True)
+            raise
+
+    def delete(self, memory_id: str) -> None:
+        """Deletes a specific memory by its ID."""
+        logger.debug(f"Mem0Client: Calling delete for memory_id: {memory_id}")
+        try:
+            self.mem0_instance.delete(memory_id=memory_id)
+        except Exception as e:
+            logger.error(f"Mem0Client: Error in delete method for memory_id {memory_id}: {e}", exc_info=True)
+            raise
+
+    def delete_all(self, user_id: str) -> None:
+        """Deletes all memories for a specific user."""
+        logger.info(f"Mem0Client: Deleting all memories for user_id: {user_id}")
+        try:
+            memories_response = self.get_all(user_id=user_id)
+            memories_to_delete = memories_response.get('results', [])
+            
+            if not memories_to_delete:
+                logger.info(f"Mem0Client: No memories found to delete for user_id: {user_id}")
+                return
+
+            for mem in memories_to_delete:
+                self.delete(memory_id=mem.id)
+            
+            logger.info(f"Mem0Client: Successfully deleted all memories for user_id: {user_id}")
+        except Exception as e:
+            logger.error(f"Mem0Client: Error in delete_all method for user_id {user_id}: {e}", exc_info=True)
             raise
 
 # Create a single, shared instance of the client
