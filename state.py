@@ -10,6 +10,7 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'task_name': str,
     'current_context': Dict[str, Any],
     'chat_history': List[Dict[str, Any]],
+    'user_token': str,
 
     # === Universal Input/Output Keys ===
     'transcript': Optional[str],
@@ -24,6 +25,11 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'intermediate_feedback_payload': Optional[Dict[str, Any]],
     'intermediate_cowriting_payload': Optional[Dict[str, Any]],
     'intermediate_pedagogy_payload': Optional[Dict[str, Any]],
+
+    # Keys from the new Initial Report -> Pedagogy Flow
+    'initial_report_content': Optional[Dict[str, Any]], # From initial_report_generation_node
+    'conversational_tts': Optional[str], # From initial_report_generation_node
+    'task_suggestion_llm_output': Optional[Dict[str, Any]], # From pedagogy_generator_node
 
     # === Flow-Specific Context Keys (from app.py) ===
     # These are the keys that were being dropped. Now they are official.

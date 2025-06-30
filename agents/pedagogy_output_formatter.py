@@ -12,9 +12,16 @@ async def pedagogy_output_formatter_node(state: AgentGraphState) -> dict:
     """
     logger.info("---Executing Pedagogy Output Formatter (Layered Content Version)---")
 
+
     payload = state.get("intermediate_pedagogy_payload")
     if not payload:
         logger.warning("Pedagogy formatter received no intermediate payload.")
+
+    pedagogy_payload = state.get("task_suggestion_llm_output")
+
+    if not pedagogy_payload or not pedagogy_payload.get("task_suggestion_tts"):
+        logger.warning("No valid pedagogy content found in state. Providing a fallback response.")
+
         return {
             "final_text_for_tts": "I seem to have lost my train of thought. Could we try that again?",
             "final_ui_actions": []
