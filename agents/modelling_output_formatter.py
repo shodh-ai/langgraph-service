@@ -1,71 +1,94 @@
-# langgraph-service/agents/modelling_output_formatter.py
+# agents/modelling_output_formatter.py
 import logging
 from state import AgentGraphState
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
+# A mapping from the generator's simple action types to the frontend's specific action types
+ACTION_TYPE_MAP = {
+    "update_prompt_display": "UPDATE_TEXT_CONTENT",
+    "think_aloud": "UPDATE_TEXT_CONTENT",
+    "ai_writing_chunk": "APPEND_TEXT_TO_EDITOR_REALTIME",
+    "highlight_writing": "HIGHLIGHT_TEXT_RANGES",
+    "display_remark": "DISPLAY_REMARKS_LIST",
+    "self_correction": "REPLACE_TEXT_RANGE",
+}
+
+# A mapping for the targetElementId for each action
+TARGET_ELEMENT_MAP = {
+    "update_prompt_display": "p8ModelTaskPromptDisplay",
+    "think_aloud": "p8AiThinkAloudPanelOrSubtitle",
+    "ai_writing_chunk": "p8ModelEssayDisplayArea", # Or p8TiptapEditorForAiSpeech
+    "highlight_writing": "p8ModelEssayDisplayArea",
+    "display_remark": "p8ModelExplanationPanel",
+    "self_correction": "p8ModelEssayDisplayArea",
+}
+
 async def modelling_output_formatter_node(state: AgentGraphState) -> dict:
     """
-    Formats the output from the modelling generator into a final, user-facing response.
-    This node is responsible for creating the final `final_text_for_tts` and
-    `final_ui_actions` keys that the SSE streamer will yield to the client.
+    Translates the generator's creative script into a sequence of precise UI actions.
     """
-    logger.info("---Executing Modelling Output Formatter---")
-    
+    logger.info("---Executing Modelling Output Formatter (Advanced UI Version)---")
+
     payload = state.get("intermediate_modelling_payload")
+    if not payload or payload.get("error"):
+        error_msg = payload.get("error_message", "An error occurred preparing the model.")
+        logger.warning(f"Modelling Formatter received an error: {error_msg}")
+        return {"final_text_for_tts": error_msg, "final_ui_actions": []}
 
-    # --- Graceful Handling of Missing or Empty Payload ---
-    if not payload:
-        logger.warning("Modelling Formatter: Received an empty or missing payload.")
-        return {
-            "final_text_for_tts": "I seem to have had a problem preparing that example. Let's try something else.",
-            "final_ui_actions": []
-        }
+    sequence = payload.get("sequence", [])
+    if not sequence:
+        return {"final_text_for_tts": "I had an idea, but couldn't quite structure it. Let's try again.", "final_ui_actions": []}
 
-    # --- Handling Structured Errors from the Generator ---
-    if 'error' in payload:
-        error_message = payload.get('error_message', 'An unknown error occurred.')
-        logger.error(f"Modelling Formatter: Received error from generator: {error_message}")
-        return {
-            "final_text_for_tts": error_message,
-            "final_ui_actions": []
-        }
+    final_tts_parts = []
+    final_ui_actions = []
 
-    # --- Formatting the Successful Payload ---
-    try:
-        title = payload.get("model_title", "Here's an example")
-        summary = payload.get("model_summary", "")
-        steps = payload.get("model_steps", [])
+    for step in sequence:
+        step_type = step.get("type")
+        step_payload = step.get("payload", {})
+        
+        # --- 1. Assemble the TTS Script ---
+        # We'll speak the "think_aloud" parts and the written chunks.
+        if step_type in ["think_aloud", "ai_writing_chunk"]:
+            final_tts_parts.append(step_payload.get("text") or step_payload.get("text_chunk"))
 
-        # 1. Format the text for text-to-speech
-        tts_parts = [
-            f"Let's walk through an example: {title}.",
-            "I'll break it down step-by-step.",
-            *steps,  # Unpack the list of steps into the tts parts
-            f"The key takeaway is: {summary}"
-        ]
-        text_for_tts = " ".join(filter(None, tts_parts))
+        # --- 2. Translate to Frontend UI Actions ---
+        action_type = ACTION_TYPE_MAP.get(step_type)
+        target_id = TARGET_ELEMENT_MAP.get(step_type)
 
-        # 2. Create UI actions to display the model clearly
-        ui_actions = [
-            {
-                "action_type": "SHOW_MODEL_EXAMPLE",
-                "parameters": {
-                    "title": title,
-                    "steps": steps,  # Pass the list of steps directly
-                    "summary": summary
-                }
+        if not action_type or not target_id:
+            logger.warning(f"No UI action mapping found for step type: {step_type}")
+            continue
+
+        # Prepare parameters based on the specific action
+        params = {}
+        if step_type == "highlight_writing":
+            params = {"ranges": [step_payload]}
+        elif step_type == "display_remark":
+            params = {"remarks": [step_payload]}
+        else:
+            params = step_payload # For most actions, the payload maps directly
+
+        final_ui_actions.append({
+            "action_type": action_type,
+            "parameters": {
+                "targetElementId": target_id,
+                **params # Unpack the prepared parameters
             }
-        ]
+        })
 
-        # 3. Return the final, client-ready keys directly
-        return {
-            "final_text_for_tts": text_for_tts,
-            "final_ui_actions": ui_actions
+    # This is a complex interaction, so we package it into a single sequence command
+    # for the livekit-service to orchestrate.
+    final_orchestration_action = {
+        "action_type": "EXECUTE_INTERACTIVE_SEQUENCE",
+        "parameters": {
+            "tts_script": " ".join(filter(None, final_tts_parts)),
+            "ui_actions_with_timing": final_ui_actions # A real implementation might add timing info
         }
-    except Exception as e:
-        logger.error(f"Modelling Formatter: Failed to format payload. Error: {e}", exc_info=True)
-        return {
-            "final_text_for_tts": "I had trouble formatting the example content. My apologies.",
-            "final_ui_actions": []
-        }
+    }
+    
+    return {
+        "final_text_for_tts": " ".join(filter(None, final_tts_parts)), # Still return the full TTS
+        "final_ui_actions": final_ui_actions # And the list of actions
+    }
