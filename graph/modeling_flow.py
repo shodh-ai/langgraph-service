@@ -1,46 +1,38 @@
 # graph/modeling_flow.py
 from langgraph.graph import StateGraph, END
-try:
-    from state import AgentGraphState
-except ImportError:
-    print("Warning: Could not import AgentGraphState from 'state'. Using a placeholder.")
-    class AgentGraphState(dict): pass
+from state import AgentGraphState
 
-# Import the actual agent node functions for the modeling flow
+# 1. Import the agent node functions
 from agents import (
     modelling_RAG_document_node,
-    modelling_generator_node,
-    modelling_output_formatter_node,
+    modelling_generator,
+    modelling_output_formatter,
 )
 
-# Define node names for clarity
-NODE_MODELLING_RAG_DOCUMENT = "modelling_RAG_document"
-NODE_MODELLING_GENERATOR = "modelling_generator"
-NODE_MODELLING_OUTPUT_FORMATTER = "modelling_output_formatter"
+# 2. Define standardized node names
+NODE_MODELING_RAG = "modelling_rag"
+NODE_MODELING_GENERATOR = "modelling_generator"
+NODE_MODELING_OUTPUT_FORMATTER = "modelling_output_formatter"
+
 
 def create_modeling_subgraph():
     """
     Creates a LangGraph subgraph for the modeling flow.
-    This flow generates a model response based on a student's request, using RAG and a generator.
+    This flow follows the standard RAG -> Generator -> Formatter architecture.
     """
     workflow = StateGraph(AgentGraphState)
 
-    # Add nodes to the subgraph
-    workflow.add_node(NODE_MODELLING_RAG_DOCUMENT, modelling_RAG_document_node)
-    workflow.add_node(NODE_MODELLING_GENERATOR, modelling_generator_node)
-    workflow.add_node(NODE_MODELLING_OUTPUT_FORMATTER, modelling_output_formatter_node)
+    # 3. Add the nodes to the subgraph
+    workflow.add_node(NODE_MODELING_RAG, modelling_RAG_document_node)
+    workflow.add_node(NODE_MODELING_GENERATOR, modelling_generator)
+    workflow.add_node(NODE_MODELING_OUTPUT_FORMATTER, modelling_output_formatter)
 
-    # Set the entry point for the subgraph
-    workflow.set_entry_point(NODE_MODELLING_RAG_DOCUMENT)
+    # 4. Define the entry point and the sequential flow
+    workflow.set_entry_point(NODE_MODELING_RAG)
+    workflow.add_edge(NODE_MODELING_RAG, NODE_MODELING_GENERATOR)
+    workflow.add_edge(NODE_MODELING_GENERATOR, NODE_MODELING_OUTPUT_FORMATTER)
+    # The flow-specific formatter is the final step in this subgraph
+    workflow.add_edge(NODE_MODELING_OUTPUT_FORMATTER, END)
 
-    # Define the sequential flow
-    workflow.add_edge(NODE_MODELLING_RAG_DOCUMENT, NODE_MODELLING_GENERATOR)
-    workflow.add_edge(NODE_MODELLING_GENERATOR, NODE_MODELLING_OUTPUT_FORMATTER)
-    workflow.add_edge(NODE_MODELLING_OUTPUT_FORMATTER, END) # End of the modeling subgraph
-
+    # 5. Compile and return the subgraph
     return workflow.compile()
-
-if __name__ == "__main__":
-    print("Attempting to compile the modeling subgraph...")
-    modeling_graph_compiled = create_modeling_subgraph()
-    print("Modeling subgraph compiled successfully.")

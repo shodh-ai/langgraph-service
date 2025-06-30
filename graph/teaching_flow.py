@@ -1,45 +1,42 @@
+# graph/teaching_flow.py
 from langgraph.graph import StateGraph, END
+from state import AgentGraphState
 
-try:
-    from state import AgentGraphState
-except ImportError:
-    print("Warning: Could not import AgentGraphState from '..state'. Using a placeholder.")
-    class AgentGraphState(dict): pass
-
-
-# Import the actual agent node functions for the new teaching flow
+# 1. Import the agent node functions
 from agents import (
-    teaching_rag_node,
+    teaching_RAG_document_node,
     teaching_generator_node,
+    teaching_output_formatter_node,
+
 )
 
-# Define node names for clarity
+# 2. Define standardized node names
 NODE_TEACHING_RAG = "teaching_RAG"
 NODE_TEACHING_GENERATOR = "teaching_generator"
+NODE_TEACHING_OUTPUT_FORMATTER = "teaching_output_formatter"
 
-# Import the actual agent node functions for the teaching flow
-# The nodes deliver_lesson_step_node and process_student_qa_on_lesson_node
-# are not implemented. Using placeholders to allow the graph to build.
+
 
 def create_teaching_subgraph():
     """
     Creates a LangGraph subgraph for the LLM-based teaching module.
-
-    This subgraph defines a flow for generating and delivering dynamic lesson content.
+    This flow follows the standard RAG -> Generator -> Formatter architecture.
     """
     workflow = StateGraph(AgentGraphState)
 
-    # Add nodes to the subgraph
-    workflow.add_node(NODE_TEACHING_RAG, teaching_rag_node)
+    # 3. Add the nodes to the subgraph
+    workflow.add_node(NODE_TEACHING_RAG, teaching_RAG_document_node)
     workflow.add_node(NODE_TEACHING_GENERATOR, teaching_generator_node)
+    workflow.add_node(NODE_TEACHING_OUTPUT_FORMATTER, teaching_output_formatter_node)
 
-    # Set the entry point for the subgraph
+
+    # 4. Define the entry point and the sequential flow
     workflow.set_entry_point(NODE_TEACHING_RAG)
-
-    # Define the sequential flow
     workflow.add_edge(NODE_TEACHING_RAG, NODE_TEACHING_GENERATOR)
-    workflow.add_edge(NODE_TEACHING_GENERATOR, END) # End of the teaching subgraph
+    workflow.add_edge(NODE_TEACHING_GENERATOR, NODE_TEACHING_OUTPUT_FORMATTER)
+    # The flow-specific formatter is the final step in this subgraph
+    workflow.add_edge(NODE_TEACHING_OUTPUT_FORMATTER, END)
 
-    # Compile the subgraph definition into a runnable graph and return it.
+    # 5. Compile and return the subgraph
     return workflow.compile()
 

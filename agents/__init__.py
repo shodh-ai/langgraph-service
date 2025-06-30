@@ -1,137 +1,104 @@
 # agents/__init__.py
-import logging
 
-# Student model nodes
+# This file serves as the central index for all agent nodes in the application.
+# It has been refactored to support the standardized RAG -> Generator -> Formatter architecture.
+
+# ===================================
+# Core System Nodes
+# ===================================
 from .student_model_node import load_student_data_node, save_interaction_node
-
-# Conversational and curriculum management nodes
-from .conversational_manager_node import handle_home_greeting_node
+from .conversational_manager_node import handle_home_greeting_node as handle_welcome_node
 from .curriculum_navigator_node import determine_next_pedagogical_step_stub_node
 
-# Diagnostic nodes
-from .diagnostic_nodes import (
-    process_speaking_submission_node,
-    diagnose_speaking_stub_node,
-)
-
-# Feedback and output nodes
-from .feedback_generator_node2 import generate_speaking_feedback_stub_node
-from .session_notes_node import compile_session_notes_stub_node
-from .output_formatter_node import format_final_output_for_client_node
-
-# Kept for compatibility (to be deprecated)
-from .feedback_node import generate_feedback_stub_node
-from .special_feedback_node import generate_test_button_feedback_stub_node
-
-from .handle_welcome import handle_welcome_node
-from .student_data import student_data_node
-from .welcome_prompt import welcome_prompt_node
-from .motivational_support_node import motivational_support_node
-from .progress_reporter_node import progress_reporter_node
-from .inactivity_prompt_node import inactivity_prompt_node # Added inactivity_prompt_node
-from .tech_support_acknowledger_node import tech_support_acknowledger_node # Added tech support node
-from .prepare_navigation_node import prepare_navigation_node # Added prepare navigation node
-from .session_wrap_up_node import session_wrap_up_node
-from .finalize_session_in_mem0_node import finalize_session_in_mem0_node # Added session wrap up node
-
 from .conversation_handler import conversation_handler_node
-from .error_generator import error_generator_node
-from .feedback_student_data import feedback_student_data_node
-from .query_document import query_document_node
-from .RAG_document import RAG_document_node
-from .feedback_palnner import feedback_planner_node
-from .feedback_generator import feedback_generator_node
-from .scaffolding_student_data import scaffolding_student_data_node
-from .struggle_analyzer import struggle_analyzer_node
-from .scaffolding_retriever import scaffolding_retriever_node
-from .scaffolding_planner import scaffolding_planner_node
-from .scaffolding_generator import scaffolding_generator_node
-from .initial_report_generation import initial_report_generation_node
-from .error_generator import error_generator_node
-from .pedagogy_generator import pedagogy_generator_node
 
-# Modelling System Nodes
-from .modelling_RAG_document_node import modelling_RAG_document_node
-from .modelling_generator_node import modelling_generator_node
-from .modelling_output_formatter_node import modelling_output_formatter_node
+# ===================================
+# Standardized Flow Nodes
+# ===================================
 
-# Teaching System Nodes
-from .teaching_rag_node import teaching_rag_node
-from .teaching_delivery_node import teaching_delivery_node # This might become obsolete or repurposed
-from .teaching_generator_node import teaching_generator_node
-
-
-# Cowriting nodes
-from .cowriting_student_data import cowriting_student_data_node
-from .cowriting_analyzer import cowriting_analyzer_node
-from .cowriting_retriever import cowriting_retriever_node
-from .cowriting_planner import cowriting_planner_node
+# --- Cowriting Flow ---
+from .cowriting_RAG_document_node import cowriting_RAG_document_node
 from .cowriting_generator import cowriting_generator_node
+from .cowriting_output_formatter import cowriting_output_formatter_node
 
+# --- Feedback Flow ---
+from .feedback_RAG_document_node import feedback_RAG_document_node
+from .feedback_generator import feedback_generator_node
+from .feedback_output_formatter import feedback_output_formatter_node
+
+# --- Scaffolding Flow ---
+from .scaffolding_RAG_document_node import scaffolding_RAG_document_node
+from .scaffolding_generator import scaffolding_generator_node
+from .scaffolding_output_formatter import scaffolding_output_formatter_node
+
+# --- Modeling Flow ---
+from .modelling_RAG_document_node import modelling_RAG_document_node
+from .modelling_generator import modelling_generator_node as modelling_generator
+from .modelling_output_formatter import modelling_output_formatter_node as modelling_output_formatter
+
+# --- Teaching Flow ---
+from .teaching_RAG_document_node import teaching_RAG_document_node
+from .teaching_generator import teaching_generator_node
+from .teaching_output_formatter import teaching_output_formatter_node
+
+# --- Pedagogy Flow ---
+from .pedagogy_rag_node import pedagogy_rag_node
+from .pedagogy_generator import pedagogy_generator_node
+from .pedagogy_output_formatter import pedagogy_output_formatter_node
+
+# ===================================
+# General Purpose & Legacy Nodes
+# ===================================
+from .RAG_document import RAG_document_node # Generic RAG, to be reviewed
+from .error_generator import error_generator_node
+from .initial_report_generation import initial_report_generation_node
+
+# ===================================
+# Public API for the 'agents' package
+# ===================================
 __all__ = [
-    # Student model nodes
+    # Core System
     "load_student_data_node",
     "save_interaction_node",
-    # Conversational and curriculum management nodes
-    "handle_home_greeting_node",
-    "determine_next_pedagogical_step_stub_node",
-    # Diagnostic nodes
-    "process_speaking_submission_node",
-    "diagnose_speaking_stub_node",
-    # Feedback and output nodes
-    "generate_speaking_feedback_stub_node",
-    "compile_session_notes_stub_node",
-    "format_final_output_for_client_node",
-    # Legacy nodes (to be deprecated)
-    "generate_feedback_stub_node",
-    "generate_test_button_feedback_stub_node",
-    "inactivity_prompt_node", # Added inactivity_prompt_node
-    "tech_support_acknowledger_node", # Added tech support node
-    "prepare_navigation_node", # Added prepare navigation node
-    "session_wrap_up_node",
-    "finalize_session_in_mem0_node", # Added session wrap up node
-
-    # Welcome node
     "handle_welcome_node",
-    "welcome_prompt_node",
-    "student_data_node",
+    "determine_next_pedagogical_step_stub_node",
+
+
+    # General Conversation
     "conversation_handler_node",
-    "error_generator_node",
-    "feedback_student_data_node",
-    "query_document_node",
-    "RAG_document_node",
-    "feedback_planner_node",
-    "feedback_generator_node",
-    "scaffolding_student_data_node",
-    "struggle_analyzer_node",
 
-    # Scaffolding nodes
-    "scaffolding_student_data_node",
-    "struggle_analyzer_node",
-    "struggle_analyzer_node",
-    "scaffolding_retriever_node",
-    "scaffolding_planner_node",
-    "scaffolding_generator_node",
-
-    # Cowriting nodes
-    "cowriting_student_data_node",
-    "cowriting_analyzer_node",
-    "cowriting_retriever_node",
-    "cowriting_planner_node",
+    # Cowriting Flow
+    "cowriting_RAG_document_node",
     "cowriting_generator_node",
+    "cowriting_output_formatter_node",
 
-    "initial_report_generation_node",
-    "error_generator_node",
-    "pedagogy_generator_node",
+    # Feedback Flow
+    "feedback_RAG_document_node",
+    "feedback_generator_node",
+    "feedback_output_formatter_node",
 
-    # Modelling System Nodes
+    # Scaffolding Flow
+    "scaffolding_RAG_document_node",
+    "scaffolding_generator_node",
+    "scaffolding_output_formatter_node",
+
+    # Modeling Flow
     "modelling_RAG_document_node",
-    "modelling_generator_node",
-    "modelling_output_formatter_node",
+    "modelling_generator",
+    "modelling_output_formatter",
 
-    # Teaching System Nodes
-    "teaching_rag_node",
-    "teaching_delivery_node",
+    # Teaching Flow
+    "teaching_RAG_document_node",
     "teaching_generator_node",
+    "teaching_output_formatter_node",
+    
+    # Pedagogy Flow
+    "pedagogy_rag_node",
+    "pedagogy_generator_node",
+    "pedagogy_output_formatter_node",
 
+    # General & Legacy
+    "RAG_document_node",
+    "error_generator_node",
+    "initial_report_generation_node",
 ]

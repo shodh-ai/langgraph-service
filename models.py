@@ -88,7 +88,7 @@ class InteractionRequest(BaseModel):
     )  # e.g. [{"role": "user", "content": "..."}, {"role": "ai", "content": "..."}]
 
     user_id: Optional[str] = None
-    usertoken: Optional[str] = None
+    user_token: Optional[str] = None
 
 
 class InvokeTaskRequest(BaseModel):

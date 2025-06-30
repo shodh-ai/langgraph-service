@@ -1,192 +1,88 @@
-import json
-from state import AgentGraphState
+# agents/scaffolding_generator.py
 import logging
 import os
+import json
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
+from state import AgentGraphState
 
 logger = logging.getLogger(__name__)
 
+def format_rag_for_prompt(rag_data: list) -> str:
+    """Helper to format RAG results for the prompt."""
+    if not rag_data:
+        return "No specific expert examples were retrieved. Rely on general pedagogical principles for scaffolding."
+    # Use the top 1-2 examples to guide the LLM
+    try:
+        examples_str = "\n---\n".join([json.dumps(item, indent=2) for item in rag_data[:2]])
+        return f"Follow the patterns in these expert examples:\n{examples_str}"
+    except Exception as e:
+        logger.warning(f"Could not format RAG example for prompt: {e}")
+        return "No valid expert examples were retrieved."
 
 async def scaffolding_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates the final scaffolding content for the student.
-    
-    This node creates personalized scaffolding content based on the selected strategy,
-    adapting it to the student's specific needs and learning context.
+    Designs a scaffolding activity, including instructional text and editor content.
     """
-    logger.info(
-        f"ScaffoldingGeneratorNode: Entry point activated for user {state.get('user_id', 'unknown_user')}"
-    )
+    logger.info("---Executing Scaffolding Generator Node---")
     
-    user_data = state.get("user_data", {})
-    primary_struggle = state.get("primary_struggle", "")
-    learning_objective_id = state.get("learning_objective_id", "")
-    selected_scaffold_type = state.get("selected_scaffold_type", "")
-    scaffold_adaptation_plan = state.get("scaffold_adaptation_plan", "")
-    scaffold_content_type = state.get("scaffold_content_type", "")
-    scaffold_content_name = state.get("scaffold_content_name", "")
-    scaffold_content = state.get("scaffold_content", {})
-    
-    logger.info(f"Generator received scaffold type: {selected_scaffold_type}")
-    logger.info(f"Generator received content type: {scaffold_content_type}")
-    logger.info(f"Generator received content name: {scaffold_content_name}")
-    logger.info(f"State keys available: {list(state.keys())}")
-    
-    new_state = {key: value for key, value in state.items()}
-    
-    logger.info(f"Starting with state keys in generator: {list(new_state.keys())}")
-    
-    if not selected_scaffold_type:
-        logger.warning("No valid scaffolding strategy selected - using generic fallback")
-        
-        new_state["selected_scaffold_type"] = "Basic Template"
-        new_state["scaffold_content_type"] = "template"
-        new_state["scaffold_content_name"] = "Basic TOEFL Speaking Template"
-        
-        fallback_tts = "Here's a basic template to help structure your TOEFL speaking response."
-        
-        template_content = {
-            "fields": [
-                {"label": "Introduction", "placeholder": "I believe that..."},
-                {"label": "First Reason", "placeholder": "One reason is..."},
-                {"label": "Example", "placeholder": "For example..."},
-                {"label": "Second Reason", "placeholder": "Another reason is..."},
-                {"label": "Conclusion", "placeholder": "Therefore, I think..."},
-            ]
-        }
-        
-        scaffolding_ui = [{
-            "type": "scaffold",
-            "scaffold_type": "template",
-            "content": template_content
-        }]
-        
-        output_ui = [{
-            "type": "display_scaffold",
-            "scaffold_type": "template",
-            "scaffold_name": "Basic TOEFL Speaking Template",
-            "content": json.dumps(template_content)
-        }]
-        
-        new_state["scaffolding_output"] = {
-            "text_for_tts": fallback_tts,
-            "ui_components": scaffolding_ui
-        }
-        
-        new_state["output_content"] = {
-            "text_for_tts": fallback_tts,
-            "ui_actions": output_ui
-        }
-        
-        new_state["task_suggestion_llm_output"] = {
-            "task_suggestion_tts": fallback_tts
-        }
-        new_state["tts"] = "Let me help you organize your response better. I've created a template you can use to structure your thoughts."
-        return new_state
-    
-    prompt = f"""
-    You are 'The Encouraging Nurturer' AI Tutor.
-    
-    Student Profile: {user_data}
-    Primary Struggle: {primary_struggle}
-    Learning Objective: {learning_objective_id}
-    
-    You need to generate scaffolding for this student based on this plan:
-    Selected Scaffold Type: {selected_scaffold_type}
-    Adaptation Plan: {scaffold_adaptation_plan}
-    Scaffold Content Type: {scaffold_content_type}
-    Scaffold Content Name: {scaffold_content_name}
-    Scaffold Content Structure: {json.dumps(scaffold_content, indent=2)}
-    
-    Create a complete, personalized scaffolding response that:
-    1. Introduces the scaffolding in an encouraging way
-    2. Explains how to use it effectively
-    3. Includes the actual scaffolding content (template, questions, steps, etc.)
-    4. Provides guidance on applying it to their current task
-    5. Briefly mentions how this will help with their specific struggle
-    
-    Return JSON:
-    {{
-        "text_for_tts": "The spoken introduction to the scaffolding (friendly, encouraging, brief)",
-        "ui_components": [
-            {{
-                "type": "text",
-                "content": "Any explanatory text to display"
-            }},
-            {{
-                "type": "scaffold",
-                "scaffold_type": "{scaffold_content_type}",
-                "content": // The actual scaffold content structure
-            }},
-            {{
-                "type": "guidance",
-                "content": "Instructions on using the scaffold"
-            }}
-        ]
-    }}
-    """
-
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        logger.error("GOOGLE_API_KEY environment variable is not set")
-        return {
-            "scaffolding_output": {
-                "text_for_tts": "I'm sorry, but I'm having technical difficulties right now.",
-                "ui_components": []
-            }
-        }
-
     try:
+        # Get context from the state
+        rag_data = state.get("rag_document_data", [])
+        expert_examples_str = format_rag_for_prompt(rag_data)
+        
+        learning_task = state.get("Learning_Objective_Task", "the current writing task")
+        struggle_point = state.get("Specific_Struggle_Point", "general difficulty")
+
+        if not learning_task or not struggle_point:
+             raise ValueError("Missing 'Learning_Objective_Task' or 'Specific_Struggle_Point' in state.")
+
+        # This prompt asks the LLM to act as an instructional designer.
+        llm_prompt = f"""
+You are 'The Structuralist', an expert AI TOEFL Tutor who provides clear, structured support. Your task is to design a scaffolding activity for a student.
+
+**Student Context:**
+- Learning Task: "{learning_task}"
+- Specific Struggle Point: "{struggle_point}"
+
+**Expert Examples of Scaffolding for Similar Situations:**
+{expert_examples_str}
+
+**Your Task:**
+Generate a JSON object that defines the complete scaffolding experience. The object must have the following keys:
+
+1.  `"prompt_display_text"`: (String) The full essay prompt or task instruction that should be displayed to the student.
+2.  `"initial_editor_content"`: (String) The initial HTML content to set in the student's writing editor. This could be a template, a pre-written topic sentence, or an outline for them to fill in. Use `<p>` tags for paragraphs and placeholders like `[Your turn to write here]`.
+3.  `"ai_guidance_script"`: (Array of Strings) A list of short, spoken instructions or feedback. The first string will be the main instruction. Subsequent strings can be used for follow-up feedback.
+
+**Example JSON Output:**
+{{
+  "prompt_display_text": "Some people prefer to work for a large company. Others prefer to work for a small company. Which would you prefer? Use specific reasons and details to support your choice.",
+  "initial_editor_content": "<p>When considering my future career, I would prefer to work for a [large/small] company for several reasons.</p><p>Firstly, [Your first reason here].</p><p>Secondly, [Your second reason here].</p>",
+  "ai_guidance_script": [
+    "Okay, let's work on structuring your essay. I've set up a template for you in the editor with topic sentences. Your task is to fill in the supporting details for each reason.",
+    "That's a good start on your first reason! Now, can you add a specific example to make it stronger?",
+    "Excellent, you've completed the first paragraph. Let's move on to the second reason."
+  ]
+}}
+
+Generate the JSON object for the student's context now.
+"""
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key: raise ValueError("GOOGLE_API_KEY is not set.")
+
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
             "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
-        response = model.generate_content(prompt)
+        response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
         
-        text_for_tts = response_json.get("text_for_tts", "")
-        ui_components = response_json.get("ui_components", [])
+        logger.info("Scaffolding generator successfully created the activity plan.")
         
-        logger.info(f"Generated scaffolding with {len(ui_components)} UI components")
-        
-        new_state["scaffolding_output"] = {
-            "text_for_tts": text_for_tts,
-            "ui_components": ui_components
-        }
-        
-        new_state["output_content"] = {
-            "text_for_tts": text_for_tts,
-            "ui_actions": ui_components
-        }
-        
-        new_state["task_suggestion_llm_output"] = {
-            "task_suggestion_tts": text_for_tts
-        }
-        
-        logger.info(f"Generator returning state keys: {list(new_state.keys())}")
-        
-        return new_state
+        return {"intermediate_scaffolding_payload": response_json}
+
     except Exception as e:
-        logger.error(f"Error generating scaffolding: {e}")
-        
-        error_message = f"I'm sorry, but I encountered an error: {str(e)}"
-        
-        new_state["scaffolding_output"] = {
-            "text_for_tts": error_message,
-            "ui_components": []
-        }
-        
-        new_state["output_content"] = {
-            "text_for_tts": error_message,
-            "ui_actions": []
-        }
-        
-        new_state["task_suggestion_llm_output"] = {
-            "task_suggestion_tts": error_message
-        }
-        
-        logger.info(f"Generator returning state keys (error case): {list(new_state.keys())}")
-        
-        return new_state
+        logger.error(f"ScaffoldingGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
+        return {"intermediate_scaffolding_payload": {"error": True, "error_message": str(e)}}

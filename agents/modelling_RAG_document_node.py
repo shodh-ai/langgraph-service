@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 DB_DIRECTORY = "chroma_db"
-COLLECTION_NAME = "modeling_examples"
+COLLECTION_NAME = "tutor_knowledge_base"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2" # Must match the model used for ingestion
 TOP_K_RESULTS = 3 # Number of similar examples to retrieve
 
@@ -46,7 +46,7 @@ async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
     if not client or not collection:
         error_msg = "ChromaDB client is not available. Cannot perform RAG."
         logger.error(error_msg)
-        return {"modelling_document_data": [], "error": error_msg}
+        return {"rag_document_data": [], "error": error_msg}
 
     # 1. Construct the query string from the state
     query_parts = [str(state.get(key, "")) for key in QUERY_CONTEXT_COLUMNS]
@@ -54,7 +54,7 @@ async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
 
     if not query_string:
         logger.warning("RAG Node: Query string is empty. Skipping vector search.")
-        return {"modelling_document_data": [], "info": "Query for RAG was empty."}
+        return {"rag_document_data": [], "info": "Query for RAG was empty."}
 
     logger.info(f"RAG Node: Constructed query for vector search: '{query_string[:200]}...'")
 
@@ -76,11 +76,11 @@ async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
         else:
             logger.info(f"RAG Node: Retrieved {len(retrieved_documents)} documents from ChromaDB.")
 
-        return {"modelling_document_data": retrieved_documents}
+        return {"rag_document_data": retrieved_documents}
 
     except Exception as e:
         logger.error(f"RAG Node: An error occurred during ChromaDB query: {e}", exc_info=True)
-        return {"modelling_document_data": [], "error": f"Failed to query vector database: {e}"}
+        return {"rag_document_data": [], "error": f"Failed to query vector database: {e}"}
 
 # Example usage (for local testing if needed)
 async def main_test():
@@ -129,7 +129,7 @@ async def main_test():
     # Test case 1: Query matching the third document
     state1 = MockAgentGraphState({
         "user_id": "test_user_rag_1",
-        "modelling_document_data": sample_docs,
+        "rag_document_data": sample_docs,
         "example_prompt_text": "Describe your favorite book and explain why you like it so much.",
         "student_goal_context": "My main goal is to score 105+ for grad school, focusing on speaking and writing.",
         "student_confidence_context": "I'm fairly confident, but want to polish writing and make speaking more natural under pressure.",
@@ -148,7 +148,7 @@ async def main_test():
     # Test case 2: Query matching the first document
     state2 = MockAgentGraphState({
         "user_id": "test_user_rag_2",
-        "modelling_document_data": sample_docs,
+        "rag_document_data": sample_docs,
         "example_prompt_text": "Tell me about your favorite city.", # Slightly different phrasing
         "student_goal_context": "Improve speaking fluency.",
         "student_confidence_context": "Nervous about complex sentences.",
@@ -166,7 +166,7 @@ async def main_test():
     # Test case 3: Empty document list
     state3 = MockAgentGraphState({
         "user_id": "test_user_rag_3",
-        "modelling_document_data": [], # Empty list
+        "rag_document_data": [], # Empty list
         "example_prompt_text": "Anything"
     })
     print("\n--- Test Case 3: Empty document list ---")
@@ -177,7 +177,7 @@ async def main_test():
     # Test case 4: Empty query string (all context fields empty)
     state4 = MockAgentGraphState({
         "user_id": "test_user_rag_4",
-        "modelling_document_data": sample_docs,
+        "rag_document_data": sample_docs,
         "example_prompt_text": "",
         "student_goal_context": "",
         "student_confidence_context": "",

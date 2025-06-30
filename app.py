@@ -26,19 +26,22 @@ from fastapi import UploadFile, File
 from deepgram import DeepgramClient
 from deepgram import PrerecordedOptions
 
-# Assuming mem0_memory is correctly located and imported for /user/register
-# If it's in a 'memory' directory/module at the same level as app.py:
-from memory import mem0_memory # Import the shared instance for user registration
-
+from memory import initialize_memory
+import memory
+ 
 from graph_builder import build_graph
 from state import AgentGraphState
 import uuid
+
+# Define the directory for uploads
+UPLOAD_DIR = "uploads"
 
 # +++ DEFINE THE NEW REQUEST MODEL +++
 # This matches the payload that livekit-service is sending.
 class InvokeTaskRequest(BaseModel):
     task_name: str
     json_payload: str
+from contextlib import asynccontextmanager
 from models import (
     InteractionRequest,
     InteractionResponse,
@@ -46,10 +49,24 @@ from models import (
     ReactUIAction,
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handles application startup and shutdown events.
+    Initializes the global memory instance.
+    """
+    logger.info("--- Application startup: Initializing memory ---")
+    initialize_memory()
+    logger.info("--- Application startup: Memory initialized ---")
+    yield
+    logger.info("--- Application shutdown ---")
+
+
 app = FastAPI(
-    title="TOEFL Tutor AI Service",
+    title="ShodhAI Langgraph",
     version="0.1.0",
-    description="A LangGraph-based AI service for TOEFL tutoring."
+    description="A LangGraph-based AI service for academic tutoring.",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -109,47 +126,103 @@ class UserRegistrationRequest(BaseModel):
     goal: str
     feeling: str
     confidence: str
+def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
+    """
+    Takes the incoming universal request and builds the complete,
+    fully populated state for the LangGraph. This is the single source of truth
+    for the graph's starting conditions.
+    """
+    payload = json.loads(request_data.json_payload)
+    user_id = payload.get("user_id", "unknown_user")
+    session_id = payload.get("session_id", str(uuid.uuid4()))
+
+    # --- This is the final, complete logic for state creation ---
+    # It explicitly unpacks all known context fields from ALL possible flows.
+    
+    initial_state = {
+        # Core Identifiers
+        "user_id": user_id,
+        "session_id": session_id,
+        "task_name": request_data.task_name,
+        "transcript": payload.get("transcript"), 
+        # --- Unpack all known context fields from the payload ---
+        
+        # Cowriting Flow Fields
+        "Learning_Objective_Focus": payload.get("Learning_Objective_Focus"),
+        "Student_Written_Input_Chunk": payload.get("transcript"),
+        "Immediate_Assessment_of_Input": payload.get("Immediate_Assessment_of_Input"),
+        "Student_Articulated_Thought": payload.get("Student_Articulated_Thought"), # Added this for completeness
+        
+        # Modelling Flow Fields
+        "example_prompt_text": payload.get("example_prompt_text"),
+        "student_struggle_context": payload.get("student_struggle_context"),
+        "english_comfort_level": payload.get("english_comfort_level"),
+        "student_goal_context": payload.get("student_goal_context"),
+        "student_confidence_context": payload.get("student_confidence_context"),
+        "teacher_initial_impression": payload.get("teacher_initial_impression"),
+
+        # Teaching Flow Fields
+        "STUDENT_PROFICIENCY": payload.get("STUDENT_PROFICIENCY"),
+        "STUDENT_AFFECTIVE_STATE": payload.get("STUDENT_AFFECTIVE_STATE"),
+        
+        # Scaffolding Flow Fields
+        "Learning_Objective_Task": payload.get("Learning_Objective_Task"),
+        "Specific_Struggle_Point": payload.get("Specific_Struggle_Point"),
+        "Student_Attitude_Context": payload.get("Student_Attitude_Context"),
+
+        # Feedback Flow Fields
+        "Task": payload.get("Task"),
+        "Proficiency": payload.get("Proficiency"),
+        "Error": payload.get("Error"),
+        "Behavior Factor": payload.get("Behavior Factor"),
+        "diagnosed_error_type": payload.get("diagnosed_error_type"),
+
+        # Pedagogy Flow Fields
+        "Answer One": payload.get("Answer One"),
+        "Answer Two": payload.get("Answer Two"),
+        "Answer Three": payload.get("Answer Three"),
+        "Initial Impression": payload.get("Initial Impression"),
+        "Speaking Strengths": payload.get("Speaking Strengths"),
+
+        # --- Default initializations for all other state keys ---
+        "transcript": payload.get("transcript"), 
+        "current_context": {"user_id": user_id, "task_stage": request_data.task_name},
+        "chat_history": payload.get("chat_history", []),
+        "rag_document_data": [],
+        "intermediate_modelling_payload": None,
+        "intermediate_teaching_payload": None,
+        "intermediate_scaffolding_payload": None,
+        "intermediate_feedback_payload": None,
+        "intermediate_cowriting_payload": None,
+        "intermediate_pedagogy_payload": None,
+        "final_flow_output": None,
+        "final_text_for_tts": None,
+        "final_ui_actions": [],
+        "error_message": None,
+        "route_to_error_handler": False,
+    }
+    
+    logger.info(f"Created initial state with populated context for task: '{request_data.task_name}'")
+    logger.debug(f"Initial state includes Student_Written_Input_Chunk: '{initial_state.get('Student_Written_Input_Chunk')}'")
+    logger.info(f"Created initial state. Transcript found: {bool(initial_state.get('transcript'))}")
+
+    return initial_state
+
 @app.post("/invoke_task_streaming")
 async def invoke_task_streaming_route(request_data: InvokeTaskRequest):
     """
     Receives a generic task, unpacks the payload, and starts the graph stream.
     This is the new, preferred entry point.
     """
-    logger.info(f"Received universal task '{request_data.task_name}'.")
     try:
-        # Convert the JSON payload string from the request back into a Python dict
-        payload = json.loads(request_data.json_payload)
+        initial_graph_state = create_initial_state(request_data)
 
-        # Build the initial state for the LangGraph using data from the payload
-        initial_graph_state: AgentGraphState = {
-            "user_id": payload.get("user_id", "unknown_user"),
-            "session_id": payload.get("session_id", str(uuid.uuid4())),
-            "transcript": payload.get("message"),
-            "current_context": {
-                "task_stage": payload.get("task_stage", request_data.task_name), # Use task_name as fallback
-                "user_id": payload.get("user_id"),
-            },
-            "chat_history": payload.get("chat_history", []),
-            "task_name": request_data.task_name,
-            "example_prompt_text": payload.get("message"),
-            
-            # Initialize all other state fields to None or default values
-            "full_submitted_transcript": None, "question_stage": None, "student_memory_context": None,
-            "next_task_details": None, "diagnosis_result": None, "output_content": None,
-            "feedback_content": None, "modelling_output_content": None, "teaching_output_content": None,
-            "task_suggestion_llm_output": None, "inactivity_prompt_response": None,
-            "motivational_support_response": None, "tech_support_response": None,
-            "navigation_instruction_target": None, "data_for_target_page": None,
-            "conversational_tts": None, "cowriting_output_content": None, 
-            "scaffolding_output_content": None, "session_summary_text": None,
-            "progress_report_text": None, "student_model_summary": None,
-            "system_prompt_config": None, "llm_json_validation_map": None,
-            "error_count": 0, "last_error_message": None, "current_node_name": None,
-        }
+        # Create the config for the graph invocation, which is essential for memory
+        config = {"configurable": {"thread_id": initial_graph_state.get("session_id")}}
 
-        # Call the SSE streamer with the prepared state
+        # Call the SSE streamer with the prepared state and config
         return StreamingResponse(
-            stream_graph_responses_sse(initial_graph_state), 
+            stream_graph_responses_sse(initial_graph_state, config),
             media_type="text/event-stream"
         )
     except json.JSONDecodeError as e:
@@ -165,7 +238,7 @@ async def register_user(registration_data: UserRegistrationRequest):
     try:
         profile_data = registration_data.model_dump(exclude={"user_id"})
         
-        mem0_memory.update_student_profile(
+        memory.memory_stub.update_student_profile(
             user_id=registration_data.user_id,
             profile_data=profile_data
         )
@@ -179,44 +252,51 @@ async def register_user(registration_data: UserRegistrationRequest):
 # --- Streaming Endpoint --- 
 # In app.py
 
-async def stream_graph_responses_sse(initial_graph_state: AgentGraphState):
-    """
-    This version processes events as they happen, enabling simultaneous
-    """
-    config = {"recursion_limit": 100}
+# FINAL, PERFECTED app.py
 
+async def stream_graph_responses_sse(initial_graph_state: AgentGraphState, config: dict):
+    """
+    This final version listens for the output of a finalizing node and
+    streams it back as a single, comprehensive "final_response" event.
+    """
     try:
         yield f"event: stream_start\ndata: {json.dumps({'message': 'Stream started'})}\n\n"
         
-        # We now use astream_events to get intermediate node outputs
-        async for event in toefl_tutor_graph.astream_events(
-            initial_graph_state, config=config, stream_mode="values"
-        ):
+        FINALIZING_NODES = [
+            "conversation_handler", "handle_welcome", "acknowledge_interrupt",
+            "modelling_output_formatter", "teaching_output_formatter",
+            "scaffolding_output_formatter", "feedback_output_formatter",
+            "cowriting_output_formatter", "pedagogy_output_formatter",
+        ]
+
+        async for event in toefl_tutor_graph.astream_events(initial_graph_state, config=config, stream_mode="values"):
             event_name = event.get("event")
             node_name = event.get("name")
             
-            # --- THIS IS THE NEW LOGIC ---
-            # We are now listening for the stream from our specific formatter node
-            if event_name == "on_chain_stream" and node_name == "modelling_output_formatter":
-                # The 'chunk' is whatever our node `yield`ed
-                if chunk := event.get("data", {}).get("chunk"):
-                    if text_chunk := chunk.get("streaming_text_chunk"):
-                        logger.info("SSE Streamer: Yielding text chunk from formatter.")
-                        yield f"event: streaming_text_chunk\ndata: {json.dumps({'streaming_text_chunk': text_chunk})}\n\n"
-                    
-                    if ui_action := chunk.get("ui_action"):
-                        logger.info(f"SSE Streamer: Yielding UI action from formatter: {ui_action.get('action_type')}")
-                        # Wrap it in the expected 'final_ui_actions' format for the consumer
-                        yield f"event: final_ui_actions\ndata: {json.dumps({'ui_actions': [ui_action]})}\n\n"
+            if event_name == "on_chain_end" and node_name in FINALIZING_NODES:
+                logger.info(f"SSE Streamer: Captured final output from node '{node_name}'.")
+                output_data = event.get("data", {}).get("output", {})
+                
+                if not output_data:
+                    logger.warning(f"Node '{node_name}' finished but produced no output data.")
+                    continue
+
+                # --- THIS IS THE FIX ---
+                # We package everything into ONE event.
+                final_response_payload = {
+                    "final_text_for_tts": output_data.get("final_text_for_tts"),
+                    "final_ui_actions": output_data.get("final_ui_actions", [])
+                }
+
+                logger.info("SSE Streamer: Yielding single 'final_response' event.")
+                yield f"event: final_response\ndata: {json.dumps(final_response_payload)}\n\n"
 
     except Exception as e:
         logger.error(f"Error streaming graph responses: {e}", exc_info=True)
-        error_message = json.dumps({"error": str(e)})
-        yield f"event: error\ndata: {error_message}\n\n"
+        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
     finally:
         logger.info("SSE stream finished.")
-        final_message = json.dumps({"message": "Stream complete"})
-        yield f"event: end\ndata: {final_message}\n\n"
+        yield f"event: stream_end\ndata: {json.dumps({'message': 'Stream complete'})}\n\n"
 
 @app.post("/process_interaction_streaming")
 async def process_interaction_streaming_route(request_data: InteractionRequest):
@@ -263,7 +343,7 @@ async def process_interaction_streaming_route(request_data: InteractionRequest):
     
     initial_graph_state: AgentGraphState = {
         "user_id": user_id,
-        "user_token": getattr(request_data, "usertoken", None),
+        "user_token": getattr(request_data, "user_token", None),
         "session_id": session_id,
         "transcript": transcript,
         "full_submitted_transcript": full_submitted_transcript,
@@ -312,10 +392,38 @@ async def process_interaction_streaming_route(request_data: InteractionRequest):
         media_type="text/event-stream"
     )
 
+@app.post("/invoke_task", response_model=Dict[str, Any])
+async def invoke_task_route(request_data: InvokeTaskRequest):
+    """
+    Handles non-streaming requests for fast, simple nodes.
+    """
+    logger.info(f"Received non-streaming task '{request_data.task_name}'.")
+    try:
+        initial_state = create_initial_state(request_data)
+        config = {"configurable": {"thread_id": initial_state["session_id"]}}
+        
+        # Use ainvoke for a single, final result.
+        final_state = await toefl_tutor_graph.ainvoke(initial_state, config=config)
+        
+        # Return the final output keys directly.
+        return {
+            "final_text_for_tts": final_state.get("final_text_for_tts"),
+            "final_ui_actions": final_state.get("final_ui_actions", [])
+        }
+    except Exception as e:
+        logger.error(f"Error in non-streaming invoke_task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.post("/process_interaction", response_model=InteractionResponse)
 async def process_interaction_route(request_data: InteractionRequest):
     # Debugging: Log the entire request payload to see what we're getting
     logger.info(f"Received request payload: {json.dumps(request_data.model_dump(), default=str)[:500]}...")
+
+    # --- ADDED FOR TOKEN DEBUGGING ---
+    user_token = request_data.user_token
+    logger.info(f"--- TOKEN RECEIVED IN /process_interaction ---")
+    logger.info(f"USER_TOKEN: {user_token}")
+    logger.info(f"----------------------------------------------")
     default_user_id = "default_user_for_testing"
     default_session_id = str(uuid.uuid4())
 
@@ -364,7 +472,7 @@ async def process_interaction_route(request_data: InteractionRequest):
     
     initial_graph_state: AgentGraphState = {
         "user_id": user_id,
-        "user_token": request_data.usertoken,
+        "user_token": request_data.user_token,
         "session_id": session_id,
         "transcript": transcript,
         "full_submitted_transcript": full_submitted_transcript,
@@ -372,6 +480,7 @@ async def process_interaction_route(request_data: InteractionRequest):
         "chat_history": chat_history,
         "question_stage": context.question_stage,
         "student_memory_context": None,
+        "task_stage": request_data.current_context.task_stage,
         "next_task_details": next_task_details,
         "diagnosis_result": None,
         "output_content": None,
@@ -483,7 +592,7 @@ async def process_interaction_non_streaming_route(request_data: InteractionReque
             transcript=request_data.transcript,
             current_context=request_data.current_context,
             chat_history=request_data.chat_history,
-            user_token=request_data.usertoken,
+            user_token=request_data.user_token,
             full_submitted_transcript=request_data.transcript if request_data.current_context.task_stage == "speaking_task_submitted" else None,
             question_stage=request_data.current_context.question_stage,
             student_memory_context=None,
@@ -646,8 +755,13 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    import os
-    # Use PORT from env, default to 8000 (common for dev, original used 5005)
+
+
+    # Ensure the upload directory exists
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+    
+    # Run the FastAPI app with uvicorn
     port = int(os.getenv("PORT", "8080")) 
     logger.info(f"Starting Uvicorn server on host 0.0.0.0:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
