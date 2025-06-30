@@ -1,4 +1,4 @@
-# langgraph-service/agents/modelling_generator.py
+# agents/modelling_generator.py
 import logging
 import os
 import json
@@ -9,104 +9,101 @@ from state import AgentGraphState
 logger = logging.getLogger(__name__)
 
 def format_rag_for_prompt(rag_data: list) -> str:
-    """Formats the RAG document data into a string for the LLM prompt."""
+    """Helper to format RAG results for the prompt."""
     if not rag_data:
-        return "No expert examples were found in the knowledge base."
-    
-    formatted_examples = []
-    for i, item in enumerate(rag_data):
-        # Assuming each item is a dict with a 'content' key from the knowledge base
-        content = item.get('content', 'No content available.')
-        formatted_examples.append(f"--- Expert Example {i+1} ---\n{content}\n")
-    
-    return "\n".join(formatted_examples)
+        return "No expert examples were retrieved. Rely on general principles."
+    # We'll just use the first, most relevant example to keep the prompt clean
+    # and give the LLM a single, strong pattern to follow.
+    try:
+        example = rag_data[0]
+        # We only need the 'modeling_and_think_aloud_sequence_json' as the example
+        sequence_example_str = example.get('modeling_and_think_aloud_sequence_json', '{}')
+        # Pretty-print the JSON so the LLM can easily read the structure
+        sequence_example_json = json.dumps(json.loads(sequence_example_str), indent=2)
+        return f"Follow this example structure for the sequence:\n{sequence_example_json}"
+    except Exception as e:
+        logger.warning(f"Could not format RAG example for prompt: {e}")
+        return "No valid expert examples were retrieved."
 
 async def modelling_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates the full modelling script and associated content by using context
-    from the state to create a detailed prompt for the LLM.
+    Generates a rich, sequential script for a modelling session.
     """
-    logger.info("---Executing Modelling Generator Node---")
-
-    # --- Defensive checks for required inputs ---
-    prompt_to_model = state.get("example_prompt_text")
-    if not prompt_to_model:
-        logger.warning("ModellingGeneratorNode: 'example_prompt_text' not found in state.")
-        return {
-            "intermediate_modelling_payload": {
-                "error": "Missing prompt",
-                "error_message": "I seem to have misplaced the prompt we were going to work on. Could you tell me again?"
-            }
-        }
-
-    rag_document_data = state.get("rag_document_data")
-    if not rag_document_data:
-        logger.warning("ModellingGeneratorNode: Received no RAG documents. Cannot generate model.")
-        return {
-            "intermediate_modelling_payload": {
-                "error": "Missing RAG data",
-                "error_message": "I'm sorry, I couldn't find any reference materials for this task. Let's try a different approach."
-            }
-        }
-    # --- End defensive checks ---
-
+    logger.info("---Executing Modelling Generator Node (Advanced UI Version)---")
+    
     try:
-        # Now we can safely get the rest of the context
-        student_struggle = state.get("student_struggle_context", "general difficulties")
-        english_comfort = state.get("english_comfort_level", "not specified")
-        student_goal = state.get("student_goal_context", "not specified")
-        student_confidence = state.get("student_confidence_context", "not specified")
+        prompt_to_model = state.get("example_prompt_text")
+        if not prompt_to_model:
+            raise ValueError("'example_prompt_text' is missing from the state.")
+            
+        rag_data = state.get("rag_document_data", [])
+        expert_example_str = format_rag_for_prompt(rag_data)
 
-        expert_examples = format_rag_for_prompt(rag_document_data)
-
-        # --- Prompt Engineering ---
-        # This prompt is now rich with context from the state.
+        # This is a highly detailed prompt that instructs the LLM to produce
+        # a script with all the actions you need.
         llm_prompt = f"""
-_You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to MODEL how to approach a TOEFL task._
+You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to generate a step-by-step script for a modelling session to demonstrate how to answer the following prompt.
 
-**Student Context:**
-- Task Prompt for Student: "{prompt_to_model}"
-- Student's Primary Struggle: "{student_struggle}"
-- Student's Stated Goal: "{student_goal}"
-- Student's Confidence Level: "{student_confidence}"
-- Student's English Comfort Level: "{english_comfort}"
-
-**Expert Examples from Knowledge Base:**
-{expert_examples}
+**Student's Task Prompt:** "{prompt_to_model}"
 
 **Your Task:**
-_Generate a response that breaks down the process into logical steps. 
-Include a title for the model, a summary of the key takeaway, and the steps themselves._
+Generate a JSON object containing a "sequence" of actions. This sequence will be executed one by one to create an interactive modelling experience. Each object in the sequence array must have a "type" and a "payload".
 
-_Return a SINGLE JSON object with the following keys:_
-- _"model_title": (String) A clear, concise title for the example (e.g., 'How to Structure a Paragraph')._
-- _"model_steps": (Array of Strings) A list where each string is a distinct step in the process (e.g., ["Step 1: Write a topic sentence.", "Step 2: Provide supporting evidence.", "Step 3: Add a concluding sentence."])_
-- _"model_summary": (String) A brief summary of the main lesson from the model._
+Here are the valid types and their payloads:
+
+1.  **`"type": "update_prompt_display"`**
+    -   `"payload": {{"text": "The prompt you are modeling."}}`
+    -   Use this ONCE at the very beginning.
+
+2.  **`"type": "think_aloud"`**
+    -   `"payload": {{"text": "Your meta-commentary, explaining your thought process."}}`
+    -   Use this to explain WHAT you are doing and WHY.
+
+3.  **`"type": "ai_writing_chunk"`**
+    -   `"payload": {{"text_chunk": "A piece of the essay text you are writing."}}`
+    -   Use this to progressively "type out" the model answer.
+
+4.  **`"type": "highlight_writing"`**
+    -   `"payload": {{"start": <int>, "end": <int>, "remark_id": "M_R1"}}`
+    -   Use this to highlight a section of the text you just wrote. `start` and `end` are character offsets relative to the full essay text so far.
+
+5.  **`"type": "display_remark"`**
+    -   `"payload": {{"remark_id": "M_R1", "text": "A detailed explanation for why you highlighted this part."}}`
+    -   Use this immediately after a `highlight_writing` action. The `remark_id` MUST match.
+
+6.  **`"type": "self_correction"`**
+    -   `"payload": {{"start": <int>, "end": <int>, "new_text": "a better phrase"}}`
+    -   Use this to demonstrate editing and improving your own writing.
+
+**Example of a sequence:**
+{expert_example_str}
+
+**Instructions:**
+- Start with `update_prompt_display`.
+- Intersperse `think_aloud` steps to explain your reasoning.
+- Use `ai_writing_chunk` multiple times to build the essay piece by piece.
+- Use `highlight_writing` and `display_remark` to draw attention to key parts.
+- Optionally, include a `self_correction` to show the editing process.
+- Ensure all character offsets for `highlight_writing` and `self_correction` are accurate.
+
+Generate the JSON object with the "sequence" array now.
 """
-        logger.debug(f"Modelling Generator Prompt:\n{llm_prompt}")
-        
-        # --- LLM Call ---
+
         api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+        if not api_key: raise ValueError("GOOGLE_API_KEY is not set.")
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.0-flash",
+            "gemini-2.0-flash", # A more advanced model is needed for this complex task
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
-        logger.info(f"LLM Response for modelling: {response_json}")
-
-        # This node's output is an intermediate payload for the formatter.
-        return {"intermediate_modelling_payload": response_json}
         
+        logger.info("Modelling generator successfully created a rich action sequence.")
+        
+        return {"intermediate_modelling_payload": response_json}
+
     except Exception as e:
         logger.error(f"ModellingGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
-        return {
-            "intermediate_modelling_payload": {
-                "error": "Generator failure",
-                "error_message": f"I encountered an unexpected issue while preparing your modeling exercise. The error was: {e}"
-            }
-        }
+        return {"intermediate_modelling_payload": {"error": True, "error_message": str(e)}}
