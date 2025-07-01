@@ -232,6 +232,16 @@ async def invoke_task_streaming_route(request_data: InvokeTaskRequest):
         logger.error(f"Error in invoke_task_streaming: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error.")
 
+@app.get("/invoke_task_streaming")
+async def invoke_task_streaming_get_handler():
+    """
+    Handle GET requests to the streaming endpoint with a helpful error message.
+    This endpoint is designed for POST requests only, but browsers may try to GET it directly.
+    """
+    logger.warning("Received GET request to /invoke_task_streaming, which only supports POST")
+    return {"error": "This endpoint only accepts POST requests with a JSON payload.", 
+            "message": "If you're trying to use the welcome flow, please access it through the dashboard page."}
+
 @app.post("/user/register")
 async def register_user(registration_data: UserRegistrationRequest):
     logger.info(f"Received registration data for user_id: {registration_data.user_id}")

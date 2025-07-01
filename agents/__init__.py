@@ -7,7 +7,7 @@
 # Core System Nodes
 # ===================================
 from .student_model_node import load_student_data_node, save_interaction_node
-from .conversational_manager_node import handle_home_greeting_node as handle_welcome_node
+from .handle_welcome import handle_welcome_node  # Using our custom welcome node directly
 from .curriculum_navigator_node import determine_next_pedagogical_step_stub_node
 
 from .conversation_handler import conversation_handler_node

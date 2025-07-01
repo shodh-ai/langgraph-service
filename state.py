@@ -73,5 +73,9 @@ AgentGraphState = TypedDict('AgentGraphState', {
     
     # === Error Handling ===
     'error_message': Optional[str],
-    'route_to_error_handler': bool
+    'route_to_error_handler': bool,
+    
+    # === Welcome Flow ===
+    'welcome_text': Optional[str],  # Welcome message text for TTS
+    'welcome_ui_actions': Optional[List[Dict[str, Any]]]  # UI actions for welcome flow navigation
 })
