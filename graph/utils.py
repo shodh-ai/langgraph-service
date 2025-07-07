@@ -61,23 +61,26 @@ def get_chroma_collection() -> Optional[chromadb.Collection]:
         _collection = None
         return None
 
-async def query_knowledge_base(query_string: str, category: str, lesson_id: str = None) -> List[Dict[str, Any]]:
+async def query_knowledge_base(query_string: str, category: Optional[str], lesson_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Queries the ChromaDB knowledge base with enhanced filtering.
+    Queries the ChromaDB knowledge base with robust, conditional filtering.
+    Handles None for category and lesson_id gracefully by omitting them from the filter.
 
     Args:
         query_string (str): The user's query.
-        category (str): The primary category to filter by (e.g., 'teaching').
+        category (str, optional): The primary category to filter by (e.g., 'teaching').
         lesson_id (str, optional): The specific lesson_id to filter by. Defaults to None.
 
     Returns:
         List[Dict[str, Any]]: A list of retrieved documents.
     """
-    log_message = f"Querying KB for category '{category}'" 
+    log_message_parts = ["Querying KB"]
+    if category:
+        log_message_parts.append(f"for category '{category}'")
     if lesson_id:
-        log_message += f" and lesson_id '{lesson_id}'"
-    log_message += f" with query: '{query_string[:50]}...'"
-    logger.info(log_message)
+        log_message_parts.append(f"and lesson_id '{lesson_id}'")
+    log_message_parts.append(f"with query: '{query_string[:50]}...'" if query_string else "")
+    logger.info(" ".join(log_message_parts))
 
     try:
         collection = get_chroma_collection()
@@ -86,21 +89,23 @@ async def query_knowledge_base(query_string: str, category: str, lesson_id: str 
             logger.error("Cannot perform RAG because ChromaDB collection is not available.")
             return []
 
-        # --- Dynamic Filter Construction ---
-        filter_conditions = {"category": category}
+        # --- Dynamic, Safe Filter Construction ---
+        and_conditions = []
+        if category:
+            and_conditions.append({"category": {"$eq": category}})
         if lesson_id:
-            # Using $and to require both conditions to be met
-            filter_conditions = {
-                "$and": [
-                    {"category": {"$eq": category}},
-                    {"lesson_id": {"$eq": lesson_id}}
-                ]
-            }
+            and_conditions.append({"lesson_id": {"$eq": lesson_id}})
+
+        where_clause = None
+        if len(and_conditions) > 1:
+            where_clause = {"$and": and_conditions}
+        elif len(and_conditions) == 1:
+            where_clause = and_conditions[0]
         
         results = collection.query(
             query_texts=[query_string],
             n_results=TOP_K_RESULTS,
-            where=filter_conditions
+            where=where_clause  # This will be None if no conditions are met, which is valid
         )
 
         retrieved_documents = results.get('metadatas', [[]])[0]

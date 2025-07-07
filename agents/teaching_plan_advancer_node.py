@@ -2,6 +2,7 @@
 import logging
 from state import AgentGraphState
 
+
 logger = logging.getLogger(__name__)
 
 async def teaching_plan_advancer_node(state: AgentGraphState) -> dict:
@@ -15,11 +16,11 @@ async def teaching_plan_advancer_node(state: AgentGraphState) -> dict:
     
     logger.info(f"Advancing lesson plan from step {current_index} to {new_index}.")
     
-    # Get the existing plan from the state that was passed to this node.
-    plan = state.get("pedagogical_plan")
-    
-    # Return BOTH the new index AND the existing plan.
     return {
         "current_plan_step_index": new_index,
-        "pedagogical_plan": plan 
+        "pedagogical_plan": state.get("pedagogical_plan"),
+        "lesson_id": state.get("lesson_id"),
+        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
+        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
+        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
     }

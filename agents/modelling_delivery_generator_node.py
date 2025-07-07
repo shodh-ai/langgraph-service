@@ -29,89 +29,88 @@ def format_rag_for_prompt(rag_data: list) -> str:
         logger.warning(f"Could not format RAG example for prompt: {e}")
         return "No valid expert examples were retrieved."
 
-# THIS NODE IS NOW THE UPGRADED, PRIMARY CONTENT GENERATOR FOR MODELLING
+# THIS NODE IS NOW THE UPGRADED, PLAN-DRIVEN, AND STATE-PRESERVING GENERATOR
 async def modelling_delivery_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates a rich, sequential script for a modelling session based on a prompt.
+    Generates a rich, sequential script for the CURRENT step of a modeling plan
+    while preserving all critical state keys.
     """
-    logger.info("---Executing Upgraded Modelling Delivery Generator Node---")
-    
-    try:
-        # This node is different from teaching. It doesn't use a plan, but a single prompt.
-        prompt_to_model = state.get("example_prompt_text")
-        if not prompt_to_model:
-            # Check if it's in current_task_details as a fallback
-            prompt_to_model = state.get("current_task_details", {}).get("description")
+    logger.info("---Executing State-Preserving, Plan-Driven Modelling Delivery Generator---")
 
-        if not prompt_to_model:
-            raise ValueError("'example_prompt_text' or task description is missing from the state.")
-            
+    try:
+        # 1. Read all necessary data from the state, including the plan and context.
+        plan = state.get("modelling_plan")
+        current_index = state.get("current_plan_step_index", 0)
         rag_data = state.get("rag_document_data", [])
+        current_context = state.get("current_context") # Must be preserved
+
+        if not plan or current_index >= len(plan):
+            raise ValueError(f"Invalid plan or step index. Plan: {plan}, Index: {current_index}")
+
+        # 2. Get the prompt for the current step from the plan.
+        current_step = plan[current_index]
+        # Assuming the planner creates steps with a 'step_prompt' key.
+        prompt_to_model = current_step.get("step_prompt")
+        if not prompt_to_model:
+            raise ValueError(f"The current plan step (index {current_index}) is missing 'step_prompt'.")
+
         expert_example_str = format_rag_for_prompt(rag_data)
 
-        # This is a highly detailed prompt that instructs the LLM to produce
-        # a script with all the actions you need.
+        # 3. Construct the LLM prompt using the current step's details.
         llm_prompt = f"""
-You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to generate a step-by-step script for a modelling session to demonstrate how to answer the following prompt.
+You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to generate a step-by-step script for a modelling session to demonstrate how to accomplish the following sub-task.
 
-**Student's Task Prompt:** "{prompt_to_model}"
+**Current Sub-Task:** "{prompt_to_model}"
 
 **Your Task:**
 Generate a JSON object containing a "sequence" of actions. This sequence will be executed one by one to create an interactive modelling experience. Each object in the sequence array must have a "type" and a "payload".
 
 Here are the valid types and their payloads:
 
-1.  **`"type": "update_prompt_display"`**
-    -   `"payload": {{"text": "The prompt you are modeling."}}`
-    -   Use this ONCE at the very beginning.
-
-2.  **`"type": "think_aloud"`**
+1.  **`"type": "think_aloud"`**
     -   `"payload": {{"text": "Your meta-commentary, explaining your thought process."}}`
-    -   Use this to explain WHAT you are doing and WHY.
 
-3.  **`"type": "ai_writing_chunk"`**
+2.  **`"type": "ai_writing_chunk"`**
     -   `"payload": {{"text_chunk": "A piece of the essay text you are writing."}}`
-    -   Use this to progressively "type out" the model answer.
 
-4.  **`"type": "highlight_writing"`**
+3.  **`"type": "highlight_writing"`**
     -   `"payload": {{"start": <int>, "end": <int>, "remark_id": "M_R1"}}`
-    -   Use this to highlight a section of the text you just wrote. `start` and `end` are character offsets relative to the full essay text so far.
 
-5.  **`"type": "display_remark"`**
+4.  **`"type": "display_remark"`**
     -   `"payload": {{"remark_id": "M_R1", "text": "A detailed explanation for why you highlighted this part."}}`
-    -   Use this immediately after a `highlight_writing` action. The `remark_id` MUST match.
 
-6.  **`"type": "self_correction"`**
+5.  **`"type": "self_correction"`**
     -   `"payload": {{"start": <int>, "end": <int>, "new_text": "a better phrase"}}`
-    -   Use this to demonstrate editing and improving your own writing.
 
 **Example of a sequence:**
 {expert_example_str}
 
 **Instructions:**
-- Start with `update_prompt_display`.
+- Focus ONLY on the current sub-task: "{prompt_to_model}".
 - Intersperse `think_aloud` steps to explain your reasoning.
-- Use `ai_writing_chunk` multiple times to build the essay piece by piece.
+- Use `ai_writing_chunk` to build the relevant part of the essay.
 - Use `highlight_writing` and `display_remark` to draw attention to key parts.
-- Optionally, include a `self_correction` to show the editing process.
-- Ensure all character offsets for `highlight_writing` and `self_correction` are accurate.
+- Ensure all character offsets for `highlight_writing` and `self_correction` are accurate relative to the full essay text composed so far.
 
 Generate the JSON object with the "sequence" array now.
 """
-        # Gemini client is already configured globally
+        # 4. Call the LLM to generate the action sequence.
         model = genai.GenerativeModel(
-            "gemini-1.5-flash", # Using flash for speed and complex JSON generation
+            "gemini-1.5-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
-        
-        logger.info("Modelling generator successfully created a rich action sequence.")
-        
-        # The output formatter expects this payload in the 'intermediate_modelling_payload' key.
+
+        logger.info(f"Modelling generator created action sequence for step {current_index + 1}.")
+
+        # 5. Return the new payload AND preserve all other critical state.
         return {
             "intermediate_modelling_payload": response_json,
-            "rag_document_data": None # Clear RAG data after use
+            "modelling_plan": plan, # Preserve plan
+            "current_plan_step_index": current_index, # Preserve index
+            "current_context": current_context, # Preserve context
+            "rag_document_data": None  # Clear RAG data after use
         }
 
     except Exception as e:

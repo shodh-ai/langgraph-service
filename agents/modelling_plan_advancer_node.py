@@ -15,13 +15,15 @@ async def modelling_plan_advancer_node(state: AgentGraphState) -> dict:
     
     logger.info(f"Advancing modelling plan from step {current_index} to {new_index}.")
     
-    # Get the existing plan to ensure it's not lost from the state
+    # Get the existing plan and other critical state to ensure they are not lost.
     plan = state.get("modelling_plan")
-    
-    # Persist the plan and the new index in the state.
-    # This ensures that even if other nodes only return partial state updates,
-    # the core plan and our position in it are preserved.
+    intermediate_payload = state.get("intermediate_modelling_payload")
+    current_context = state.get("current_context")
+
+    # Persist the plan, the new index, and all other critical state keys.
     return {
         "current_plan_step_index": new_index,
-        "modelling_plan": plan
+        "modelling_plan": plan,
+        "intermediate_modelling_payload": intermediate_payload,
+        "current_context": current_context
     }

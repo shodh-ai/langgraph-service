@@ -6,6 +6,7 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from state import AgentGraphState
 
+
 logger = logging.getLogger(__name__)
 
 async def teaching_nlu_node(state: AgentGraphState) -> dict:
@@ -14,14 +15,17 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     """
     logger.info("---Executing Teaching-Specific NLU Node (State-Preserving)---")
     
-    # Read the critical state we must pass along.
-    plan = state.get("pedagogical_plan")
-    # THIS IS THE TRUE FIX: Provide a default value to prevent passing None downstream.
-    current_index = state.get("current_plan_step_index", 0)
-    
     transcript = state.get("transcript")
     if not transcript:
-        return {"student_intent_for_lesson_turn": "STATE_CONFUSION", "pedagogical_plan": plan, "current_plan_step_index": current_index}
+        return {
+            "student_intent_for_lesson_turn": "STATE_CONFUSION",
+            "pedagogical_plan": state.get("pedagogical_plan"),
+            "current_plan_step_index": state.get("current_plan_step_index", 0),
+            "lesson_id": state.get("lesson_id"),
+            "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
+            "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
+            "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
+        }
 
     possible_intents = ["CONFIRM_UNDERSTANDING", "ASK_CLARIFICATION_QUESTION", "STATE_CONFUSION"]
     chat_history = state.get("chat_history", [])
@@ -46,9 +50,12 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     classified_intent = llm_response_json.get("intent")
     logger.info(f"Teaching NLU classified intent as: {classified_intent}")
 
-    # Return the new intent AND the preserved state.
     return {
         "student_intent_for_lesson_turn": classified_intent,
-        "pedagogical_plan": plan,
-        "current_plan_step_index": current_index
+        "pedagogical_plan": state.get("pedagogical_plan"),
+        "current_plan_step_index": state.get("current_plan_step_index", 0),
+        "lesson_id": state.get("lesson_id"),
+        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
+        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
+        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
     }

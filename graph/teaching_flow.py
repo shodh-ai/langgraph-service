@@ -15,6 +15,7 @@ from agents.teaching_nlu_node import teaching_nlu_node # <<< IMPORT NEW NODE
 from agents.teaching_RAG_document_node import teaching_RAG_document_node
 from agents.teaching_output_formatter import teaching_output_formatter_node
 
+
 # --- Node Names ---
 NODE_TEACHING_RAG = "teaching_rag_document"
 NODE_TEACHING_PLANNER = "teaching_planner"
@@ -26,12 +27,20 @@ NODE_TEACHING_OUTPUT_FORMATTER = "teaching_output_formatter"
 
 async def check_plan_completion_node(state: AgentGraphState) -> dict:
     """
-    A placeholder node that now correctly preserves the plan state for the next router.
+    A placeholder node that now correctly preserves the ENTIRE session state
+    (the plan AND the session context) for the next router.
     """
-    logger.info("--- Checking if lesson plan is complete (State-Preserving) --- ")
+    logger.info("--- Checking if lesson plan is complete (Full State-Preserving) --- ")
     return {
+        # The plan itself
         "pedagogical_plan": state.get("pedagogical_plan"),
-        "current_plan_step_index": state.get("current_plan_step_index")
+        "current_plan_step_index": state.get("current_plan_step_index"),
+        
+        # The critical session context that must survive the whole lesson
+        "lesson_id": state.get("lesson_id"),
+        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
+        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
+        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
     }
 
 # --- MODIFIED ROUTERS ---

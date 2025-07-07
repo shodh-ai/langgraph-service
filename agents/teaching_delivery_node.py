@@ -7,6 +7,7 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from state import AgentGraphState
 
+
 logger = logging.getLogger(__name__)
 
 # Configure Gemini client
@@ -91,10 +92,17 @@ async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
         
         logger.info(f"Generated comprehensive payload for step {current_index + 1}.")
 
-        # This payload now contains everything the formatter might need.
         return {
             "intermediate_teaching_payload": response_json,
-            "rag_document_data": None
+            "rag_document_data": None, # Clear RAG data
+            
+            # Preserve the full session state
+            "pedagogical_plan": plan,
+            "current_plan_step_index": current_index,
+            "lesson_id": state.get("lesson_id"),
+            "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
+            "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
+            "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
         }
 
     except Exception as e:
