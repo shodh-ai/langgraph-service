@@ -75,3 +75,6 @@ __pycache__
 data/pedagogy_chroma
 # ChromaDB
 chroma_db/
+
+# Ignore large zipped virtual environments
+venv.zip
