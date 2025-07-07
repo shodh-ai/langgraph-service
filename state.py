@@ -1,15 +1,9 @@
+# state.py (The Corrected, Final Version)
+
 from typing import TypedDict, List, Dict, Any, Optional
 
 # This is the single source of truth for the entire graph's memory.
 # Every key that any node reads or writes MUST be defined here.
-
-    # ... all other fields ...
-    # NEW: A dictionary to control the RAG node’s behavior for the current step
-
-    # Example: {“category”: “teaching_strategy”, “query_text”: “...“, “top_k”: 3}
-    # Example: {“category”: “scaffolding_content”, “query_text”: “...“, “top_k”: 2}
-    # Field to store the result
-
 
 AgentGraphState = TypedDict('AgentGraphState', {
     # === Core Identifiers ===
@@ -17,11 +11,12 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'session_id': str,
     'task_name': str,
     'current_context': Dict[str, Any],
-    'incoming_context': Optional[Dict[str, Any]], # NEW: For intelligent context merging
+    'incoming_context': Optional[Dict[str, Any]],
     'chat_history': List[Dict[str, Any]],
     'user_token': str,
     'rag_query_config': Optional[Dict[str, Any]],
     'rag_retrieved_documents': Optional[List[Dict[str, Any]]],
+
     # === Universal Input/Output Keys ===
     'transcript': Optional[str],
     'final_text_for_tts': Optional[str],
@@ -37,14 +32,11 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'intermediate_pedagogy_payload': Optional[Dict[str, Any]],
 
     # Keys from the new Initial Report -> Pedagogy Flow
-    'initial_report_content': Optional[Dict[str, Any]], # From initial_report_generation_node
-    'conversational_tts': Optional[str], # From initial_report_generation_node
-    'task_suggestion_llm_output': Optional[Dict[str, Any]], # From pedagogy_generator_node
+    'initial_report_content': Optional[Dict[str, Any]],
+    'conversational_tts': Optional[str],
+    'task_suggestion_llm_output': Optional[Dict[str, Any]],
 
     # === Flow-Specific Context Keys (from app.py) ===
-    # These are the keys that were being dropped. Now they are official.
-    
-    # -- Modelling --
     'example_prompt_text': Optional[str],
     'student_struggle_context': Optional[str],
     'english_comfort_level': Optional[str],
@@ -52,34 +44,24 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'student_confidence_context': Optional[str],
     'teacher_initial_impression': Optional[str],
 
-    # -- Teaching --
-    'Learning_Objective_Focus': Optional[str], # Also used by Cowriting
+    'Learning_Objective_Focus': Optional[str],
     'STUDENT_PROFICIENCY': Optional[str],
     'STUDENT_AFFECTIVE_STATE': Optional[str],
 
-    # -- Teaching Plan State --
-    'pedagogical_plan': Optional[List[Dict[str, Any]]],
-    'current_plan_step_index': int,
-    'current_plan_active': bool,
-
-    # -- Scaffolding --
     'Learning_Objective_Task': Optional[str],
     'Specific_Struggle_Point': Optional[str],
     'Student_Attitude_Context': Optional[str],
     
-    # -- Feedback --
     'Task': Optional[str],
     'Proficiency': Optional[str],
     'Error': Optional[str],
     'Behavior Factor': Optional[str],
     'diagnosed_error_type': Optional[str],
 
-    # -- Cowriting --
     'Student_Written_Input_Chunk': Optional[str],
     'Immediate_Assessment_of_Input': Optional[str],
     'Student_Articulated_Thought': Optional[str],
 
-    # -- Pedagogy --
     'Answer One': Optional[str],
     'Answer Two': Optional[str],
     'Answer Three': Optional[str],
@@ -87,13 +69,19 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'Speaking Strengths': Optional[str],
     
     # --- Hierarchical Planning State ---
-    'student_memory_context': Optional[Dict[str, Any]], # The student's profile and history from Mem0
-    'current_lo_to_address': Optional[Dict[str, Any]], # The LO chosen by the macro planner
-    'pedagogical_plan': Optional[List[Dict[str, Any]]], # The detailed lesson plan from the meso planner
-    'current_plan_step_index': Optional[int], # The index of the current step in the pedagogical_plan
-    'last_ai_action': Optional[str], # A flag to track the AI's last move for routing
-    'last_action_was': Optional[str], # A flag to specify the last action for saving interactions
-    'student_intent_for_rox_turn': Optional[str], # The student's classified intent for the turn
+    # This is now the SINGLE source of truth for the lesson plan.
+    'student_memory_context': Optional[Dict[str, Any]],
+    'current_lo_to_address': Optional[Dict[str, Any]],
+    'pedagogical_plan': Optional[List[Dict[str, Any]]], # DEFINED ONCE
+    'current_plan_step_index': Optional[int],          # DEFINED ONCE
+    'current_plan_active': bool,                       # Kept for compatibility
+    'last_ai_action': Optional[str],
+    'last_action_was': Optional[str],
+    'student_intent_for_rox_turn': Optional[str],
+    'student_intent_for_lesson_turn': Optional[str],   # Added for teaching flow
+    'classified_student_intent': Optional[str],
+    'classified_student_entities': Optional[Dict[str, Any]],
+    'is_simple_greeting': Optional[bool],
 
     # === Error Handling ===
     'error_message': Optional[str],

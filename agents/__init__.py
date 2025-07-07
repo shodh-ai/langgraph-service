@@ -35,12 +35,10 @@ from .scaffolding_output_formatter import scaffolding_output_formatter_node
 
 # --- Modeling Flow ---
 from .modelling_RAG_document_node import modelling_RAG_document_node
-from .modelling_generator import modelling_generator_node as modelling_generator
 from .modelling_output_formatter import modelling_output_formatter_node as modelling_output_formatter
 
 # --- Teaching Flow ---
 from .teaching_RAG_document_node import teaching_RAG_document_node
-from .teaching_generator import teaching_generator_node
 from .teaching_output_formatter import teaching_output_formatter_node
 
 # --- Pedagogy Flow ---
@@ -84,12 +82,10 @@ __all__ = [
 
     # Modeling Flow
     "modelling_RAG_document_node",
-    "modelling_generator",
     "modelling_output_formatter",
 
     # Teaching Flow
     "teaching_RAG_document_node",
-    "teaching_generator_node",
     "teaching_output_formatter_node",
 
 

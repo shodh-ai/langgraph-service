@@ -7,7 +7,7 @@ from typing import Literal
 # 1. Import the agent node functions
 from agents.modelling_RAG_document_node import modelling_RAG_document_node
 from agents.modelling_planner_node import modelling_planner_node
-from agents.modelling_delivery_generator_node import modelling_delivery_node
+from agents.modelling_delivery_generator_node import modelling_delivery_generator_node
 from agents.modelling_plan_advancer_node import modelling_plan_advancer_node
 from agents.modelling_qa_handler_node import modelling_qa_handler_node
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # 2. Define standardized node names
 NODE_MODELING_RAG = "modelling_rag"
 NODE_MODELING_PLANNER = "modelling_planner"
-NODE_MODELING_DELIVERY = "modelling_delivery"
+NODE_MODELING_DELIVERY = "modelling_delivery_generator" # Use the generator
 NODE_MODELING_PLAN_ADVANCER = "modelling_plan_advancer"
 NODE_MODELING_QA = "modelling_qa"
 
@@ -24,7 +24,7 @@ NODE_MODELING_QA = "modelling_qa"
 def should_continue_modeling(state: AgentGraphState) -> Literal["deliver_step", "__end__"]:
     """Router to decide if the modeling plan has more steps to deliver."""
     logger.debug("--- Modeling Router: Checking if plan should continue ---")
-    plan = state.get("modelling_plan", []) # Use modelling_plan
+    plan = state.get("modelling_plan", [])
     if not plan:
         logger.warning("Modeling Router: No modeling plan found. Ending flow.")
         return "__end__"
@@ -50,14 +50,12 @@ def create_modeling_subgraph():
     # Add the nodes
     workflow.add_node(NODE_MODELING_RAG, modelling_RAG_document_node)
     workflow.add_node(NODE_MODELING_PLANNER, modelling_planner_node)
-    workflow.add_node(NODE_MODELING_DELIVERY, modelling_delivery_node)
+    workflow.add_node(NODE_MODELING_DELIVERY, modelling_delivery_generator_node) # Point to the generator
     workflow.add_node(NODE_MODELING_QA, modelling_qa_handler_node)
     workflow.add_node(NODE_MODELING_PLAN_ADVANCER, modelling_plan_advancer_node)
 
     # Define the flow
-    # Start with a single RAG query to fetch all context needed for the session.
     workflow.set_entry_point(NODE_MODELING_RAG)
-    # The RAG results are then passed to the planner.
     workflow.add_edge(NODE_MODELING_RAG, NODE_MODELING_PLANNER)
 
     # After planning, decide whether to start delivery or end

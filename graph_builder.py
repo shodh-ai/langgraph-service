@@ -74,11 +74,13 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         "user_wants_to_interrupt": NODE_ACKNOWLEDGE_INTERRUPT,
         "acknowledge_interruption": NODE_ACKNOWLEDGE_INTERRUPT,
         "handle_page_load": NODE_HANDLE_WELCOME,
+        "Rox_Welcome_Init": NODE_HANDLE_WELCOME,
         "start_modelling_activity": NODE_MODELING_MODULE,
         "request_teaching_lesson": NODE_TEACHING_MODULE, # Old, for reference
         "initiate_teaching_session": NODE_TEACHING_MODULE, # New task name
         "TEACHING_PAGE_INIT": NODE_TEACHING_MODULE, # From task_stage
         "TEACHING_PAGE_QA": NODE_TEACHING_MODULE, # From task_stage during QA
+        "TEACHING_PAGE_TURN": NODE_TEACHING_MODULE, # <<< ADD THIS LINE
         "scaffolding_needed": NODE_SCAFFOLDING_MODULE,
         "feedback_needed": NODE_FEEDBACK_MODULE,
         "initiate_cowriting": NODE_COWRITING_MODULE,
@@ -109,6 +111,11 @@ async def route_after_nlu(state: AgentGraphState) -> str:
     """Router that decides the path after the context-aware NLU/conversation handler node."""
     intent = state.get("classified_student_intent")
     logger.info(f"NLU Router: Received intent from state: '{intent}'.")
+
+    # Special case for the test plan to terminate the graph gracefully.
+    if intent in ["TEST_PASSED_TERMINATE", "STUDENT_SILENT"]:
+        logger.info(f"NLU Router: Intent '{intent}' requires termination. Ending turn.")
+        return END
 
     if intent in ("CONFIRM_PROCEED_WITH_LO", "CONFIRM_START_TASK"):
         logger.info("NLU Router: Student confirmed LO. Routing to Pedagogical Strategy Planner.")

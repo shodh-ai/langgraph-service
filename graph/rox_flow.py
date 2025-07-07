@@ -10,6 +10,7 @@ from agents.rox_nodes import (
     rox_propose_plan_node,
     rox_nlu_and_qa_handler_node, 
     rox_navigate_to_task_node,
+    show_course_map_node # <<< IMPORT NEW NODE
 )
 from agents.curriculum_navigator_node import curriculum_navigator_node
 from agents.student_model_node import load_student_data_node
@@ -28,6 +29,7 @@ NODE_PEDAGOGY_PLANNER = "pedagogy_planner"
 NODE_PLAN_ADVANCER = "plan_advancer" 
 NODE_NAVIGATE_TO_TASK = "rox_navigate_to_task"
 NODE_ROX_FALLBACK = "rox_fallback"
+NODE_SHOW_COURSE_MAP = "rox_show_course_map" # <<< DEFINE NEW NODE NAME
 
 # --- Router Functions for Rox Flow ---
 
@@ -36,26 +38,36 @@ async def rox_entry_router(state: AgentGraphState) -> str:
     task_stage = state.get("current_context", {}).get("task_stage")
     logger.info(f"Rox Flow Entry Router: task_stage is '{task_stage}'")
     
-    # If it's a fresh welcome or a return after a task, we need student data first
-    if task_stage in ["ROX_WELCOME_INIT", "ROX_RETURN_AFTER_TASK"]:
+    # If it's a fresh welcome, a return after task, or the stage isn't set, start the welcome flow.
+    if task_stage in ["ROX_WELCOME_INIT", "ROX_RETURN_AFTER_TASK"] or task_stage is None:
         return NODE_LOAD_STUDENT_DATA
     elif task_stage == "ROX_CONVERSATION_TURN":
-        # If it's an ongoing conversation, we go directly to the Q&A/NLU handler
+        # If it's an ongoing conversation, go directly to the Q&A/NLU handler
         return NODE_NLU_QA_HANDLER
     else:
-        logger.warning(f"Rox Flow: Unknown entry task_stage '{task_stage}'.")
+        logger.warning(f"Rox Flow: Unknown but specific entry task_stage '{task_stage}'. Defaulting to fallback.")
         return NODE_ROX_FALLBACK
 
 async def after_welcome_router(state: AgentGraphState) -> str:
     """Decides what to do after the initial welcome/reflection message."""
-    # After welcoming/reflecting, the next logical step is always to figure out what's next.
-    logger.info("Rox Flow: Welcome/Reflection complete. Routing to Curriculum Navigator.")
-    return NODE_CURRICULUM_NAVIGATOR
+    if state.get("is_simple_greeting"):
+        logger.info("Rox Flow: Simple greeting complete. Ending turn.")
+        return END
+    else:
+        # If not a simple greeting, proceed with curriculum planning.
+        logger.info("Rox Flow: Welcome/Reflection complete. Routing to Curriculum Navigator.")
+        return NODE_CURRICULUM_NAVIGATOR
 
 async def after_proposal_router(state: AgentGraphState) -> str:
     """Handles student's response to the AI's proposed plan or a lesson step."""
     intent = state.get("student_intent_for_rox_turn", "ACKNOWLEDGE")
     logger.info(f"Rox Flow Post-Proposal Router: Student intent is '{intent}'")
+
+    # --- NEW ROUTE LOGIC ---
+    if intent == "REQUEST_COURSE_MAP":
+        logger.info("Student requested course map. Routing to the show course map node.")
+        return NODE_SHOW_COURSE_MAP
+    # --- END NEW ROUTE LOGIC ---
 
     if intent in ["CONFIRM_START_TASK", "ACKNOWLEDGE"]:
         # Student agreed to the initial plan. Create the detailed pedagogical plan.
@@ -88,6 +100,7 @@ def create_rox_welcome_subgraph():
     workflow.add_node(NODE_PLAN_ADVANCER, plan_advancer_node) 
     workflow.add_node(NODE_NAVIGATE_TO_TASK, rox_navigate_to_task_node)
     workflow.add_node(NODE_ROX_FALLBACK, rox_nlu_and_qa_handler_node) # Fallback to the NLU handler
+    workflow.add_node(NODE_SHOW_COURSE_MAP, show_course_map_node) # <<< ADD NEW NODE TO GRAPH
 
     # --- Define Flow ---
     workflow.set_conditional_entry_point(rox_entry_router, {
@@ -102,8 +115,11 @@ def create_rox_welcome_subgraph():
     # After welcoming/reflecting, we need to decide what's next.
     workflow.add_conditional_edges(
         NODE_WELCOME_AND_REFLECT,
-        after_welcome_router, # This router is simple, it just moves the flow forward
-        { NODE_CURRICULUM_NAVIGATOR: NODE_CURRICULUM_NAVIGATOR }
+        after_welcome_router, # This router now handles two paths
+        {
+            NODE_CURRICULUM_NAVIGATOR: NODE_CURRICULUM_NAVIGATOR,
+            END: END # Add the missing path to terminate the graph
+        }
     )
     
     # After the curriculum navigator proposes an LO, we propose it to the student.
@@ -121,6 +137,7 @@ def create_rox_welcome_subgraph():
             NODE_PEDAGOGY_PLANNER: NODE_PEDAGOGY_PLANNER,
             NODE_PLAN_ADVANCER: NODE_PLAN_ADVANCER, # Add path to the plan advancer
             NODE_CURRICULUM_NAVIGATOR: NODE_CURRICULUM_NAVIGATOR,
+            NODE_SHOW_COURSE_MAP: NODE_SHOW_COURSE_MAP, # <<< ADD NEW CONDITIONAL EDGE
             END: END # Add mapping to the END node to break the recursion loop
         }
     )
@@ -136,5 +153,8 @@ def create_rox_welcome_subgraph():
     
     # Fallback also ends the turn.
     workflow.add_edge(NODE_ROX_FALLBACK, END)
+
+    # The new node is a terminal node in this flow, so it should exit the subgraph.
+    workflow.add_edge(NODE_SHOW_COURSE_MAP, END) # <<< ADD EXIT PATH FOR NEW NODE
 
     return workflow.compile()

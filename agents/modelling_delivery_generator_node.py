@@ -1,7 +1,7 @@
-# langgraph-service/agents/modelling_delivery_generator_node.py
+# agents/modelling_delivery_generator_node.py
 import logging
-import json
 import os
+import json
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from state import AgentGraphState
@@ -12,72 +12,108 @@ logger = logging.getLogger(__name__)
 if "GOOGLE_API_KEY" in os.environ:
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-async def modelling_delivery_node(state: AgentGraphState) -> dict:
-    """
-    Executes a SINGLE step from the modelling plan, using RAG documents from the state
-    to generate the content for the user just-in-time.
-    """
-    logger.info("--- Executing Modelling Delivery Node (Simplified) ---")
+def format_rag_for_prompt(rag_data: list) -> str:
+    """Helper to format RAG results for the prompt."""
+    if not rag_data:
+        return "No expert examples were retrieved. Rely on general principles."
+    # We'll just use the first, most relevant example to keep the prompt clean
+    # and give the LLM a single, strong pattern to follow.
     try:
-        # --- 1. Get current state ---
-        plan = state.get("modelling_plan")
-        current_index = state.get("current_plan_step_index", 0)
-        
-        if not plan or current_index >= len(plan):
-            logger.error("No plan or invalid step index.")
-            return {"error_message": "Cannot deliver content without a valid plan step."}
+        example = rag_data[0]
+        # We only need the 'modeling_and_think_aloud_sequence_json' as the example
+        sequence_example_str = example.get('modeling_and_think_aloud_sequence_json', '{}')
+        # Pretty-print the JSON so the LLM can easily read the structure
+        sequence_example_json = json.dumps(json.loads(sequence_example_str), indent=2)
+        return f"Follow this example structure for the sequence:\n{sequence_example_json}"
+    except Exception as e:
+        logger.warning(f"Could not format RAG example for prompt: {e}")
+        return "No valid expert examples were retrieved."
 
-        current_step = plan[current_index]
-        step_focus = current_step.get("focus")
-        active_persona = state.get("active_persona", "The Structuralist")
-        student_submission = state.get("student_task_submission", "")
-        original_task_prompt = state.get("current_task_details", {}).get("description", "the task")
+# THIS NODE IS NOW THE UPGRADED, PRIMARY CONTENT GENERATOR FOR MODELLING
+async def modelling_delivery_generator_node(state: AgentGraphState) -> dict:
+    """
+    Generates a rich, sequential script for a modelling session based on a prompt.
+    """
+    logger.info("---Executing Upgraded Modelling Delivery Generator Node---")
+    
+    try:
+        # This node is different from teaching. It doesn't use a plan, but a single prompt.
+        prompt_to_model = state.get("example_prompt_text")
+        if not prompt_to_model:
+            # Check if it's in current_task_details as a fallback
+            prompt_to_model = state.get("current_task_details", {}).get("description")
 
-        # --- 2. Get RAG documents from state ---
-        rag_docs = state.get("rag_document_data", [])
-        logger.info(f"Delivery node received {len(rag_docs)} documents from state.")
+        if not prompt_to_model:
+            raise ValueError("'example_prompt_text' or task description is missing from the state.")
+            
+        rag_data = state.get("rag_document_data", [])
+        expert_example_str = format_rag_for_prompt(rag_data)
 
-        # --- 3. Construct the LLM Prompt with RAG context ---
+        # This is a highly detailed prompt that instructs the LLM to produce
+        # a script with all the actions you need.
         llm_prompt = f"""
-        You are '{active_persona}' AI Tutor. Your task is to deliver one specific part of a modelling session.
+You are 'The Structuralist', an expert AI TOEFL Tutor. Your task is to generate a step-by-step script for a modelling session to demonstrate how to answer the following prompt.
 
-        **Context from Knowledge Base (use this for inspiration):**
-        {json.dumps(rag_docs, indent=2)}
+**Student's Task Prompt:** "{prompt_to_model}"
 
-        **Original Task:** {original_task_prompt}
-        **Student's Submission:** {student_submission}
-        **Current Session Step:** "{step_focus}"
+**Your Task:**
+Generate a JSON object containing a "sequence" of actions. This sequence will be executed one by one to create an interactive modelling experience. Each object in the sequence array must have a "type" and a "payload".
 
-        **Your Task:**
-        Generate the content for this specific step. Your response should be engaging and match your persona.
-        - If the step is 'DELIVER_FEEDBACK', provide the specific feedback mentioned in the focus, using the RAG docs as a style guide.
-        - If the step is 'SHOW_MODEL_ANSWER', present a model answer clearly. You can use a `show_model_answer` UI action. The RAG docs contain examples of model answers.
-        - If the step is 'EXPLAIN_KEY_CONCEPT', explain the concept clearly in the context of the student's submission and the model answer, referencing similar explanations in the RAG docs.
-        - Conclude your spoken text with a brief check for understanding (e.g., 'Does that make sense?').
-        
-        Return a single JSON object with keys "text_for_tts" and "ui_actions".
-        Example for showing a model answer:
-        {{
-            "text_for_tts": "Now, let's look at a model answer together. I'll display it on the screen.",
-            "ui_actions": [{{"action": "show_model_answer", "content": "... a well-written model answer based on the RAG examples..."}}]
-        }}
-        """
+Here are the valid types and their payloads:
 
-        # --- 4. Generate Content ---
+1.  **`"type": "update_prompt_display"`**
+    -   `"payload": {{"text": "The prompt you are modeling."}}`
+    -   Use this ONCE at the very beginning.
+
+2.  **`"type": "think_aloud"`**
+    -   `"payload": {{"text": "Your meta-commentary, explaining your thought process."}}`
+    -   Use this to explain WHAT you are doing and WHY.
+
+3.  **`"type": "ai_writing_chunk"`**
+    -   `"payload": {{"text_chunk": "A piece of the essay text you are writing."}}`
+    -   Use this to progressively "type out" the model answer.
+
+4.  **`"type": "highlight_writing"`**
+    -   `"payload": {{"start": <int>, "end": <int>, "remark_id": "M_R1"}}`
+    -   Use this to highlight a section of the text you just wrote. `start` and `end` are character offsets relative to the full essay text so far.
+
+5.  **`"type": "display_remark"`**
+    -   `"payload": {{"remark_id": "M_R1", "text": "A detailed explanation for why you highlighted this part."}}`
+    -   Use this immediately after a `highlight_writing` action. The `remark_id` MUST match.
+
+6.  **`"type": "self_correction"`**
+    -   `"payload": {{"start": <int>, "end": <int>, "new_text": "a better phrase"}}`
+    -   Use this to demonstrate editing and improving your own writing.
+
+**Example of a sequence:**
+{expert_example_str}
+
+**Instructions:**
+- Start with `update_prompt_display`.
+- Intersperse `think_aloud` steps to explain your reasoning.
+- Use `ai_writing_chunk` multiple times to build the essay piece by piece.
+- Use `highlight_writing` and `display_remark` to draw attention to key parts.
+- Optionally, include a `self_correction` to show the editing process.
+- Ensure all character offsets for `highlight_writing` and `self_correction` are accurate.
+
+Generate the JSON object with the "sequence" array now.
+"""
+        # Gemini client is already configured globally
         model = genai.GenerativeModel(
-            "gemini-2.0-flash",
+            "gemini-1.5-flash", # Using flash for speed and complex JSON generation
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(llm_prompt)
-        output_data = json.loads(response.text)
+        response_json = json.loads(response.text)
         
-        logger.info(f"Generated output for modelling step {current_index + 1}: {output_data}")
-
+        logger.info("Modelling generator successfully created a rich action sequence.")
+        
+        # The output formatter expects this payload in the 'intermediate_modelling_payload' key.
         return {
-            "output_content": output_data,
-            "last_action_was": "MODELLING_DELIVERY"
+            "intermediate_modelling_payload": response_json,
+            "rag_document_data": None # Clear RAG data after use
         }
 
     except Exception as e:
-        logger.error(f"ModellingDeliveryNode: CRITICAL FAILURE: {e}", exc_info=True)
-        return {"error_message": f"Failed to deliver modelling step: {e}"}
+        logger.error(f"ModellingDeliveryGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
+        return {"error_message": f"Failed to generate modelling script: {e}", "route_to_error_handler": True}
