@@ -16,12 +16,12 @@ if "GOOGLE_API_KEY" in os.environ:
 
 async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
     """
-    Executes a SINGLE step from the plan, generating a rich payload with
-    both conversational text (for an interactive sequence) AND a visual aid suggestion.
+    Generates the rich teaching payload for the current step AND preserves
+    the entire session state for the next node (the formatter).
     """
-    logger.info("--- Executing Definitive Teaching Delivery Generator Node ---")
+    logger.info("--- Executing Definitive and State-Preserving Delivery Generator ---")
     try:
-        # --- Get context from state ---
+        # Get all the state we need to use AND preserve
         rag_documents = state.get("rag_document_data")
         plan = state.get("pedagogical_plan")
         current_index = state.get("current_plan_step_index", 0)
@@ -71,7 +71,7 @@ async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
         {rag_context_examples}
 
         **Your Task:**
-        Generate a comprehensive teaching payload for the current step: **"{step_focus}"**.
+        Generate a comprehensive teaching payload for the current step: **\"{step_focus}\"**.
         Your output MUST be a single JSON object with the following keys:
         1.  `core_explanation`: The main text explanation.
         2.  `key_examples`: Text-based examples.
@@ -89,16 +89,18 @@ async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
         )
         response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
-        
+
         logger.info(f"Generated comprehensive payload for step {current_index + 1}.")
 
+        # --- THIS IS THE CRITICAL FIX ---
+        # Return the payload AND all the state keys that need to survive.
         return {
             "intermediate_teaching_payload": response_json,
             "rag_document_data": None, # Clear RAG data
-            
-            # Preserve the full session state
-            "pedagogical_plan": plan,
-            "current_plan_step_index": current_index,
+
+            # Preserve the entire session state for the formatter
+            "pedagogical_plan": state.get("pedagogical_plan"),
+            "current_plan_step_index": state.get("current_plan_step_index"),
             "lesson_id": state.get("lesson_id"),
             "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
             "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),

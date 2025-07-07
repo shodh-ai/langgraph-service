@@ -47,6 +47,7 @@ async def check_plan_completion_node(state: AgentGraphState) -> dict:
 async def entry_router(state: AgentGraphState) -> str:
     """Routes based on the task and plan existence."""
     task_stage = state.get("current_context", {}).get("task_stage")
+
     logger.info(f"Teaching Subgraph: Routing for task '{task_stage}'.")
 
     # If the task is a follow-up turn from the user, go to our new NLU handler

@@ -67,10 +67,11 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
             possible_intents = ["CONFIRM_UNDERSTANDING", "ASK_CLARIFICATION_QUESTION", "STATE_CONFUSION", "CONTINUE_LESSON"]
             last_ai_statement = chat_history[-2]['content'] if len(chat_history) > 1 else "the current topic"
             nlu_instructions = f"The AI is in the middle of a lesson and just explained a concept. The AI's last statement was: '{last_ai_statement}'. Now, classify the student's following statement."
-        
-        # Add other contexts as your app grows
-        # elif task_stage == "SOME_OTHER_STAGE":
-        #    ...
+
+        elif task_stage == "MODELLING_PAGE_TURN":
+            possible_intents = ["CONFIRM_UNDERSTANDING", "ASK_ABOUT_MODEL", "STATE_CONFUSION", "GENERAL_QUESTION"]
+            last_ai_statement = chat_history[-2]['content'] if len(chat_history) > 1 else "the current modeling example"
+            nlu_instructions = f"The AI is in the middle of a modeling session, showing the student how to do something. The AI's last statement was: '{last_ai_statement}'. Now, classify the student's following statement."
             
         else: # Default case
             possible_intents = ["GENERAL_CONFIRM", "GENERAL_REJECT", "GENERAL_QUESTION", "SMALL_TALK"]

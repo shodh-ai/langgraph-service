@@ -39,36 +39,42 @@ except Exception as e:
 
 async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
     """
-    Queries the ChromaDB vector store to find relevant modeling examples based on student context.
+    Queries the ChromaDB vector store and preserves the full input state for the next node.
     """
-    logger.info("---Executing RAG Node (Vector DB Version)---")
+    logger.info("---Executing Fully State-Preserving RAG Node---")
+
+    # Preserve the full state to pass it on to the planner.
+    # This is critical to avoid state loss at the start of the graph.
+    full_state = state.copy()
+    context = state.get("current_context", {})
 
     if not client or not collection:
         error_msg = "ChromaDB client is not available. Cannot perform RAG."
         logger.error(error_msg)
-        return {"rag_document_data": [], "error": error_msg}
+        full_state["rag_document_data"] = []
+        full_state["error"] = error_msg
+        return full_state
 
-    # 1. Construct the query string from the state
-    query_parts = [str(state.get(key, "")) for key in QUERY_CONTEXT_COLUMNS]
+    # 1. Construct the query string from the CONTEXT, not the top-level state.
+    query_parts = [str(context.get(key, "")) for key in QUERY_CONTEXT_COLUMNS]
     query_string = " \n\n ".join(filter(None, query_parts)).strip()
 
     if not query_string:
-        logger.warning("RAG Node: Query string is empty. Skipping vector search.")
-        return {"rag_document_data": [], "info": "Query for RAG was empty."}
+        logger.warning("RAG Node: Query string from context is empty. Skipping vector search.")
+        full_state["rag_document_data"] = []
+        full_state["info"] = "Query for RAG was empty."
+        return full_state
 
     logger.info(f"RAG Node: Constructed query for vector search: '{query_string[:200]}...'")
 
     try:
         # 2. Query the ChromaDB collection
-        # The embedding function handles embedding the query_string automatically.
         query_results = collection.query(
             query_texts=[query_string],
             n_results=TOP_K_RESULTS,
-            # include=['metadatas', 'documents', 'distances'] # For debugging
         )
 
-        # 3. Extract and format the results
-        # The full original data is stored in the metadata.
+        # 3. Extract the results
         retrieved_documents = query_results.get('metadatas', [[]])[0]
         
         if not retrieved_documents:
@@ -76,11 +82,15 @@ async def modelling_RAG_document_node(state: AgentGraphState) -> dict:
         else:
             logger.info(f"RAG Node: Retrieved {len(retrieved_documents)} documents from ChromaDB.")
 
-        return {"rag_document_data": retrieved_documents}
+        # 4. Add the results to the state and return the whole state object.
+        full_state["rag_document_data"] = retrieved_documents
+        return full_state
 
     except Exception as e:
         logger.error(f"RAG Node: An error occurred during ChromaDB query: {e}", exc_info=True)
-        return {"rag_document_data": [], "error": f"Failed to query vector database: {e}"}
+        full_state["rag_document_data"] = []
+        full_state["error"] = f"Failed to query vector database: {e}"
+        return full_state
 
 # Example usage (for local testing if needed)
 async def main_test():

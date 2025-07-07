@@ -11,12 +11,14 @@ logger = logging.getLogger(__name__)
 
 async def teaching_nlu_node(state: AgentGraphState) -> dict:
     """
-    Handles NLU for a teaching turn AND preserves the critical plan state.
+    Handles NLU for a teaching turn AND preserves the critical session state,
+    including lesson_id.
     """
     logger.info("---Executing Teaching-Specific NLU Node (State-Preserving)---")
-    
+
     transcript = state.get("transcript")
     if not transcript:
+        logger.warning("No transcript found, defaulting to STATE_CONFUSION but preserving state.")
         return {
             "student_intent_for_lesson_turn": "STATE_CONFUSION",
             "pedagogical_plan": state.get("pedagogical_plan"),
@@ -34,8 +36,8 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     prompt = f"""
     You are an NLU assistant. A student is in a lesson and just heard: '{last_ai_statement}'.
     The student responded: "{transcript}"
-    Categorize the intent into ONE of these: {possible_intents}
-    Return ONLY JSON: {{"intent": "<INTENT_NAME>"}}
+    Categorize the student's response into ONE of these intents: {possible_intents}
+    Return ONLY a single JSON object with the key "intent": {{"intent": "<INTENT_NAME>"}}
     """
     
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -47,11 +49,15 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     response = await model.generate_content_async(prompt)
     llm_response_json = json.loads(response.text)
     
-    classified_intent = llm_response_json.get("intent")
+    classified_intent = llm_response_json.get("intent", "STATE_CONFUSION")
     logger.info(f"Teaching NLU classified intent as: {classified_intent}")
 
+    # --- THIS IS THE FINAL FIX ---
+    # Return the intent AND all the state keys that need to survive this turn.
     return {
         "student_intent_for_lesson_turn": classified_intent,
+
+        # Preserve the entire session state
         "pedagogical_plan": state.get("pedagogical_plan"),
         "current_plan_step_index": state.get("current_plan_step_index", 0),
         "lesson_id": state.get("lesson_id"),

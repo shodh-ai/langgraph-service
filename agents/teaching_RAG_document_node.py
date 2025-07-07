@@ -9,27 +9,30 @@ logger = logging.getLogger(__name__)
 
 async def teaching_RAG_document_node(state: AgentGraphState) -> dict:
     """
-    Queries the knowledge base for teaching documents AND preserves the critical
-    plan and context state for all subsequent nodes in the graph.
+    Queries the knowledge base, intelligently finding the lesson_id from either
+    the top-level state OR the initial nested context, and preserves all state.
     """
-    logger.info("---Executing Teaching RAG Node (State-Preserving)---")
+    logger.info("---Executing Robust Teaching RAG Node---")
 
-    # --- THIS IS THE FIX: Read all the state we need to preserve ---
     plan = state.get("pedagogical_plan")
     current_index = state.get("current_plan_step_index", 0)
+
+    # --- THIS IS THE FINAL FIX ---
+    # Intelligently find the lesson_id from its two possible locations.
+    # 1. Try the top-level state first (for turns after the planner has run).
+    lesson_id = state.get('lesson_id')
+    # 2. If not found, check the initial nested context (for the first turn before the planner).
+    if not lesson_id:
+        lesson_id = state.get('current_context', {}).get('lesson_id')
+    # --- END FINAL FIX ---
     
-    # --- Read from the reliable top-level state keys, not the nested context. ---
-    learning_objective = state.get('Learning_Objective_Focus', '')
-    student_proficiency = state.get('STUDENT_PROFICIENCY', '')
-    lesson_id = state.get('lesson_id') # Read lesson_id from top level
-    # --- END FIX ---
+    # Also get other context from the most reliable source (top-level if available)
+    learning_objective = state.get('Learning_Objective_Focus') or state.get('current_context', {}).get('Learning_Objective_Focus', '')
+    student_proficiency = state.get('STUDENT_PROFICIENCY') or state.get('current_context', {}).get('STUDENT_PROFICIENCY', '')
 
     current_step_focus = ""
     if plan and isinstance(plan, list) and 0 <= current_index < len(plan):
-        current_step = plan[current_index]
-        if isinstance(current_step, dict):
-            current_step_focus = current_step.get('focus', '')
-        logger.info(f"Current lesson step focus: {current_step_focus}")
+        current_step_focus = plan[current_index].get('focus', '')
 
     query_parts = [
         f"Topic/Focus for this step: {current_step_focus}",
@@ -38,23 +41,26 @@ async def teaching_RAG_document_node(state: AgentGraphState) -> dict:
     ]
     query_string = " ".join(filter(None, query_parts)).strip()
 
+    # The category for filtering IS the lesson_id
     category = lesson_id
     if not category:
-        logger.warning("No lesson_id found in state. Cannot perform a targeted RAG query.")
+        # This warning will now only appear if lesson_id is truly missing from the payload
+        logger.warning("No lesson_id found in state or context. RAG query will be less specific.")
     else:
         logger.info(f"Querying knowledge base with category: {category}")
 
     retrieved_documents = await query_knowledge_base(
         query_string=query_string,
-        category=category
+        category=category # Pass the found lesson_id as the category
     )
 
+    # Return the results AND preserve all critical state
     return {
         "rag_document_data": retrieved_documents,
-        "pedagogical_plan": state.get("pedagogical_plan"),
-        "current_plan_step_index": state.get("current_plan_step_index"),
-        "lesson_id": state.get("lesson_id"),
-        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
-        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
-        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
+        "pedagogical_plan": plan,
+        "current_plan_step_index": current_index,
+        "lesson_id": lesson_id, # Return the lesson_id to ensure it's in the top-level state
+        "Learning_Objective_Focus": learning_objective,
+        "STUDENT_PROFICIENCY": student_proficiency,
+        "STUDENT_AFFECTIVE_STATE": state.get('STUDENT_AFFECTIVE_STATE') or state.get('current_context', {}).get('STUDENT_AFFECTIVE_STATE'),
     }
