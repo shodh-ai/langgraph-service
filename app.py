@@ -141,45 +141,38 @@ class UserRegistrationRequest(BaseModel):
 async def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
     """
     Build the state for *this turn only* from the incoming request.
-    No attempt is made to load or merge prior state – LangGraph's
-    checkpointer handles persistence and merging automatically.
+    This corrected version properly extracts the session_id from the nested context.
     """
-    # 1. Parse the incoming JSON payload safely
     try:
         payload = json.loads(request_data.json_payload)
     except json.JSONDecodeError:
         logger.error("Failed to decode json_payload. Using empty payload.")
         payload = {}
 
-    # 2. Core identifiers - THE FIX
-    # The user_id is nested inside the context object in the payload.
+    # Correctly get the nested context object first
     incoming_context = payload.get("current_context", {})
-    user_id = incoming_context.get("user_id", "unknown_user") # Correctly extract from context
-    session_id = payload.get("session_id", str(uuid.uuid4()))
 
-    # 3. Current turn context (can be empty or partial)
-    incoming_context = payload.get("current_context", {})
-    # Ensure at minimum the user_id is present for downstream logic
-    incoming_context.setdefault("user_id", user_id)
+    # Extract user_id from the nested context
+    user_id = incoming_context.get("user_id", "unknown_user")
 
-    # 4. Determine task_name for routing. Prefer the explicit `task_name` from the request object,
-    #    but fall back to any task_stage present in the incoming_context.
+    # --- THIS IS THE FIX ---
+    # Extract session_id from the *nested context*, just like user_id.
+    # Provide a fallback for safety, though your test payloads always have it.
+    session_id = incoming_context.get("session_id", str(uuid.uuid4()))
+
+    # Determine task_name
     task_name = request_data.task_name or incoming_context.get("task_stage")
 
     logger.info(f"[create_initial_state] Building turn state for task: '{task_name}' | session_id: '{session_id}'")
 
-    # 5. Construct the minimal state dict. Fields not set here will be
-    #    populated by the graph or restored from the checkpoint after merge.
     initial_state: AgentGraphState = {
         "user_id": user_id,
         "session_id": session_id,
         "task_name": task_name,
-
-        # Turn-specific inputs
         "transcript": payload.get("transcript"),
         "chat_history": payload.get("chat_history", []),
-        "incoming_context": incoming_context, # Use the new dedicated key
-
+        "incoming_context": incoming_context,
+        "current_context": {},
         # Place-holders / defaults for the remainder of the AgentGraphState keys.
         # They will either be set by nodes or restored by the checkpointer merge.
         "current_context": {}, # Will be populated from checkpoint
