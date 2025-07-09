@@ -33,7 +33,7 @@ from .scaffolding_RAG_document_node import scaffolding_RAG_document_node
 from .scaffolding_generator import scaffolding_generator_node
 from .scaffolding_output_formatter import scaffolding_output_formatter_node
 
-# --- Modeling Flow ---
+# --- modelling Flow ---
 from .modelling_RAG_document_node import modelling_RAG_document_node
 from .modelling_output_formatter import modelling_output_formatter_node as modelling_output_formatter
 
@@ -80,7 +80,7 @@ __all__ = [
     "scaffolding_generator_node",
     "scaffolding_output_formatter_node",
 
-    # Modeling Flow
+    # modelling Flow
     "modelling_RAG_document_node",
     "modelling_output_formatter",
 

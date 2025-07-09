@@ -27,7 +27,7 @@ CTA_SOURCE_CONFIG = {
     "modelling_data.csv": {
         # IMPORTANT: This assumes you have MANUALLY ADDED this column to your CSV file!
         "id_col": "Learning_Objective_ID",
-        "desc_col": "pre_modeling_setup_script"
+        "desc_col": "pre_modelling_setup_script"
     },
     "scaffolding_data.csv": {
         "id_col": "Learning_Objective_Task",

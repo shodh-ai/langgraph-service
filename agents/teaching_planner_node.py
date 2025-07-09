@@ -41,11 +41,11 @@ async def teaching_planner_node(state: AgentGraphState) -> dict:
         Example of the required output format:
         [
           {{"step_type": "EXPLAIN_CONCEPT", "focus": "Core principles of the topic"}},
-          {{"step_type": "SHOW_MODEL", "focus": "Modeling the concept in an example"}}
+          {{"step_type": "SHOW_MODEL", "focus": "modellingg the concept in an example"}}
         ]
         """
         
-        model = genai.GenerativeModel("gemini-1.5-flash", generation_config=GenerationConfig(response_mime_type="application/json"))
+        model = genai.GenerativeModel("gemini-2.0-flash", generation_config=GenerationConfig(response_mime_type="application/json"))
         response = await model.generate_content_async(llm_prompt)
         
         lesson_plan_json = json.loads(response.text)

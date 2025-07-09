@@ -140,8 +140,8 @@ class UserRegistrationRequest(BaseModel):
 
 async def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphState:
     """
-    Build the state for *this turn only* from the incoming request.
-    This corrected version properly extracts the session_id from the nested context.
+    Builds the MINIMAL state for *this turn only* from the incoming request.
+    It does NOT define keys that should be persisted by the checkpointer.
     """
     try:
         payload = json.loads(request_data.json_payload)
@@ -151,39 +151,29 @@ async def create_initial_state(request_data: InvokeTaskRequest) -> AgentGraphSta
 
     # Correctly get the nested context object first
     incoming_context = payload.get("current_context", {})
-
-    # Extract user_id from the nested context
     user_id = incoming_context.get("user_id", "unknown_user")
-
-    # --- THIS IS THE FIX ---
-    # Extract session_id from the *nested context*, just like user_id.
-    # Provide a fallback for safety, though your test payloads always have it.
     session_id = incoming_context.get("session_id", str(uuid.uuid4()))
-
-    # Determine task_name
     task_name = request_data.task_name or incoming_context.get("task_stage")
 
     logger.info(f"[create_initial_state] Building turn state for task: '{task_name}' | session_id: '{session_id}'")
 
+    # --- THIS IS THE CRITICAL FIX ---
+    # We only define the keys that are new for THIS turn. We do NOT define
+    # keys like 'pedagogical_plan', 'lesson_id', 'current_plan_step_index', etc.
+    # We let the checkpointer fill those in from the database.
     initial_state: AgentGraphState = {
+        # Core identifiers for this turn
         "user_id": user_id,
         "session_id": session_id,
         "task_name": task_name,
+
+        # Data that arrives with the request for this turn
         "transcript": payload.get("transcript"),
         "chat_history": payload.get("chat_history", []),
-        "incoming_context": incoming_context,
-        "current_context": {},
-        # Place-holders / defaults for the remainder of the AgentGraphState keys.
-        # They will either be set by nodes or restored by the checkpointer merge.
-        "current_context": {}, # Will be populated from checkpoint
-        "rag_document_data": [],
-        "intermediate_modelling_payload": None,
-        "intermediate_teaching_payload": None,
-        "intermediate_scaffolding_payload": None,
-        "intermediate_feedback_payload": None,
-        "intermediate_cowriting_payload": None,
-        "intermediate_pedagogy_payload": None,
+        "incoming_context": incoming_context, # For the context_merger_node
     }
+    # Note what is MISSING: pedagogical_plan, lesson_id, final_text_for_tts, etc.
+    # This is correct. They will be loaded from the checkpoint.
 
     return initial_state
 

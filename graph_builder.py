@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- 1. Import all your flows AND simple nodes ---
-from graph.modeling_flow import create_modeling_subgraph
+from graph.modelling_flow import create_modelling_subgraph
 from graph.teaching_flow import create_teaching_subgraph
 from graph.scaffolding_flow import create_scaffolding_subgraph
 from graph.feedback_flow import create_feedback_subgraph
@@ -35,7 +35,7 @@ from graph.pedagogy_flow import create_pedagogy_subgraph
 
 # --- 2. Define ALL node names ---
 NODE_CONTEXT_MERGER = "context_merger"
-NODE_MODELING_MODULE = "modeling_module"
+NODE_MODELLING_MODULE = "modelling_module"
 NODE_TEACHING_MODULE = "teaching_module"
 NODE_SCAFFOLDING_MODULE = "scaffolding_module"
 NODE_FEEDBACK_MODULE = "feedback_module"
@@ -60,10 +60,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
     current_context = state.get("current_context", {})
 
     if not task_name:
-        # Use .get() for safety
         task_name = current_context.get("task_stage")
-
-    # If still nothing, default to conversation
     if not task_name:
         task_name = "handle_conversation"
     
@@ -75,33 +72,20 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         "acknowledge_interruption": NODE_ACKNOWLEDGE_INTERRUPT,
         "handle_page_load": NODE_HANDLE_WELCOME,
         "Rox_Welcome_Init": NODE_HANDLE_WELCOME,
-        "start_modelling_activity": NODE_MODELING_MODULE,
+        "start_modelling_activity": NODE_MODELLING_MODULE,
         "request_teaching_lesson": NODE_TEACHING_MODULE, # Old, for reference
         "initiate_teaching_session": NODE_TEACHING_MODULE, # New task name
         "TEACHING_PAGE_INIT": NODE_TEACHING_MODULE, # From task_stage
         "TEACHING_PAGE_QA": NODE_TEACHING_MODULE, # From task_stage during QA
-        "TEACHING_PAGE_TURN": NODE_TEACHING_MODULE, # <<< ADD THIS LINE
+        "TEACHING_PAGE_TURN": NODE_TEACHING_MODULE, 
         "scaffolding_needed": NODE_SCAFFOLDING_MODULE,
         "feedback_needed": NODE_FEEDBACK_MODULE,
         "initiate_cowriting": NODE_COWRITING_MODULE,
         "initiate_pedagogy": NODE_PEDAGOGY_MODULE,
         "handle_student_clarification_question": NODE_CONVERSATION_HANDLER,
     }
-    # --- Start Debug Logging ---
-    logger.info(f"DEBUG: task_name is '{task_name}' (type: {type(task_name)})" )
-    logger.info(f"DEBUG: routing_map keys are: {list(routing_map.keys())}")
-    key_exists = task_name in routing_map
-    logger.info(f"DEBUG: Does task_name exist as a key in routing_map? {key_exists}")
-    # --- End Debug Logging ---
-
+    
     route_destination = routing_map.get(task_name, NODE_CONVERSATION_HANDLER)
-
-    # --- Add lesson_id to context if routing to teaching module ---
-    if route_destination == NODE_TEACHING_MODULE:
-        lesson_id = current_context.get("lesson_id")
-        if lesson_id:
-            state["current_context"] = {**current_context, "lesson_id": lesson_id}
-            logger.info(f"Extracted lesson_id '{lesson_id}' for teaching module.")
 
     logger.info(f"INITIAL ROUTER: Final decision. Routing to -> [{route_destination}]")
     return route_destination
@@ -156,7 +140,7 @@ async def main_modality_router(state: AgentGraphState) -> str:
     # Map modality to the correct subgraph node name
     modality_map = {
         "TEACH": NODE_TEACHING_MODULE,
-        "MODEL": NODE_MODELING_MODULE,
+        "MODEL": NODE_MODELLING_MODULE,
         "SCAFFOLD": NODE_SCAFFOLDING_MODULE,
         "FEEDBACK": NODE_FEEDBACK_MODULE,
     }
@@ -177,7 +161,7 @@ def build_graph(memory: AsyncSqliteSaver):
     workflow = StateGraph(AgentGraphState)
 
     # --- 3. Add ALL Nodes and Subgraphs ---
-    workflow.add_node(NODE_MODELING_MODULE, create_modeling_subgraph())
+    workflow.add_node(NODE_MODELLING_MODULE, create_modelling_subgraph())
     workflow.add_node(NODE_TEACHING_MODULE, create_teaching_subgraph())
     workflow.add_node(NODE_SCAFFOLDING_MODULE, create_scaffolding_subgraph())
     workflow.add_node(NODE_FEEDBACK_MODULE, create_feedback_subgraph())
@@ -205,7 +189,7 @@ def build_graph(memory: AsyncSqliteSaver):
         initial_router_logic,
         {
             NODE_ACKNOWLEDGE_INTERRUPT: NODE_ACKNOWLEDGE_INTERRUPT,
-            NODE_MODELING_MODULE: NODE_MODELING_MODULE, # Legacy direct entry
+            NODE_MODELLING_MODULE: NODE_MODELLING_MODULE, # Legacy direct entry
             NODE_TEACHING_MODULE: NODE_TEACHING_MODULE, # Legacy direct entry
             NODE_SCAFFOLDING_MODULE: NODE_SCAFFOLDING_MODULE, # Legacy direct entry
             NODE_FEEDBACK_MODULE: NODE_FEEDBACK_MODULE, # Legacy direct entry
@@ -246,7 +230,7 @@ def build_graph(memory: AsyncSqliteSaver):
         # The main modality execution loop is now disabled in favor of the 'announce' node.
         # Re-enable these if you revert to the continuous execution model.
         # NODE_TEACHING_MODULE,
-        # NODE_MODELING_MODULE,
+        # NODE_MODELLING_MODULE,
         # NODE_SCAFFOLDING_MODULE,
         # NODE_FEEDBACK_MODULE
     ]

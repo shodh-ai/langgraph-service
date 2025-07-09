@@ -14,7 +14,7 @@ The server will be available at `http://localhost:8080`.
 
 ## Initial Setup: Data Ingestion
 
-Before running the application for the first time, you need to populate the local vector database with the modeling examples. This is a one-time setup process.
+Before running the application for the first time, you need to populate the local vector database with the modelling examples. This is a one-time setup process.
 
 Run the following command from the root of the `backend_ai_service_langgraph` directory:
 

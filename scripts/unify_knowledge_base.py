@@ -71,10 +71,10 @@ def create_embedding_document(row: pd.Series, doc_type: str) -> str:
             text_parts.append(f"Key Examples to use: {row.get('KEY_EXAMPLES', '')}")
 
         elif doc_type == "modelling":
-            text_parts.append(f"Modeling demonstration for skill: {row.get('Learning_Objective_ID', '')}")
+            text_parts.append(f"modellling demonstration for skill: {row.get('Learning_Objective_ID', '')}")
             text_parts.append(f"Persona: {row.get('Persona', '')}")
             text_parts.append(f"Example TOEFL Prompt for Model: {row.get('Example_Prompt_Text', '')}")
-            text_parts.append(f"Think-Aloud Summary: {row.get('post_modeling_summary_and_key_takeaways', '')}")
+            text_parts.append(f"Think-Aloud Summary: {row.get('post_modellling_summary_and_key_takeaways', '')}")
 
         elif doc_type == "scaffolding":
             text_parts.append(f"Scaffolding technique for task: {row.get('Learning_Objective_Task', '')}")

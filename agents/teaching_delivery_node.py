@@ -1,4 +1,4 @@
-# agents/teaching_delivery_node.py (The New, Definitive Version)
+# agents/teaching_delivery_node.py (The Final, State-Preserving, Corrected Version)
 
 import logging
 import json
@@ -7,100 +7,114 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from state import AgentGraphState
 
-
 logger = logging.getLogger(__name__)
 
-# Configure Gemini client
 if "GOOGLE_API_KEY" in os.environ:
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates the rich teaching payload for the current step AND preserves
-    the entire session state for the next node (the formatter).
+    Generates a rich teaching payload for the current step, ensuring it
+    receives the plan from the previous state and passes all critical
+    state keys forward to the next node.
     """
-    logger.info("--- Executing Definitive and State-Preserving Delivery Generator ---")
+    logger.info("--- Executing State-Preserving Assertive Delivery Generator ---")
+    
     try:
-        # Get all the state we need to use AND preserve
-        rag_documents = state.get("rag_document_data")
+        # --- Retrieve all critical state keys that must be preserved ---
         plan = state.get("pedagogical_plan")
         current_index = state.get("current_plan_step_index", 0)
-        current_step = plan[current_index]
-        step_focus = current_step.get("focus")
+        rag_documents = state.get("rag_document_data", [])
         active_persona = state.get("active_persona", "The Structuralist")
         student_profile = state.get("student_memory_context", {})
         
-        rag_context_examples = json.dumps(rag_documents, indent=2) if rag_documents else "[]"
+        # --- THIS IS THE CRITICAL FIX: Check for the plan's existence ---
+        if not plan or not isinstance(plan, list) or current_index >= len(plan):
+            error_message = f"TeachingDeliveryGenerator: Invalid or missing pedagogical plan. Index: {current_index}, Plan: {plan}"
+            logger.error(error_message)
+            # Return an empty payload but preserve the rest of the state
+            return {
+                "error_message": error_message,
+                "intermediate_teaching_payload": {},
+                **state  # Pass the entire state forward on error to aid debugging
+            }
+        
+        # --- Proceed with generation now that we know the plan is valid ---
+        current_step = plan[current_index]
+        step_focus = current_step.get("focus")
+        rag_context_examples = json.dumps(rag_documents, indent=2)
 
-        # --- Define the comprehensive JSON output structure we want ---
         json_output_example = """
-{
-  "core_explanation": "A clear and concise explanation of the key concept for this lesson step.",
-  "key_examples": "One or two clear and relevant examples illustrating the core explanation.",
-  "sequence": [
-    {"type": "tts", "content": "The opening sentence of the explanation."},
-    {"type": "tts", "content": "The main point or example."},
-    {"type": "listen", "expected_intent": "CONFIRMATION", "prompt_if_silent": "Does that make sense so far?", "timeout_ms": 5000}
-  ],
+        {
+  "core_explanation": "A clear, text-based explanation of the concept.",
+  "key_examples": "One or two clear, text-based examples.",
+  "comprehension_check_question": "An open-ended question for the student.",
   "visual_aid_suggestion": {
-    "lessonTitle": "Visual Aid Title (e.g., The Pythagorean Theorem)",
-    "canvasDimensions": { "width": 1000, "height": 750 },
+    "lessonTitle": "Visual Aid Title",
+    "canvasDimensions": { "width": 800, "height": 600 },
     "steps": [
       {
-        "command": "write", "id": "title-text",
-        "payload": { "text": "...", "position": {"x": 50, "y": 50}, "varaOptions": {...}}
+        "command": "write",
+        "id": "example-title-1",
+        "payload": {
+          "text": "This is the Title",
+          "position": {"x": 50, "y": 50},
+          "varaOptions": { "fontSize": 36, "color": "#000000", "duration": 1500 }
+        }
       },
       {
-        "command": "drawShape", "id": "some-shape",
-        "payload": { "shapeType": "line", "points": [...], "roughOptions": {...}}
+        "command": "drawShape",
+        "id": "divider-line",
+        "payload": {
+            "shapeType": "line",
+            "points": [
+                { "x": 50, "y": 120 },
+                { "x": 750, "y": 120 }
+            ],
+            "isRough": true,
+            "roughOptions": {
+                "stroke": "black",
+                "strokeWidth": 2,
+                "roughness": 1.5
+            }
+        }
       }
     ]
   },
-  "comprehension_check_question": "A short, open-ended question to check the student's understanding."
+  "sequence": [
+    { "type": "tts", "content": "This is the main explanation." },
+    { "type": "tts", "content": "Now, look at the visual I've prepared for you." },
+    { "type": "listen" }
+  ]
 }
-"""
-        # --- Construct the merged, powerful prompt ---
+        """
+
         llm_prompt = f"""
-        You are an expert AI TOEFL Tutor with the persona of '{active_persona}'.
-        You are delivering one specific part of a larger lesson plan.
+        You are an expert AI TOEFL Tutor. Your task is to generate a teaching payload for the lesson step: **"{step_focus}"**.
+        You MUST return a single valid JSON object.
+CRITICAL INSTRUCTIONS:
+1.  The array of visual commands MUST be named `steps`.
+2.  For EVERY command object in the `steps` array, all of its data MUST be nested inside a single object named `payload`.
+3.  Specifically for a "drawShape" command, the `payload` object MUST contain a `shapeType` string, a `points` array of objects, `isRough` boolean, and `roughOptions` object. DO NOT forget the `points` array.
 
-        **Student Profile:** {json.dumps(student_profile, indent=2)}
-        **Current Lesson Step to Deliver (Focus):** "{step_focus}"
-
-        **Expert Examples from Knowledge Base:**
-        {rag_context_examples}
-
-        **Your Task:**
-        Generate a comprehensive teaching payload for the current step: **\"{step_focus}\"**.
-        Your output MUST be a single JSON object with the following keys:
-        1.  `core_explanation`: The main text explanation.
-        2.  `key_examples`: Text-based examples.
-        3.  `sequence`: An interactive sequence for the explanation, ending with a 'listen' action. Use the core_explanation and key_examples to create the content for the 'tts' steps.
-        4.  `visual_aid_suggestion`: A JSON object detailing commands for a visual aid. If no visual is needed for this step, provide an empty JSON object: {{}}.
-        5.  `comprehension_check_question`: A question to ask the student.
-
-        Return ONLY a SINGLE JSON object with the exact structure shown in this example:
         {json_output_example}
         """
 
-        model = genai.GenerativeModel(
-            "gemini-1.5-flash",
-            generation_config=GenerationConfig(response_mime_type="application/json"),
-        )
+        model = genai.GenerativeModel("gemini-2.0-flash", generation_config=GenerationConfig(response_mime_type="application/json"))
         response = await model.generate_content_async(llm_prompt)
         response_json = json.loads(response.text)
 
-        logger.info(f"Generated comprehensive payload for step {current_index + 1}.")
+        logger.info(f"Generated explicit flat-structure payload for step {current_index + 1}.")
 
-        # --- THIS IS THE CRITICAL FIX ---
-        # Return the payload AND all the state keys that need to survive.
+        # --- Return the new payload AND preserve all other state keys ---
         return {
             "intermediate_teaching_payload": response_json,
-            "rag_document_data": None, # Clear RAG data
-
-            # Preserve the entire session state for the formatter
-            "pedagogical_plan": state.get("pedagogical_plan"),
-            "current_plan_step_index": state.get("current_plan_step_index"),
+            "rag_document_data": None,  # Clear used data
+            "pedagogical_plan": plan,
+            "current_plan_step_index": current_index,
+            "active_persona": active_persona,
+            "student_memory_context": student_profile,
+            # Pass along any other keys that future nodes might need
             "lesson_id": state.get("lesson_id"),
             "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
             "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
@@ -108,5 +122,10 @@ async def teaching_delivery_generator_node(state: AgentGraphState) -> dict:
         }
 
     except Exception as e:
-        logger.error(f"TeachingDeliveryGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
-        return {"error_message": f"Failed to deliver lesson step: {e}", "route_to_error_handler": True}
+        logger.error(f"ExplicitDeliveryGeneratorNode: CRITICAL FAILURE: {e}", exc_info=True)
+        return {
+            "error_message": f"Failed to deliver lesson step: {e}",
+            "intermediate_teaching_payload": {},
+            **state
+        }
+

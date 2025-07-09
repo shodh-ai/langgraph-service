@@ -8,82 +8,109 @@ from state import AgentGraphState
 from graph.utils import query_knowledge_base # Import the robust RAG query utility
 
 logger = logging.getLogger(__name__)
+
+def _create_lesson_plan_data(lesson_plan_steps: List[Dict]) -> Dict:
+    """Formats the lesson plan steps into a React Flow compatible JSON graph."""
+    nodes = []
+    edges = []
+    
+    if not lesson_plan_steps:
+        return {"nodes": [], "edges": []}
+
+    for i, step in enumerate(lesson_plan_steps):
+        step_id = step.get("step_id")
+        # Determine status: first step is 'next_up', others are 'unlocked'
+        status = "next_up" if i == 0 else "unlocked"
+        
+        nodes.append({
+            "id": f"step_{step_id}",
+            "data": {
+                "label": step.get("focus", "Unnamed Step"),
+                "status": status,
+                "modality": step.get("modality", "UNKNOWN")
+            }
+        })
+        
+        # Create an edge from the previous step to the current one
+        if i > 0:
+            prev_step_id = lesson_plan_steps[i-1].get("step_id")
+            edges.append({
+                "id": f"e-step_{prev_step_id}-step_{step_id}",
+                "source": f"step_{prev_step_id}",
+                "target": f"step_{step_id}"
+            })
+            
+    return {"nodes": nodes, "edges": edges}
+
+
 # genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 async def pedagogical_strategy_planner_node(state: AgentGraphState) -> dict:
     """
     The MESO PLANNER.
-    Takes a single, approved Learning Objective (LO) and creates a multi-step,
-    multi-modality lesson plan for it.
+    Creates a multi-step lesson plan and the visual data for it.
     """
     logger.info("--- Executing Pedagogical Strategy Planner Node (Meso Planner) ---")
     try:
         user_id = state["user_id"]
         student_profile = state.get("student_memory_context", {})
         active_persona = state.get("active_persona", "The Structuralist")
-        lo_to_plan = state.get("current_lo_to_address") # This should be set by the curriculum navigator
+        current_lo = state.get("current_lo_to_address", {})
 
-        if not lo_to_plan:
-            raise ValueError("PedagogicalStrategyPlannerNode received no LO to plan for.")
+        if not current_lo:
+            raise ValueError("Cannot create a lesson plan without a 'current_lo_to_address' in the state.")
+
+        lo_title = current_lo.get('title')
+        rag_query = f"How to teach a student to '{lo_title}'?"
+        retrieved_teaching_strategies = await query_knowledge_base(rag_query, category="pedagogy_for_lo")
         
-        lo_id = lo_to_plan.get("id")
-        lo_title = lo_to_plan.get("title")
-
-        # 1. RAG on your detailed Teaching/Modeling/Scaffolding CTA data for this specific LO
-        rag_query = (f"Persona: {active_persona}, Learning Objective: {lo_title}, "
-                     f"Student Proficiency: {student_profile.get('skill_level')}, "
-                     f"Student Affect: {student_profile.get('affective_state')}. "
-                     "What is the best sequence of teaching modalities (TEACH, MODEL, SCAFFOLD, PRACTICE)?")
-        
-        # 2. Retrieve relevant pedagogical sequences from the knowledge base using our robust RAG utility.
-        # This query will find teaching strategies matching the student's persona and the current learning objective.
-        retrieved_teaching_sequences = await query_knowledge_base(rag_query, category="pedagogical_sequencing")
-
-        # 2. Construct prompt for the LLM lesson planner
         prompt = f"""
-        You are an expert AI Lesson Designer for the '{active_persona}' AI Tutor persona.
-        Your task is to create a detailed, multi-step lesson plan to achieve a single Learning Objective (LO) for a student.
+        You are an expert AI Lesson Planner for a TOEFL tutor, embodying the '{active_persona}' persona.
+        Your task is to create a concrete, multi-step lesson plan for a specific Learning Objective (LO).
 
-        LEARNING OBJECTIVE TO PLAN:
-        {lo_id}: {lo_title}
-
-        STUDENT PROFILE:
+        STUDENT'S PROFILE:
         {json.dumps(student_profile, indent=2)}
 
-        EXPERT STRATEGY EXAMPLES (how '{active_persona}' typically sequences teaching for similar topics):
-        {json.dumps(retrieved_teaching_sequences, indent=2)}
-        
-        INSTRUCTIONS:
-        Design an ordered lesson plan as a JSON list of step objects.
-        Each step object must have a `modality` and a short descriptive `focus`.
-        The `modality` must be one of: 'TEACH', 'MODEL', 'SCAFFOLDED_PRACTICE', 'INDEPENDENT_PRACTICE', 'REVIEW', 'COMPREHENSION_CHECK'.
-        Your sequence should be pedagogically sound and match the '{active_persona}' style. For example, 'The Structuralist' might always teach a concept before modeling it. 'The Interactive Explorer' might start with a question.
-        The plan should be a logical progression to help the student master the LO.
-        
-        Example JSON Output for "ThesisStatement":
-        [
-          {{"step_id": 1, "modality": "TEACH", "focus": "Introduce the core definition and purpose of a thesis statement.", "target_page": "P7"}},
-          {{"step_id": 2, "modality": "TEACH", "focus": "Explain the difference between an arguable claim and a simple fact.", "target_page": "P7"}},
-          {{"step_id": 3, "modality": "MODEL", "focus": "Demonstrate writing a strong thesis for a sample prompt.", "target_page": "P8"}},
-          {{"step_id": 4, "modality": "SCAFFOLDED_PRACTICE", "focus": "Guide student in writing a thesis using a template.", "target_page": "P4"}},
-          {{"step_id": 5, "modality": "REVIEW", "focus": "Review the student's scaffolded practice attempt.", "target_page": "P6"}}
-        ]
+        LEARNING OBJECTIVE TO TEACH:
+        {json.dumps(current_lo, indent=2)}
 
-        Return ONLY the valid JSON list of plan steps.
+        EXPERT TEACHING STRATEGIES for this LO:
+        {json.dumps(retrieved_teaching_strategies, indent=2)}
+
+        INSTRUCTIONS:
+        1.  Create a sequence of 2-4 lesson steps to teach the specified LO.
+        2.  Each step must have a `modality` (TEACH, MODEL, SCAFFOLDED_PRACTICE, or UNGUIDED_PRACTICE) and a `focus` (a short description of the step's goal).
+        3.  The `modality` determines which page/UI the student will be sent to.
+        4.  The sequence should follow a logical pedagogical progression (e.g., teach, then model, then practice).
+        5.  The `focus` for each step should be a clear, student-facing instruction.
+
+        Return a single, valid JSON object with one key, "lesson_plan_steps", which is a list of step objects.
+        
+        Example Output:
+        {{
+            "lesson_plan_steps": [
+                {{ "step_id": 1, "modality": "TEACH", "focus": "Introduce the core definition of a thesis statement and its purpose.", "target_page": "P7_Teaching" }},
+                {{ "step_id": 2, "modality": "MODEL", "focus": "Analyze examples of strong and weak thesis statements.", "target_page": "P8_Modeling" }},
+                {{ "step_id": 3, "modality": "SCAFFOLDED_PRACTICE", "focus": "Guide the student in identifying flaws in weak thesis statements.", "target_page": "P4_Cowriting" }}
+            ]
+        }}
         """
 
-        # 3. Call the LLM
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = await model.generate_content_async(prompt, generation_config=GenerationConfig(response_mime_type="application/json"))
-        lesson_plan_steps = json.loads(response.text)
+        model = genai.GenerativeModel("gemini-2.0-flash", generation_config=GenerationConfig(response_mime_type="application/json"))
+        response = await model.generate_content_async(prompt)
+        planner_output = json.loads(response.text)
+        lesson_plan_steps = planner_output.get("lesson_plan_steps", [])
 
-        logger.info(f"PedagogicalStrategyPlannerNode: Generated a {len(lesson_plan_steps)}-step lesson plan for LO '{lo_title}'.")
+        logger.info(f"Generated a {len(lesson_plan_steps)}-step lesson plan for LO '{lo_title}'.")
         
-        # 4. Update the state with the new, active lesson plan
+        lesson_plan_graph_data = _create_lesson_plan_data(lesson_plan_steps)
+        logger.info(f"Generated lesson plan graph data with {len(lesson_plan_graph_data['nodes'])} steps.")
+        
         return {
             "pedagogical_plan": lesson_plan_steps,
-            "current_plan_step_index": 0, # Start at the beginning
-            "current_plan_active": True, # Flag that we are now executing this micro-plan
+            "current_plan_step_index": 0,
+            "current_plan_active": True,
+            "lesson_plan_graph_data": lesson_plan_graph_data
         }
         
     except Exception as e:

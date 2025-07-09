@@ -40,8 +40,8 @@ class InteractionRequestContext(BaseModel):
     raw_modelling_output: Optional[Dict[str, Any]] = None
     # Flattened keys from modelling_output_content
     think_aloud_sequence: Optional[List[Dict[str, Any]]] = None
-    pre_modeling_setup_script: Optional[str] = None
-    post_modeling_summary_and_key_takeaways: Optional[str] = None
+    pre_modelling_setup_script: Optional[str] = None
+    post_modelling_summary_and_key_takeaways: Optional[str] = None
     comprehension_check_or_reflection_prompt_for_student: Optional[str] = None
     adaptation_notes: Optional[str] = None  # e.g., data from a form field on P9 drill
 

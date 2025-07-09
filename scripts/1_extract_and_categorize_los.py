@@ -20,7 +20,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # (Re-use your CTA_SOURCE_CONFIG and extract_unique_los function from previous script)
 CTA_SOURCE_CONFIG = { # Make sure this is accurate for your files
     "teaching_data.csv":      {"id_col": "LEARNING_OBJECTIVE", "desc_col": "LESSON_FOR_STUDENT"},
-    "modelling_data.csv":         {"id_col": "Learning_Objective_ID", "desc_col": "pre_modeling_setup_script"},
+    "modelling_data.csv":         {"id_col": "Learning_Objective_ID", "desc_col": "pre_modelling_setup_script"},
     "scaffolding_data.csv":       {"id_col": "Learning_Objective_Task", "desc_col": "scaffold_type_selected"},
     "cowriting_data.csv":         {"id_col": "Learning_Objective_Focus", "desc_col": "Writing_Task_Context_Section"},
     "feedback_data.csv":          {"id_col": "Error", "desc_col": "Diagnose"}

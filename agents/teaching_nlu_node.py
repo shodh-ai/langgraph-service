@@ -21,12 +21,6 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
         logger.warning("No transcript found, defaulting to STATE_CONFUSION but preserving state.")
         return {
             "student_intent_for_lesson_turn": "STATE_CONFUSION",
-            "pedagogical_plan": state.get("pedagogical_plan"),
-            "current_plan_step_index": state.get("current_plan_step_index", 0),
-            "lesson_id": state.get("lesson_id"),
-            "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
-            "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
-            "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
         }
 
     possible_intents = ["CONFIRM_UNDERSTANDING", "ASK_CLARIFICATION_QUESTION", "STATE_CONFUSION"]
@@ -43,7 +37,7 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     api_key = os.getenv("GOOGLE_API_KEY")
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(
-        "gemini-1.5-flash",
+        "gemini-2.0-flash",
         generation_config=GenerationConfig(response_mime_type="application/json"),
     )
     response = await model.generate_content_async(prompt)
@@ -52,16 +46,7 @@ async def teaching_nlu_node(state: AgentGraphState) -> dict:
     classified_intent = llm_response_json.get("intent", "STATE_CONFUSION")
     logger.info(f"Teaching NLU classified intent as: {classified_intent}")
 
-    # --- THIS IS THE FINAL FIX ---
-    # Return the intent AND all the state keys that need to survive this turn.
+    # Return ONLY the new information.
     return {
         "student_intent_for_lesson_turn": classified_intent,
-
-        # Preserve the entire session state
-        "pedagogical_plan": state.get("pedagogical_plan"),
-        "current_plan_step_index": state.get("current_plan_step_index", 0),
-        "lesson_id": state.get("lesson_id"),
-        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
-        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
-        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
     }

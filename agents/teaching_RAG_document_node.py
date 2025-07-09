@@ -54,13 +54,5 @@ async def teaching_RAG_document_node(state: AgentGraphState) -> dict:
         category=category # Pass the found lesson_id as the category
     )
 
-    # Return the results AND preserve all critical state
-    return {
-        "rag_document_data": retrieved_documents,
-        "pedagogical_plan": plan,
-        "current_plan_step_index": current_index,
-        "lesson_id": lesson_id, # Return the lesson_id to ensure it's in the top-level state
-        "Learning_Objective_Focus": learning_objective,
-        "STUDENT_PROFICIENCY": student_proficiency,
-        "STUDENT_AFFECTIVE_STATE": state.get('STUDENT_AFFECTIVE_STATE') or state.get('current_context', {}).get('STUDENT_AFFECTIVE_STATE'),
-    }
+    # Return ONLY the new documents.
+    return {"rag_document_data": retrieved_documents}

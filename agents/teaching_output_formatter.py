@@ -47,27 +47,34 @@ async def teaching_output_formatter_node(state: dict) -> dict:
             full_text_to_speak = payload.get("core_explanation", "Let me explain.")
             final_actions.append({"action_type": "SPEAK_TEXT", "parameters": {"text": full_text_to_speak}})
 
-        # --- 2. Process the Visual Aid Suggestion ---
+        # --- 2. Process the Visual Aid Suggestion (THIS IS THE FIX) ---
         visual_suggestion = payload.get("visual_aid_suggestion")
+        
+        # Change .get("steps") to .get("commands") to match the LLM output and frontend types
         if visual_suggestion and isinstance(visual_suggestion, dict) and visual_suggestion.get("steps"):
+            logger.info("Found visual aid suggestion with commands. Creating DISPLAY_VISUAL_AID action.")
             final_actions.insert(0, {
                 "action_type": "DISPLAY_VISUAL_AID",
                 "parameters": {"visual_description": visual_suggestion}
             })
+        else:
+            logger.warning("No valid visual aid suggestion with 'commands' key found in payload.")
+        # --- END OF FIX ---
 
     logger.info(f"Formatted teaching payload into {len(final_actions)} final UI actions.")
 
-    # --- THIS IS THE CRITICAL FIX ---
-    # Return the final output AND all the state keys that need to be saved.
+    # Add the context for the next turn to the SPEAK_THEN_LISTEN action
+    for action in final_actions:
+        if action.get("action_type") == "SPEAK_THEN_LISTEN":
+            if "listen_config" not in action["parameters"]:
+                 action["parameters"]["listen_config"] = {}
+            action["parameters"]["listen_config"]["context_for_next_turn"] = "TEACHING_PAGE_TURN"
+            break
+            
+    logger.info(f"Finalized actions. Next turn context is 'TEACHING_PAGE_TURN'.")
+
+    # This is a "finalizing node". It only returns the keys needed by the client.
     return {
         "final_text_for_tts": full_text_to_speak,
         "final_ui_actions": final_actions,
-
-        # Preserve the session state
-        "pedagogical_plan": state.get("pedagogical_plan"),
-        "current_plan_step_index": state.get("current_plan_step_index"),
-        "lesson_id": state.get("lesson_id"),
-        "Learning_Objective_Focus": state.get("Learning_Objective_Focus"),
-        "STUDENT_PROFICIENCY": state.get("STUDENT_PROFICIENCY"),
-        "STUDENT_AFFECTIVE_STATE": state.get("STUDENT_AFFECTIVE_STATE"),
     }

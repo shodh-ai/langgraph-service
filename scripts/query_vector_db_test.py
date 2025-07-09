@@ -29,7 +29,7 @@ TEST_QUERIES = [
 "filter": {"category": "teaching"} # You could filter by lesson_id if you know it
 },
 {
-"description": "Modeling: How to show someone how to handle an Integrated Writing Task?",
+"description": "modelling: How to show someone how to handle an Integrated Writing Task?",
 "query_text": "Model how to synthesize reading and listening points for the integrated writing task.",
 "filter": {"category": "modelling"}
 },

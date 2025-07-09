@@ -74,6 +74,8 @@ AgentGraphState = TypedDict('AgentGraphState', {
     'current_lo_to_address': Optional[Dict[str, Any]],
     'pedagogical_plan': Optional[List[Dict[str, Any]]], # DEFINED ONCE
     'current_plan_step_index': Optional[int],          # DEFINED ONCE
+    'course_map_data': Optional[Dict[str, Any]],
+    'lesson_plan_graph_data': Optional[Dict[str, Any]],
     'current_plan_active': bool,                       # Kept for compatibility
     'last_ai_action': Optional[str],
     'last_action_was': Optional[str],

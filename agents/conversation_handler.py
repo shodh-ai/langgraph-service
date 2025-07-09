@@ -70,8 +70,8 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
 
         elif task_stage == "MODELLING_PAGE_TURN":
             possible_intents = ["CONFIRM_UNDERSTANDING", "ASK_ABOUT_MODEL", "STATE_CONFUSION", "GENERAL_QUESTION"]
-            last_ai_statement = chat_history[-2]['content'] if len(chat_history) > 1 else "the current modeling example"
-            nlu_instructions = f"The AI is in the middle of a modeling session, showing the student how to do something. The AI's last statement was: '{last_ai_statement}'. Now, classify the student's following statement."
+            last_ai_statement = chat_history[-2]['content'] if len(chat_history) > 1 else "the current modellinggg example"
+            nlu_instructions = f"The AI is in the middle of a modellinggg session, showing the student how to do something. The AI's last statement was: '{last_ai_statement}'. Now, classify the student's following statement."
             
         else: # Default case
             possible_intents = ["GENERAL_CONFIRM", "GENERAL_REJECT", "GENERAL_QUESTION", "SMALL_TALK"]
@@ -93,7 +93,7 @@ async def conversation_handler_node(state: AgentGraphState) -> dict:
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(prompt)

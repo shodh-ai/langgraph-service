@@ -1,4 +1,4 @@
-# agents/modelling_output_formatter.py (Simplified)
+# agents/modelling_output_formatter.py
 import logging
 from state import AgentGraphState
 
@@ -17,38 +17,22 @@ TARGET_ELEMENT_MAP = {
     "update_prompt_display": "p8ModelTaskPromptDisplay",
     "think_aloud": "p8AiThinkAloudPanelOrSubtitle",
     # All other actions target the main editor or panel on the modelling page
-    "default": "p8ModelEssayDisplayArea", 
+    "default": "p8ModelEssayDisplayArea",
 }
 
 async def modelling_output_formatter_node(state: AgentGraphState) -> dict:
     """
     Translates the generator's script into a simple list of UI action dictionaries
-    for the livekit-service to process AND preserves the full session state.
+    for the livekit-service to process.
     """
-    logger.info("---Executing Fully State-Preserving Modelling Output Formatter ---")
-
-    # --- Start of State Preservation ---
-    modeling_plan = state.get("modeling_plan")
-    current_plan_step_index = state.get("current_plan_step_index")
-    activity_id = state.get("activity_id")
-    learning_objective = state.get("Learning_Objective_Focus")
-    student_proficiency = state.get("STUDENT_PROFICIENCY")
-    student_affective_state = state.get("STUDENT_AFFECTIVE_STATE")
-    # --- End of State Preservation ---
+    logger.info("---Executing Modelling Output Formatter ---")
 
     payload = state.get("intermediate_modelling_payload")
     if not payload or "sequence" not in payload:
         logger.warning("No payload or sequence found in state. Returning empty actions.")
-        # Still return the preserved state even on failure
         return {
             "final_text_for_tts": "I seem to have lost my train of thought. Let's try that again.",
             "final_ui_actions": [],
-            "modeling_plan": modeling_plan,
-            "current_plan_step_index": current_plan_step_index,
-            "activity_id": activity_id,
-            "Learning_Objective_Focus": learning_objective,
-            "STUDENT_PROFICIENCY": student_proficiency,
-            "STUDENT_AFFECTIVE_STATE": student_affective_state,
         }
 
     sequence = payload.get("sequence", [])
@@ -75,17 +59,9 @@ async def modelling_output_formatter_node(state: AgentGraphState) -> dict:
 
         final_ui_actions.append({"action_type": action_type_str, "parameters": params})
 
-    # Return the formatted output AND the full, preserved session state.
+    # This is a "finalizing node". It only returns the keys needed by the client.
     return {
         "final_text_for_tts": " ".join(filter(None, final_tts_parts)),
         "final_ui_actions": final_ui_actions,
-
-        # Pass through the entire session state
-        "modeling_plan": modeling_plan,
-        "current_plan_step_index": current_plan_step_index,
-        "activity_id": activity_id,
-        "Learning_Objective_Focus": learning_objective,
-        "STUDENT_PROFICIENCY": student_proficiency,
-        "STUDENT_AFFECTIVE_STATE": student_affective_state,
         "intermediate_modelling_payload": None, # Clear payload after use
     }

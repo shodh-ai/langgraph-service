@@ -50,6 +50,11 @@ async def entry_router(state: AgentGraphState) -> str:
 
     logger.info(f"Teaching Subgraph: Routing for task '{task_stage}'.")
 
+    if task_stage == "TEACHING_USER_REQUESTS_NEXT":
+        logger.info("Teaching Subgraph: User clicked 'Next'. Routing to plan advancer.")
+        # Go directly to the node that increments the step index
+        return NODE_TEACHING_PLAN_ADVANCER
+
     # If the task is a follow-up turn from the user, go to our new NLU handler
     if task_stage == "TEACHING_PAGE_TURN": # <<< USE A NEW TASK_STAGE
         logger.info("Teaching Subgraph: Conversational turn. Routing to NLU handler.")

@@ -20,8 +20,8 @@ def format_rag_for_prompt(rag_data: list) -> str:
     # and give the LLM a single, strong pattern to follow.
     try:
         example = rag_data[0]
-        # We only need the 'modeling_and_think_aloud_sequence_json' as the example
-        sequence_example_str = example.get('modeling_and_think_aloud_sequence_json', '{}')
+        # We only need the 'modelling_and_think_aloud_sequence_json' as the example
+        sequence_example_str = example.get('modelling_and_think_aloud_sequence_json', '{}')
         # Pretty-print the JSON so the LLM can easily read the structure
         sequence_example_json = json.dumps(json.loads(sequence_example_str), indent=2)
         return f"Follow this example structure for the sequence:\n{sequence_example_json}"
@@ -32,7 +32,7 @@ def format_rag_for_prompt(rag_data: list) -> str:
 # THIS NODE IS NOW THE UPGRADED, PLAN-DRIVEN, AND STATE-PRESERVING GENERATOR
 async def modelling_delivery_generator_node(state: AgentGraphState) -> dict:
     """
-    Generates a rich, sequential script for the CURRENT step of a modeling plan
+    Generates a rich, sequential script for the CURRENT step of a modelling plan
     while preserving the FULL session state.
     """
     logger.info("---Executing Fully State-Preserving, Plan-Driven Modelling Delivery Generator---")
@@ -84,7 +84,7 @@ async def modelling_delivery_generator_node(state: AgentGraphState) -> dict:
         Generate the JSON object with the "sequence" array now.
         """
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             generation_config=GenerationConfig(response_mime_type="application/json"),
         )
         response = await model.generate_content_async(llm_prompt)
