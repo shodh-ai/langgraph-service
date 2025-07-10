@@ -72,6 +72,7 @@ async def initial_router_logic(state: AgentGraphState) -> str:
         "acknowledge_interruption": NODE_ACKNOWLEDGE_INTERRUPT,
         "handle_page_load": NODE_HANDLE_WELCOME,
         "Rox_Welcome_Init": NODE_HANDLE_WELCOME,
+        "ROX_CONVERSATION_TURN": NODE_HANDLE_WELCOME,
         "start_modelling_activity": NODE_MODELLING_MODULE,
         "request_teaching_lesson": NODE_TEACHING_MODULE, # Old, for reference
         "initiate_teaching_session": NODE_TEACHING_MODULE, # New task name

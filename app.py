@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', force=True)
 logger = logging.getLogger("uvicorn.error") # Ensure logger is defined before use in endpoints
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Path
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
@@ -91,6 +91,8 @@ app.add_middleware(
 
 # The graph is now initialized within the lifespan manager
 # toefl_tutor_graph = build_graph()
+
+from cache import SESSION_DATA_CACHE
 
 # --- Deepgram Transcription Proxy Endpoint ---
 @app.post("/transcribe_audio")
@@ -291,6 +293,22 @@ async def invoke_task_route(request_data: InvokeTaskRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+
+
+@app.get("/api/v1/session_data/{session_id}/{data_key}")
+async def get_session_data(session_id: str = Path(...), data_key: str = Path(...)):
+    session_cache = SESSION_DATA_CACHE.get(session_id)
+    if not session_cache:
+        logger.error(f"CACHE MISS: Session ID '{session_id}' not found in cache.")
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    data = session_cache.get(data_key)
+    if not data:
+        logger.error(f"CACHE MISS: Data key '{data_key}' not found for session '{session_id}'.")
+        raise HTTPException(status_code=404, detail="Data key not found")
+        
+    logger.info(f"CACHE HIT: Serving data for session '{session_id}', key '{data_key}'.")
+    return data
 
 
 @app.get("/health")
